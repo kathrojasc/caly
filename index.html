@@ -297,10 +297,13 @@ button.chip { cursor: pointer; }
 .rule-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: end; }
 .rule-form .field.day, .rule-form > .btn { grid-column: 1 / -1; }
 .rule-form > .btn { width: 100%; }
-input[type=time] { min-width: 0; max-width: 100%; display: flex; align-items: center; -webkit-appearance: none; appearance: none; text-align: left; line-height: normal; }
-input[type=time]::-webkit-date-and-time-value { text-align: left; margin: 0; min-height: 1.4em; display: flex; align-items: center; }
-input[type=time]::-webkit-datetime-edit { padding: 0; display: flex; align-items: center; }
-input[type=time]::-webkit-datetime-edit-fields-wrapper { padding: 0; }
+input[type=time], input[type=date] { min-width: 0; max-width: 100%; width: 100%; display: flex; align-items: center; -webkit-appearance: none; appearance: none; text-align: left; line-height: normal; }
+input[type=time]::-webkit-date-and-time-value, input[type=date]::-webkit-date-and-time-value { text-align: left; margin: 0; min-height: 1.4em; display: flex; align-items: center; }
+input[type=time]::-webkit-datetime-edit, input[type=date]::-webkit-datetime-edit { padding: 0; display: flex; align-items: center; }
+input[type=time]::-webkit-datetime-edit-fields-wrapper, input[type=date]::-webkit-datetime-edit-fields-wrapper { padding: 0; }
+@supports (-webkit-touch-callout: none) {
+  input[type=date][value=""]::before { content: attr(placeholder); color: var(--color-text-disabled); }
+}
 @media (min-width: 640px) {
   .rule-form { grid-template-columns: 1.5fr 1fr 1fr auto; }
   .rule-form .field.day { grid-column: auto; }
@@ -2101,8 +2104,8 @@ function renderBusinessHoursSection(){
     <p class="secondary" style="margin-bottom:14px;">Feriados, vacaciones o cualquier día en que no atiendes. No se podrá reservar en esas fechas.</p>
     <div class="card stack">
       <div class="rule-form">
-        <div class="field"><label for="cd-from">Desde</label><input id="cd-from" type="date" min="${todayISO()}" value="${nc.from}" onchange="updateNewClosed('from', this.value)"></div>
-        <div class="field"><label for="cd-to">Hasta (opcional)</label><input id="cd-to" type="date" min="${todayISO()}" value="${nc.to}" onchange="updateNewClosed('to', this.value)"></div>
+        <div class="field"><label for="cd-from">Desde</label><input id="cd-from" type="date" min="${todayISO()}" value="${nc.from}" placeholder="Elegir fecha" onchange="updateNewClosed('from', this.value); render()"></div>
+        <div class="field"><label for="cd-to">Hasta (opcional)</label><input id="cd-to" type="date" min="${todayISO()}" value="${nc.to}" placeholder="Elegir fecha" onchange="updateNewClosed('to', this.value); render()"></div>
         <div class="field day"><label for="cd-note">Motivo (opcional)</label><input id="cd-note" placeholder="Ej: Feriado, vacaciones" value="${escapeHtml(nc.note)}" oninput="updateNewClosed('note', this.value)"></div>
         <button class="btn btn-primary" type="button" onclick="addClosedDay()">Cerrar estos días</button>
       </div>
