@@ -267,6 +267,8 @@ button.chip { cursor: pointer; }
 .hero.light .hero-actions button { background: var(--color-surface); color: var(--color-text); }
 .hero.light .chip-hero.cancel { background: var(--color-danger-bg); color: var(--color-danger); }
 .hero.light .hero-actions button.danger { background: var(--color-danger-bg); color: var(--color-danger); }
+.hero-actions.c2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hero:not(.light) .hero-actions button.danger { background: rgba(224,70,58,0.30); color: #FFB8B1; }
 .hero-actions.c1 { grid-template-columns: 1fr; }
 .hero-actions.c4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (min-width: 640px) { .hero-actions.c4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
@@ -1379,8 +1381,9 @@ function patientCard(a, light){
         ${a.staffName ? `<div class="h-sub">${escapeHtml(a.staffName)}</div>` : ''}
         <div class="h-meta">${durationMin(a)} min</div>
       </div>
-      <div class="hero-actions c1">
+      <div class="hero-actions c2">
         <button type="button" onclick="startReschedule('${a.id}')">${icon('refresh', 20)}<span>Reagendar</span></button>
+        <button type="button" class="danger" onclick="askCancel('${a.id}')">${icon('close', 20, 2.4)}<span>Cancelar</span></button>
       </div>
     </div>`;
 }
@@ -1430,7 +1433,8 @@ function renderPacientePanel(b){
       <div style="display:flex;justify-content:center;margin-top:28px;">
         <button class="btn-text" type="button" onclick="newBooking()">¿No eres tú? Usa otro DNI</button>
       </div>
-    </div>`;
+    </div>
+    ${renderCancelModal()}`;
 }
 
 function renderResumen(b, cfg){
@@ -2029,8 +2033,8 @@ function renderCancelModal(){
   return `
     <div class="modal-back" onclick="if (event.target === this) dismissCancel()">
       <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="cn-title" aria-describedby="cn-desc">
-        <h2 class="title-3" id="cn-title">¿Cancelar la cita de ${escapeHtml(a.name)}?</h2>
-        <p class="secondary" id="cn-desc" style="margin-top:8px;">La cita del ${displayDateLong(a.date).toLowerCase()} a las ${a.start} quedará cancelada y el horario volverá a estar disponible. <strong style="color:var(--color-text);">Esta acción es irreversible.</strong></p>
+        <h2 class="title-3" id="cn-title">${state.view === 'paciente' ? '¿Cancelar tu cita?' : `¿Cancelar la cita de ${escapeHtml(a.name)}?`}</h2>
+        <p class="secondary" id="cn-desc" style="margin-top:8px;">${state.view === 'paciente' ? 'Tu cita' : 'La cita'} del ${displayDateLong(a.date).toLowerCase()} a las ${a.start} quedará cancelada y el horario volverá a estar disponible. <strong style="color:var(--color-text);">Esta acción es irreversible.</strong></p>
         <div class="stack" style="margin-top:20px;gap:10px;">
           <button class="btn btn-danger-solid btn-block" type="button" onclick="doCancel('${a.id}')">Sí, cancelar cita</button>
           <button class="btn btn-soft btn-block" type="button" autofocus onclick="dismissCancel()">Volver</button>
