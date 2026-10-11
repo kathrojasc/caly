@@ -663,9 +663,10 @@ function datosSubmit(){
 }
 function backToDni(){ state.booking.step = 'dni'; render(); }
 
+function ab(){ return state.view === 'admin' && state.newAppt ? state.newAppt : state.booking; }
 function pickDay(iso){
-  state.booking.selectedDate = iso;
-  state.booking.selectedSlot = null;
+  ab().selectedDate = iso;
+  ab().selectedSlot = null;
   render();
 
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -678,15 +679,15 @@ function pickDay(iso){
   });
 }
 function navCalendar(delta){
-  let { y, m } = state.booking.calendarMonth;
+  let { y, m } = ab().calendarMonth;
   m += delta;
   if (m < 0) { m = 11; y -= 1; }
   else if (m > 11) { m = 0; y += 1; }
-  state.booking.calendarMonth = { y, m };
+  ab().calendarMonth = { y, m };
   render();
 }
 function pickSlot(start, end){
-  state.booking.selectedSlot = { start, end };
+  ab().selectedSlot = { start, end };
   render();
 }
 function confirmBooking(){
@@ -756,12 +757,18 @@ function confirmBooking(){
   showToast(rescheduleId ? 'Cita reagendada' : 'Cita confirmada');
 }
 function goToResumen(){
-  if (!state.booking.selectedSlot) return;
-  state.booking.step = 'resumen';
+  const b = ab();
+  if (!b.selectedSlot) return;
+  if (b.admin) {
+    if (!isValidDni(b.dni)) { b.formError = 'Ingresa un DNI válido (solo números, 6 a 10 dígitos).'; render(); window.scrollTo(0, 0); return; }
+    if ((b.name || '').trim().length < 2) { b.formError = 'Ingresa el nombre completo del cliente.'; render(); window.scrollTo(0, 0); return; }
+    b.formError = null;
+  }
+  b.step = 'resumen';
   render();
 }
 function closeResumen(){
-  state.booking.step = 'reservar';
+  ab().step = 'reservar';
   render();
 }
 function newBooking(){
@@ -823,18 +830,15 @@ function sendReminder(id){
   const msg = `Hola! Recuerda que ${dateLabel} tienes una reserva. Te esperamos.`;
   window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
-function firstAvailableDate(serviceId){
-  for (let i = 0; i <= state.config.windowDays; i++) {
-    const iso = addDaysISO(todayISO(), i);
-    if (getAvailableSlots(iso, null, null, serviceId).length) return iso;
-  }
-  return todayISO();
-}
 function goNewAppt(){ state.adminTab = 'citas'; openNewAppt(); }
 function openNewAppt(){
   const act = activeServices();
-  state.newAppt = { dni: '', name: '', phone: '', date: todayISO(), slot: null, error: null, known: false, serviceId: isProPlan() && act.length ? act[0].id : null };
-  state.newAppt.date = firstAvailableDate(state.newAppt.serviceId);
+  const today = todayISO();
+  state.newAppt = {
+    admin: true, step: 'reservar', dni: '', name: '', phone: '', known: false, error: null, formError: null,
+    selectedDate: today, calendarMonth: ymFromISO(today), selectedSlot: null, rescheduleId: null,
+    serviceId: isProPlan() && act.length ? act[0].id : null, staffId: null,
+  };
   render();
   window.scrollTo(0, 0);
 }
@@ -846,7 +850,7 @@ function lookupNewApptDni(value){
   const existing = state.patients[n.dni];
   const wasKnown = n.known;
   n.known = !!existing;
-  n.error = null;
+  n.formError = null;
   if (existing) {
     n.name = existing.name; n.phone = existing.phone || '';
     render();
@@ -855,51 +859,25 @@ function lookupNewApptDni(value){
     render();
   }
 }
-function setNewApptService(id){
-  const n = state.newAppt;
-  n.serviceId = id;
-  n.slot = null;
-  n.error = null;
-  n.date = firstAvailableDate(id);
-  render();
-}
-function setNewApptDate(iso){
-  if (!iso) return;
-  state.newAppt.date = iso;
-  state.newAppt.slot = null;
-  state.newAppt.error = null;
-  render();
-}
-function pickNewApptSlot(start, end){
-  state.newAppt.slot = { start, end };
-  state.newAppt.error = null;
-  render();
-}
 function createAdminAppointment(){
   const n = state.newAppt;
-  if (!n) return;
-  const fail = msg => { n.error = msg; render(); };
-  if (!isValidDni(n.dni)) return fail('Ingresa un DNI válido (solo números, 6 a 10 dígitos).');
-  if ((n.name || '').trim().length < 2) return fail('Ingresa el nombre completo del cliente.');
-  if (isProPlan() && !n.serviceId) return fail('Elige un servicio.');
-  if (!n.slot) return fail('Elige un horario.');
-  const svcId = isProPlan() ? n.serviceId : null;
-  if (!getAvailableSlots(n.date, null, null, svcId).some(s => s.start === n.slot.start)) {
-    n.slot = null;
+  if (!n || !n.selectedSlot) return;
+  const svcId = bookingServiceId(n);
+  const pickId = pickIdFor(n);
+  const fail = msg => { n.error = msg; n.selectedSlot = null; n.step = 'reservar'; render(); };
+  if (isProPlan() && !svcId) return fail('Elige un servicio.');
+  if (!getAvailableSlots(n.selectedDate, null, pickId, svcId).some(sl => sl.start === n.selectedSlot.start)) {
     return fail('Ese horario se acaba de ocupar. Elige otro.');
   }
-  const assigned = assignStaffRoundRobin(n.date, n.slot.start, n.slot.end, null, null, svcId);
-  if (!assigned) {
-    n.slot = null;
-    return fail('Ese horario se acaba de ocupar. Elige otro.');
-  }
+  const assigned = assignStaffRoundRobin(n.selectedDate, n.selectedSlot.start, n.selectedSlot.end, null, pickId, svcId);
+  if (!assigned) return fail('Ese horario se acaba de ocupar. Elige otro.');
   const name = n.name.trim();
   const phone = (n.phone || '').trim();
   state.patients[n.dni] = { name, phone };
   state.appointments.push({
     id: 'a' + Date.now(),
     dni: n.dni, name, phone,
-    date: n.date, start: n.slot.start, end: n.slot.end,
+    date: n.selectedDate, start: n.selectedSlot.start, end: n.selectedSlot.end,
     status: 'CONFIRMED', paid: false,
     staffId: assigned.id, staffName: assigned.name,
     rescheduleRequested: false,
@@ -908,6 +886,7 @@ function createAdminAppointment(){
   state.newAppt = null;
   saveState();
   render();
+  window.scrollTo(0, 0);
   showToast(`Cita creada para ${name}`);
 }
 function bookingSlug(){
@@ -1231,20 +1210,23 @@ function bookingServiceId(b){
 }
 function clientStaffOptions(b){
   b = b || state.booking;
+  if (b.admin) return serviceStaff(bookingServiceId(b));
   return isProPlan() && state.allowClientStaffPick ? serviceStaff(bookingServiceId(b)) : [];
 }
 function canClientPickStaff(b){ return clientStaffOptions(b).length > 1; }
 function pickService(id){
-  state.booking.serviceId = id;
-  state.booking.staffId = null;
-  state.booking.selectedSlot = null;
-  state.booking.error = null;
+  const b = ab();
+  b.serviceId = id;
+  b.staffId = null;
+  b.selectedSlot = null;
+  b.error = null;
   render();
 }
 function pickStaff(id){
-  state.booking.staffId = id || null;
-  state.booking.selectedSlot = null;
-  state.booking.error = null;
+  const b = ab();
+  b.staffId = id || null;
+  b.selectedSlot = null;
+  b.error = null;
   render();
 }
 function toggleBusinessPlan(id){
@@ -1446,7 +1428,7 @@ function renderPacientePanel(b){
     </div>`;
 }
 
-function renderResumen(b){
+function renderResumen(b, cfg){
   const dur = timeToMinutes(b.selectedSlot.end) - timeToMinutes(b.selectedSlot.start);
   return `
     <div class="dark" role="dialog" aria-modal="true" aria-label="Confirmar cita">
@@ -1466,9 +1448,67 @@ function renderResumen(b){
           ${b.rescheduleId ? `<div class="g-row"><span>Tipo</span><span>Reagendado</span></div>` : ''}
         </div>
         <div style="flex:1;min-height:32px;"></div>
-        <button class="dark-cta" type="button" onclick="confirmBooking()">${b.rescheduleId ? 'Confirmar reagendado' : 'Confirmar cita'}</button>
+        <button class="dark-cta" type="button" onclick="${cfg.confirmFn}">${cfg.confirmLabel}</button>
       </div>
     </div>`;
+}
+
+function renderBookingScreen(b, cfg){
+  ensureBookingService(b);
+  if (!getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b), bookingServiceId(b)).length) {
+    for (let i = 0; i <= state.config.windowDays; i++) {
+      const iso = addDaysISO(todayISO(), i);
+      if (getAvailableSlots(iso, b.rescheduleId, pickIdFor(b), bookingServiceId(b)).length) { b.selectedDate = iso; b.calendarMonth = ymFromISO(iso); break; }
+    }
+  }
+  const slots = getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b), bookingServiceId(b));
+  const dayText = longDate(b.selectedDate);
+
+  const page = `
+    <div class="page w760" style="padding-bottom:130px;">
+      <div style="display:flex;align-items:center;min-height:48px;">
+        <button class="icon-btn" type="button" onclick="${cfg.backFn}" aria-label="${cfg.backLabel}">${icon('left', 22, 2.4)}</button>
+      </div>
+      <h1 class="title-1" style="margin:20px 0;">${cfg.title}</h1>
+      ${cfg.top || ''}
+      ${isProPlan() && !b.rescheduleId ? (activeServices().length ? `
+        <div style="margin-bottom:20px;">
+          <p class="label" style="margin-bottom:8px;">Servicio</p>
+          <div class="pills" role="group" aria-label="Elegir servicio">
+            ${activeServices().map(v => `<button type="button" class="pill-opt" aria-pressed="${b.serviceId === v.id}" onclick="pickService('${v.id}')">${escapeHtml(v.name)} · ${v.minutes} min</button>`).join('')}
+          </div>
+        </div>` : `<p class="secondary" style="margin-bottom:20px;">Por ahora no hay servicios disponibles para reservar.</p>`) : ''}
+      ${canClientPickStaff(b) ? `
+        <div style="margin-bottom:20px;">
+          <p class="label" style="margin-bottom:8px;">Profesional</p>
+          <div class="pills" role="group" aria-label="Elegir profesional">
+            <button type="button" class="pill-opt" aria-pressed="${!pickIdFor(b)}" onclick="pickStaff(null)">Cualquiera disponible</button>
+            ${clientStaffOptions(b).map(m => `<button type="button" class="pill-opt" aria-pressed="${b.staffId === m.id}" onclick="pickStaff('${m.id}')">${escapeHtml(m.name)}</button>`).join('')}
+          </div>
+        </div>` : ''}
+
+      <div class="cols">
+        <div class="c340">${renderCalendarPicker(b)}</div>
+        <div class="c300" id="slots-section" style="scroll-margin-top:16px;">
+          <h2 class="title-3">${dayText}</h2>
+          ${slots.length === 0
+            ? `<p class="secondary" style="margin-top:14px;">No hay horarios disponibles este día. Prueba otra fecha.</p>`
+            : `<div class="slot-grid">${slots.map(s => `<button type="button" class="slot" onclick="pickSlot('${s.start}','${s.end}')" aria-pressed="${!!(b.selectedSlot && b.selectedSlot.start === s.start)}">${s.start}</button>`).join('')}</div>`}
+          ${b.error ? `<p class="error-text" style="margin-top:14px;">${escapeHtml(b.error)}</p>` : ''}
+        </div>
+      </div>
+    </div>
+    ${b.selectedSlot ? `
+      <div class="dock on">
+        <div class="d-main"><span class="d-day">${dayText}</span><span class="d-time">${b.selectedSlot.start}</span></div>
+        <button class="btn btn-inverse" type="button" onclick="goToResumen()">${cfg.continueLabel}</button>
+      </div>` : `
+      <div class="dock off">
+        <span class="d-off">Elige un horario</span>
+        <button class="btn" type="button" disabled>${cfg.continueLabel}</button>
+      </div>`}`;
+
+  return b.step === 'resumen' && b.selectedSlot ? page + renderResumen(b, cfg) : page;
 }
 
 function renderPaciente(){
@@ -1516,60 +1556,11 @@ function renderPaciente(){
 
   if (b.step === 'panel') return renderPacientePanel(b);
 
-  ensureBookingService(b);
-  if (!getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b), bookingServiceId(b)).length) {
-    for (let i = 0; i <= state.config.windowDays; i++) {
-      const iso = addDaysISO(todayISO(), i);
-      if (getAvailableSlots(iso, b.rescheduleId, pickIdFor(b), bookingServiceId(b)).length) { b.selectedDate = iso; b.calendarMonth = ymFromISO(iso); break; }
-    }
-  }
-  const slots = getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b), bookingServiceId(b));
-  const dayText = longDate(b.selectedDate);
-
-  const page = `
-    <div class="page w760" style="padding-bottom:130px;">
-      <div style="display:flex;align-items:center;min-height:48px;">
-        <button class="icon-btn" type="button" onclick="goToPanel()" aria-label="Volver a mis citas">${icon('left', 22, 2.4)}</button>
-      </div>
-      <h1 class="title-1" style="margin:20px 0;">${b.rescheduleId ? 'Reagenda tu cita' : 'Elige día y hora'}</h1>
-      ${isProPlan() && !b.rescheduleId ? (activeServices().length ? `
-        <div style="margin-bottom:20px;">
-          <p class="label" style="margin-bottom:8px;">Servicio</p>
-          <div class="pills" role="group" aria-label="Elegir servicio">
-            ${activeServices().map(v => `<button type="button" class="pill-opt" aria-pressed="${b.serviceId === v.id}" onclick="pickService('${v.id}')">${escapeHtml(v.name)} · ${v.minutes} min</button>`).join('')}
-          </div>
-        </div>` : `<p class="secondary" style="margin-bottom:20px;">Por ahora no hay servicios disponibles para reservar.</p>`) : ''}
-      ${canClientPickStaff(b) ? `
-        <div style="margin-bottom:20px;">
-          <p class="label" style="margin-bottom:8px;">Profesional</p>
-          <div class="pills" role="group" aria-label="Elegir profesional">
-            <button type="button" class="pill-opt" aria-pressed="${!pickIdFor(b)}" onclick="pickStaff(null)">Cualquiera disponible</button>
-            ${clientStaffOptions(b).map(m => `<button type="button" class="pill-opt" aria-pressed="${b.staffId === m.id}" onclick="pickStaff('${m.id}')">${escapeHtml(m.name)}</button>`).join('')}
-          </div>
-        </div>` : ''}
-
-      <div class="cols">
-        <div class="c340">${renderCalendarPicker(b)}</div>
-        <div class="c300" id="slots-section" style="scroll-margin-top:16px;">
-          <h2 class="title-3">${dayText}</h2>
-          ${slots.length === 0
-            ? `<p class="secondary" style="margin-top:14px;">No hay horarios disponibles este día. Prueba otra fecha.</p>`
-            : `<div class="slot-grid">${slots.map(s => `<button type="button" class="slot" onclick="pickSlot('${s.start}','${s.end}')" aria-pressed="${!!(b.selectedSlot && b.selectedSlot.start === s.start)}">${s.start}</button>`).join('')}</div>`}
-          ${b.error ? `<p class="error-text" style="margin-top:14px;">${escapeHtml(b.error)}</p>` : ''}
-        </div>
-      </div>
-    </div>
-    ${b.selectedSlot ? `
-      <div class="dock on">
-        <div class="d-main"><span class="d-day">${dayText}</span><span class="d-time">${b.selectedSlot.start}</span></div>
-        <button class="btn btn-inverse" type="button" onclick="goToResumen()">Continuar</button>
-      </div>` : `
-      <div class="dock off">
-        <span class="d-off">Elige un horario</span>
-        <button class="btn" type="button" disabled>Continuar</button>
-      </div>`}`;
-
-  return b.step === 'resumen' && b.selectedSlot ? page + renderResumen(b) : page;
+  return renderBookingScreen(b, {
+    backFn: 'goToPanel()', backLabel: 'Volver a mis citas',
+    title: b.rescheduleId ? 'Reagenda tu cita' : 'Elige día y hora',
+    top: '', confirmFn: 'confirmBooking()', confirmLabel: b.rescheduleId ? 'Confirmar reagendado' : 'Confirmar cita', continueLabel: 'Continuar',
+  });
 }
 
 /* ---------- Admin ---------- */
@@ -2001,22 +1992,11 @@ function renderRescheduleModal(){
 
 function renderNewApptView(){
   const n = state.newAppt;
-  const pro = isProPlan();
-  const slots = getAvailableSlots(n.date, null, null, pro ? n.serviceId : null);
-  const maxIso = addDaysISO(todayISO(), state.config.windowDays);
-  const ready = isValidDni(n.dni) && (n.name || '').trim().length >= 2 && n.slot && (!pro || n.serviceId);
-  const dayText = longDate(n.date);
-  return `
-    <div class="page w560" style="padding-bottom:130px;">
-      <div style="display:flex;align-items:center;min-height:48px;">
-        <button class="icon-btn" type="button" onclick="closeNewAppt()" aria-label="Volver a Citas">${icon('left', 22, 2.4)}</button>
-      </div>
-      <h1 class="title-1" style="margin:20px 0 4px;">Nueva cita</h1>
-      <p class="secondary">Registra una cita para un cliente nuevo o ya existente.</p>
-
-      <div class="stack" style="margin-top:24px;gap:18px;">
+  const top = `
+      <div class="stack" style="gap:16px;margin-bottom:24px;">
+        <p class="label">Datos del cliente</p>
         <div class="field">
-          <label for="na-dni">DNI del cliente</label>
+          <label for="na-dni">DNI</label>
           <input id="na-dni" inputmode="numeric" placeholder="Ej: 30123456" value="${escapeHtml(n.dni)}" oninput="lookupNewApptDni(this.value)">
           ${n.known
             ? `<span class="hint" style="color:var(--color-success);font-weight:600;">Cliente existente: datos completados.</span>`
@@ -2030,35 +2010,12 @@ function renderNewApptView(){
           <label for="na-phone">Teléfono (opcional)</label>
           <input id="na-phone" inputmode="tel" value="${escapeHtml(n.phone)}" oninput="updateNewAppt('phone', this.value)">
         </div>
-        ${pro ? `
-        <div class="field">
-          <label for="na-service">Servicio</label>
-          <select id="na-service" onchange="setNewApptService(this.value)">
-            ${activeServices().map(v => `<option value="${v.id}" ${n.serviceId === v.id ? 'selected' : ''}>${escapeHtml(v.name)} · ${v.minutes} min</option>`).join('') || '<option value="">Sin servicios disponibles</option>'}
-          </select>
-        </div>` : ''}
-        <div class="field">
-          <label for="na-date">Fecha</label>
-          <input id="na-date" type="date" value="${n.date}" min="${todayISO()}" max="${maxIso}" onchange="setNewApptDate(this.value)">
-        </div>
-        <div>
-          <p class="label">Horarios disponibles · ${dayText}</p>
-          ${slots.length === 0
-            ? `<p class="secondary" style="margin-top:10px;">No hay horarios disponibles este día. Prueba otra fecha.</p>`
-            : `<div class="slot-grid" style="margin-top:10px;">${slots.map(sl => `<button type="button" class="slot" onclick="pickNewApptSlot('${sl.start}','${sl.end}')" aria-pressed="${!!(n.slot && n.slot.start === sl.start)}">${sl.start}</button>`).join('')}</div>`}
-        </div>
-        ${n.error ? `<p class="error-text">${escapeHtml(n.error)}</p>` : ''}
-      </div>
-    </div>
-    ${n.slot ? `
-      <div class="dock on">
-        <div class="d-main"><span class="d-day">${dayText}</span><span class="d-time">${n.slot.start}</span></div>
-        <button class="btn btn-inverse" type="button" onclick="createAdminAppointment()">Crear cita</button>
-      </div>` : `
-      <div class="dock off">
-        <span class="d-off">Elige un horario</span>
-        <button class="btn" type="button" disabled>Crear cita</button>
-      </div>`}`;
+        ${n.formError ? `<p class="error-text">${escapeHtml(n.formError)}</p>` : ''}
+      </div>`;
+  return renderBookingScreen(n, {
+    backFn: 'closeNewAppt()', backLabel: 'Volver a Citas', title: 'Nueva cita', top,
+    confirmFn: 'createAdminAppointment()', confirmLabel: 'Crear cita', continueLabel: 'Continuar',
+  });
 }
 
 function renderCancelModal(){
