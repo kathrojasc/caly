@@ -823,8 +823,9 @@ function openNewAppt(){
   state.newAppt = { dni: '', name: '', phone: '', date: todayISO(), slot: null, error: null, known: false, serviceId: isProPlan() && act.length ? act[0].id : null };
   state.newAppt.date = firstAvailableDate(state.newAppt.serviceId);
   render();
+  window.scrollTo(0, 0);
 }
-function closeNewAppt(){ state.newAppt = null; render(); }
+function closeNewAppt(){ state.newAppt = null; render(); window.scrollTo(0, 0); }
 function updateNewAppt(field, value){ state.newAppt[field] = value; }
 function lookupNewApptDni(value){
   const n = state.newAppt;
@@ -1983,59 +1984,66 @@ function renderRescheduleModal(){
     </div>`;
 }
 
-function renderNewApptModal(){
+function renderNewApptView(){
   const n = state.newAppt;
-  if (!n) return '';
-  const slots = getAvailableSlots(n.date, null, null, isProPlan() ? n.serviceId : null);
+  const pro = isProPlan();
+  const slots = getAvailableSlots(n.date, null, null, pro ? n.serviceId : null);
   const maxIso = addDaysISO(todayISO(), state.config.windowDays);
-  const ready = isValidDni(n.dni) && (n.name || '').trim().length >= 2 && n.slot && (!isProPlan() || n.serviceId);
+  const ready = isValidDni(n.dni) && (n.name || '').trim().length >= 2 && n.slot && (!pro || n.serviceId);
+  const dayText = longDate(n.date);
   return `
-    <div class="modal-back" onclick="if (event.target === this) closeNewAppt()">
-      <div class="modal sheet" role="dialog" aria-modal="true" aria-labelledby="na-title">
-        <div class="row between" style="flex-wrap:nowrap;">
-          <h2 class="title-3" id="na-title">Nueva cita</h2>
-          <button class="icon-btn" type="button" onclick="closeNewAppt()" aria-label="Cerrar">${icon('close', 20, 2.4)}</button>
-        </div>
-        <p class="secondary" style="margin-top:4px;">Registra una cita para un cliente nuevo o ya existente.</p>
-
-        <div class="stack" style="margin-top:20px;">
-          <div class="field">
-            <label for="na-dni">DNI del cliente</label>
-            <input id="na-dni" inputmode="numeric" placeholder="Ej: 30123456" value="${escapeHtml(n.dni)}" oninput="lookupNewApptDni(this.value)">
-            ${n.known
-              ? `<span class="hint" style="color:var(--color-success);font-weight:600;">Cliente existente: datos completados.</span>`
-              : `<span class="hint">Solo números, de 6 a 10 dígitos. Si es un cliente nuevo, completa sus datos.</span>`}
-          </div>
-          <div class="field">
-            <label for="na-name">Nombre completo</label>
-            <input id="na-name" value="${escapeHtml(n.name)}" oninput="updateNewAppt('name', this.value)">
-          </div>
-          <div class="field">
-            <label for="na-phone">Teléfono (opcional)</label>
-            <input id="na-phone" inputmode="tel" value="${escapeHtml(n.phone)}" oninput="updateNewAppt('phone', this.value)">
-          </div>
-          ${isProPlan() ? `
-          <div class="field">
-            <label for="na-service">Servicio</label>
-            <select id="na-service" onchange="setNewApptService(this.value)">
-              ${activeServices().map(v => `<option value="${v.id}" ${n.serviceId === v.id ? 'selected' : ''}>${escapeHtml(v.name)} · ${v.minutes} min</option>`).join('') || '<option value="">Sin servicios disponibles</option>'}
-            </select>
-          </div>` : ''}
-          <div class="field">
-            <label for="na-date">Fecha</label>
-            <input id="na-date" type="date" value="${n.date}" min="${todayISO()}" max="${maxIso}" onchange="setNewApptDate(this.value)">
-          </div>
-          <div>
-            <p class="label">Horarios disponibles · ${longDate(n.date)}</p>
-            ${slots.length === 0
-              ? `<p class="secondary" style="margin-top:10px;">No hay horarios disponibles este día. Prueba otra fecha.</p>`
-              : `<div class="slot-grid" style="margin-top:10px;">${slots.map(s => `<button type="button" class="slot" onclick="pickNewApptSlot('${s.start}','${s.end}')" aria-pressed="${!!(n.slot && n.slot.start === s.start)}">${s.start}</button>`).join('')}</div>`}
-          </div>
-          ${n.error ? `<p class="error-text">${escapeHtml(n.error)}</p>` : ''}
-          <button class="btn btn-primary btn-block" type="button" onclick="createAdminAppointment()" ${ready ? '' : 'aria-disabled="true"'} style="${ready ? '' : 'background:var(--color-disabled-btn);color:var(--color-disabled-text);'}">Crear cita</button>
-        </div>
+    <div class="page w560" style="padding-bottom:130px;">
+      <div style="display:flex;align-items:center;min-height:48px;">
+        <button class="icon-btn" type="button" onclick="closeNewAppt()" aria-label="Volver a Citas">${icon('left', 22, 2.4)}</button>
       </div>
-    </div>`;
+      <h1 class="title-1" style="margin:20px 0 4px;">Nueva cita</h1>
+      <p class="secondary">Registra una cita para un cliente nuevo o ya existente.</p>
+
+      <div class="stack" style="margin-top:24px;gap:18px;">
+        <div class="field">
+          <label for="na-dni">DNI del cliente</label>
+          <input id="na-dni" inputmode="numeric" placeholder="Ej: 30123456" value="${escapeHtml(n.dni)}" oninput="lookupNewApptDni(this.value)">
+          ${n.known
+            ? `<span class="hint" style="color:var(--color-success);font-weight:600;">Cliente existente: datos completados.</span>`
+            : `<span class="hint">Solo números, de 6 a 10 dígitos. Si es un cliente nuevo, completa sus datos.</span>`}
+        </div>
+        <div class="field">
+          <label for="na-name">Nombre completo</label>
+          <input id="na-name" value="${escapeHtml(n.name)}" oninput="updateNewAppt('name', this.value)">
+        </div>
+        <div class="field">
+          <label for="na-phone">Teléfono (opcional)</label>
+          <input id="na-phone" inputmode="tel" value="${escapeHtml(n.phone)}" oninput="updateNewAppt('phone', this.value)">
+        </div>
+        ${pro ? `
+        <div class="field">
+          <label for="na-service">Servicio</label>
+          <select id="na-service" onchange="setNewApptService(this.value)">
+            ${activeServices().map(v => `<option value="${v.id}" ${n.serviceId === v.id ? 'selected' : ''}>${escapeHtml(v.name)} · ${v.minutes} min</option>`).join('') || '<option value="">Sin servicios disponibles</option>'}
+          </select>
+        </div>` : ''}
+        <div class="field">
+          <label for="na-date">Fecha</label>
+          <input id="na-date" type="date" value="${n.date}" min="${todayISO()}" max="${maxIso}" onchange="setNewApptDate(this.value)">
+        </div>
+        <div>
+          <p class="label">Horarios disponibles · ${dayText}</p>
+          ${slots.length === 0
+            ? `<p class="secondary" style="margin-top:10px;">No hay horarios disponibles este día. Prueba otra fecha.</p>`
+            : `<div class="slot-grid" style="margin-top:10px;">${slots.map(sl => `<button type="button" class="slot" onclick="pickNewApptSlot('${sl.start}','${sl.end}')" aria-pressed="${!!(n.slot && n.slot.start === sl.start)}">${sl.start}</button>`).join('')}</div>`}
+        </div>
+        ${n.error ? `<p class="error-text">${escapeHtml(n.error)}</p>` : ''}
+      </div>
+    </div>
+    ${n.slot ? `
+      <div class="dock on">
+        <div class="d-main"><span class="d-day">${dayText}</span><span class="d-time">${n.slot.start}</span></div>
+        <button class="btn btn-inverse" type="button" onclick="createAdminAppointment()">Crear cita</button>
+      </div>` : `
+      <div class="dock off">
+        <span class="d-off">Elige un horario</span>
+        <button class="btn" type="button" disabled>Crear cita</button>
+      </div>`}`;
 }
 
 function renderCancelModal(){
@@ -2067,12 +2075,13 @@ function renderAdmin(){
         </div>
       </div>`;
   }
+  if (state.newAppt) return renderNewApptView();
   if (isProPlan() && pendingServiceAppts().length) {
     return renderServiceMigration(pendingServiceAppts());
   }
   return `
     <div class="page w880 admin-page">${renderAdminContent()}</div>
-    ${renderRescheduleModal()}${renderCancelModal()}${renderNewApptModal()}
+    ${renderRescheduleModal()}${renderCancelModal()}
     <nav class="tabbar" aria-label="Secciones">
       ${ADMIN_NAV.map(t => `
         <button class="tab" type="button" ${state.adminTab === t.id ? 'aria-current="page"' : ''} onclick="setAdminTab('${t.id}')">
