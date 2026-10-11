@@ -93,6 +93,7 @@ button:disabled { cursor: default; }
 
 /* Botones */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 52px; padding: 0 24px; border: 0; border-radius: var(--radius-pill); font-size: 16px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; transition: background .15s, color .15s; }
+.btn svg { flex-shrink: 0; }
 .btn-primary { background: var(--color-primary); color: var(--color-on-primary); }
 .btn-inverse { background: #fff; color: var(--color-text); }
 .btn-soft { background: var(--color-surface); color: var(--color-text); }
@@ -144,6 +145,26 @@ button.chip { cursor: pointer; }
 .date-tile b { font-size: 22px; line-height: 24px; font-weight: 700; }
 .date-tile b.time { font-size: 17px; line-height: 20px; }
 .date-tile i { font-style: normal; font-size: 11px; line-height: 14px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--color-text-secondary); }
+.appt-card { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 12px 16px; padding: 16px; border-radius: var(--radius-m); border: 1px solid var(--color-border); background: var(--color-bg); align-items: center; }
+.appt-card .row-main { min-width: 0; }
+.appt-card .row-title { font-size: 18px; line-height: 24px; }
+.appt-card .secondary { margin-top: 2px; }
+.appt-chips { grid-column: 2; display: flex; flex-wrap: wrap; gap: 8px; }
+.appt-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-top: 14px; border-top: 1px solid var(--color-border); }
+.appt-actions.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.appt-actions.confirm { grid-template-columns: 1fr 1fr; }
+.appt-actions.confirm > span { grid-column: 1 / -1; }
+.appt-actions .btn { padding: 0 10px; width: 100%; }
+.appt-card .btn-text { padding-left: 0; }
+@media (max-width: 639px) { .chip.ph { display: none; } }
+@media (min-width: 640px) {
+  .appt-card { grid-template-columns: 60px minmax(0, 1fr) auto; }
+  .appt-chips { grid-column: 3; grid-row: 1; justify-content: flex-end; flex-wrap: nowrap; }
+  .appt-actions { display: flex; flex-wrap: wrap; }
+  .appt-actions .btn { width: auto; padding: 0 18px; }
+  .appt-actions.confirm { display: flex; align-items: center; }
+  .appt-actions.confirm > span { margin-right: 4px; }
+}
 .day-label { margin: 22px 0 10px; font-size: 13px; font-weight: 700; color: var(--color-text-secondary); }
 
 /* Tarjeta media (paciente) */
@@ -1057,14 +1078,14 @@ function renderPatientRow(a, isPast){
   const kind = cancelled ? 'danger' : (isPast ? 'neutral' : 'success');
   const canReschedule = !cancelled && !isPast;
   return `
-    <div class="row-card">
+    <div class="appt-card">
       <div class="date-tile"><b>${dayNum(a.date)}</b><i>${monthAbbr(a.date)}</i></div>
       <div class="row-main">
         <div class="row-title">${longDate(a.date)}</div>
         <div class="secondary"><span class="tnum">${a.start}</span>${staffLine(a)}</div>
         ${canReschedule ? `<button class="btn-text" type="button" style="padding-left:0;min-height:36px;" onclick="startReschedule('${a.id}')">Reagendar</button>` : ''}
       </div>
-      <div class="row-side">${chip(kind, label, false, 'state')}</div>
+      <div class="appt-chips">${chip(kind, label, false, 'state')}</div>
     </div>`;
 }
 
@@ -1288,20 +1309,20 @@ function renderAdminInicio(){
         <h2 class="title-2" style="margin-top:0;">${todayAppts.length ? 'Agenda de hoy' : 'Más adelante'}</h2>
         <div class="rows">
           ${todayAppts.length ? todayAppts.map(a => `
-            <div class="row-card">
+            <div class="appt-card">
               <div class="date-tile"><b class="time tnum">${a.start}</b><i>Hoy</i></div>
               <div class="row-main"><div class="row-title">${escapeHtml(a.name)}</div>${a.staffName ? `<div class="secondary">${escapeHtml(a.staffName)}</div>` : ''}</div>
-              <div class="row-side">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente', false, 'pay')}</div>
-              <div class="row-actions">
+              <div class="appt-chips">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente', false, 'pay')}</div>
+              <div class="appt-actions two">
                 <button class="btn btn-sm btn-soft" type="button" onclick="sendReminder('${a.id}')" aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}">${icon('chat', 18)} Recordar</button>
                 <button class="btn btn-sm btn-soft" type="button" onclick="requestReschedule('${a.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}">${icon('refresh', 18)} Reagendar</button>
               </div>
             </div>`).join('')
           : (later.length ? later.map(a => `
-            <div class="row-card">
+            <div class="appt-card">
               <div class="date-tile"><b class="time tnum">${a.start}</b><i>${escapeHtml(displayDateShort(a.date))}</i></div>
               <div class="row-main"><div class="row-title">${escapeHtml(a.name)}</div></div>
-              <div class="row-side">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente', false, 'pay')}</div>
+              <div class="appt-chips">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente', false, 'pay')}</div>
             </div>`).join('') : `<p class="secondary">No hay más citas.</p>`)}
         </div>
       </section>
@@ -1310,10 +1331,10 @@ function renderAdminInicio(){
     ${todayAppts.length && later.length ? `
       <h2 class="title-2">Más adelante</h2>
       <div class="rows">${later.map(a => `
-        <div class="row-card">
+        <div class="appt-card">
           <div class="date-tile"><b class="time tnum">${a.start}</b><i>${escapeHtml(displayDateShort(a.date))}</i></div>
           <div class="row-main"><div class="row-title">${escapeHtml(a.name)}</div></div>
-          <div class="row-side">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente', false, 'pay')}</div>
+          <div class="appt-chips">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente', false, 'pay')}</div>
         </div>`).join('')}</div>` : ''}`;
 }
 
@@ -1340,25 +1361,25 @@ function renderAdminCitas(){
       <p class="day-label">${longDate(g.date)}</p>
       <div class="rows">
         ${g.items.map(a => `
-          <div class="row-card">
+          <div class="appt-card">
             <div class="date-tile"><b class="time tnum">${a.start}</b><i>${a.end}</i></div>
             <div class="row-main">
               <div class="row-title">${escapeHtml(a.name)}</div>
               <div class="secondary">${a.phone ? `<span class="tnum">${escapeHtml(a.phone)}</span>` : 'Sin teléfono'}${staffLine(a)}</div>
               ${a.rescheduleRequested ? `<div style="margin-top:6px;">${chip('warning', 'Reagenda solicitada')}</div>` : ''}
             </div>
-            <div class="row-side">
-              ${statusChip(a)}${a.status === 'CANCELLED' ? `<span class="chip pay" style="visibility:hidden" aria-hidden="true"></span>` : paidChip(a)}
+            <div class="appt-chips">
+              ${statusChip(a)}${a.status === 'CANCELLED' ? `<span class="chip pay ph" style="visibility:hidden" aria-hidden="true"></span>` : paidChip(a)}
             </div>
             ${a.status === 'CONFIRMED' ? `
-              <div class="row-actions">
+              <div class="appt-actions ${state.confirmCancelId === a.id ? 'confirm' : ''}">
                 ${state.confirmCancelId === a.id
-                  ? `<span class="secondary" style="font-weight:600;">¿Seguro que quieres cancelar?</span>
+                  ? `<span class="secondary" style="font-weight:600;">¿Seguro que quieres cancelar esta cita?</span>
                      <button class="btn btn-sm btn-danger" type="button" onclick="doCancel('${a.id}')">Sí, cancelar</button>
                      <button class="btn btn-sm btn-soft" type="button" onclick="dismissCancel()">No</button>`
                   : `<button class="btn btn-sm btn-soft" type="button" onclick="sendReminder('${a.id}')">${icon('chat', 18)} Recordar</button>
                      <button class="btn btn-sm btn-soft" type="button" onclick="requestReschedule('${a.id}')">${icon('refresh', 18)} Reagendar</button>
-                     <button class="btn-text danger" type="button" onclick="askCancel('${a.id}')">Cancelar</button>`}
+                     <button class="btn btn-sm btn-danger" type="button" onclick="askCancel('${a.id}')">Cancelar</button>`}
               </div>` : ''}
           </div>`).join('')}
       </div>`).join('')}`;
