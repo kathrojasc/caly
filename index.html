@@ -1235,7 +1235,7 @@ function statusChip(a){
 }
 function paidChip(a){
   if (a.status === 'CANCELLED') return '';
-  return `<button class="chip ${a.paid ? 'chip-success' : 'chip-warning'}" type="button" onclick="togglePaid('${a.id}')" aria-label="${a.paid ? 'Pagado' : 'Pago pendiente'}: tocar para cambiar">${a.paid ? 'Pagado' : 'Pendiente'}</button>`;
+  return `<button class="chip ${a.paid ? 'chip-success' : 'chip-warning'}" type="button" onclick="togglePaid('${a.id}')" aria-label="${a.paid ? 'Pagado' : 'Pago pendiente'}: tocar para cambiar">${a.paid ? 'Pagado' : 'Pago pendiente'}</button>`;
 }
 function adminHeader(title, eyebrow){
   return `
@@ -1292,7 +1292,7 @@ function renderAdminInicio(){
               <div class="date-tile"><b class="time tnum">${a.start}</b><i>Hoy</i></div>
               <div class="row-main"><div class="row-title">${escapeHtml(a.name)}</div>${a.staffName ? `<div class="secondary">${escapeHtml(a.staffName)}</div>` : ''}</div>
               <div class="row-side">
-                ${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pendiente')}
+                ${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente')}
                 <button class="icon-btn" type="button" onclick="sendReminder('${a.id}')" aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}">${icon('chat', 20)}</button>
                 <button class="icon-btn" type="button" onclick="requestReschedule('${a.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}">${icon('refresh', 20)}</button>
               </div>
@@ -1301,7 +1301,7 @@ function renderAdminInicio(){
             <div class="row-card">
               <div class="date-tile"><b class="time tnum">${a.start}</b><i>${escapeHtml(displayDateShort(a.date))}</i></div>
               <div class="row-main"><div class="row-title">${escapeHtml(a.name)}</div></div>
-              <div class="row-side">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pendiente')}</div>
+              <div class="row-side">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente')}</div>
             </div>`).join('') : `<p class="secondary">No hay más citas.</p>`)}
         </div>
       </section>
@@ -1313,7 +1313,7 @@ function renderAdminInicio(){
         <div class="row-card">
           <div class="date-tile"><b class="time tnum">${a.start}</b><i>${escapeHtml(displayDateShort(a.date))}</i></div>
           <div class="row-main"><div class="row-title">${escapeHtml(a.name)}</div></div>
-          <div class="row-side">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pendiente')}</div>
+          <div class="row-side">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente')}</div>
         </div>`).join('')}</div>` : ''}`;
 }
 
