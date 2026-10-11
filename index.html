@@ -1053,8 +1053,8 @@ function patientHeader(name){
 
 function renderPatientRow(a, isPast){
   const cancelled = a.status === 'CANCELLED';
-  const label = cancelled ? 'Cancelada' : (isPast ? 'Realizada' : 'Confirmada');
-  const kind = cancelled ? 'danger' : (isPast ? 'neutral' : 'success');
+  const label = cancelled ? 'Cancelada' : (isPast ? 'Realizada' : '');
+  const kind = cancelled ? 'danger' : 'neutral';
   const canReschedule = !cancelled && !isPast;
   return `
     <div class="appt-card">
@@ -1064,7 +1064,7 @@ function renderPatientRow(a, isPast){
         <div class="secondary"><span class="tnum">${a.start}</span>${staffLine(a)}</div>
         ${canReschedule ? `<button class="btn-text" type="button" style="padding-left:0;min-height:36px;" onclick="startReschedule('${a.id}')">Reagendar</button>` : ''}
       </div>
-      <div class="appt-chips">${chip(kind, label, false, 'state')}</div>
+      ${label ? `<div class="appt-chips">${chip(kind, label, false, 'state')}</div>` : ''}
     </div>`;
 }
 
@@ -1096,7 +1096,6 @@ function renderPacientePanel(b){
       ${next ? `
         <div>
           <div class="media">
-            <span class="chip-badge">${icon('check', 16, 3)}<span style="color:var(--color-success)">Confirmada</span></span>
             <span class="day">${dayNum(next.date)}</span>
             <span class="mon">${monthAbbr(next.date)}</span>
           </div>
@@ -1231,7 +1230,7 @@ function renderPaciente(){
 
 /* ---------- Admin ---------- */
 function statusChip(a){
-  return a.status === 'CANCELLED' ? chip('danger', 'Cancelada', false, 'state') : chip('success', 'Confirmada', false, 'state');
+  return a.status === 'CANCELLED' ? chip('danger', 'Cancelada', false, 'pay') : '';
 }
 function paidChip(a){
   if (a.status === 'CANCELLED') return '';
@@ -1348,7 +1347,7 @@ function renderAdminCitas(){
               ${a.rescheduleRequested ? `<div style="margin-top:6px;">${chip('warning', 'Reagenda solicitada')}</div>` : ''}
             </div>
             <div class="appt-chips">
-              ${statusChip(a)}${a.status === 'CANCELLED' ? `<span class="chip pay ph" style="visibility:hidden" aria-hidden="true"></span>` : paidChip(a)}
+              ${statusChip(a)}${paidChip(a)}
             </div>
             ${a.status === 'CONFIRMED' ? `
               <div class="appt-actions ${state.confirmCancelId === a.id ? 'confirm' : ''}">
