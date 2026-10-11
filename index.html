@@ -153,6 +153,7 @@ button.chip { cursor: pointer; }
 .appt-chips { grid-column: 2; display: flex; flex-wrap: wrap; gap: 8px; }
 .appt-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-top: 14px; border-top: 1px solid var(--color-border); }
 .appt-actions.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.appt-actions .pay-btn { grid-column: 1 / -1; }
 .appt-actions.confirm { grid-template-columns: 1fr 1fr; }
 .appt-actions.confirm > span { grid-column: 1 / -1; }
 .appt-actions .btn { padding: 0 10px; width: 100%; }
@@ -163,6 +164,7 @@ button.chip { cursor: pointer; }
   .appt-chips { grid-column: 3; grid-row: 1; justify-content: flex-end; flex-wrap: nowrap; }
   .appt-actions { display: flex; flex-wrap: wrap; }
   .appt-actions .btn { width: auto; padding: 0 18px; }
+  .appt-actions .pay-btn { grid-column: auto; }
   .appt-actions.confirm { display: flex; align-items: center; }
   .appt-actions.confirm > span { margin-right: 4px; }
 }
@@ -728,6 +730,7 @@ function togglePaid(id){
   appt.paid = !appt.paid;
   saveState();
   render();
+  showToast(appt.paid ? 'Pago registrado' : 'Pago marcado como pendiente');
 }
 function cleanPhoneForWhatsapp(phone){
   let digits = (phone || '').replace(/\D/g, '');
@@ -1262,6 +1265,11 @@ function paidChip(a){
   if (a.status === 'CANCELLED') return '';
   return `<button class="chip pay ${a.paid ? 'chip-success' : 'chip-warning'}" type="button" onclick="togglePaid('${a.id}')" aria-label="${a.paid ? 'Pagado' : 'Pago pendiente'}: tocar para cambiar">${a.paid ? 'Pagado' : 'Pago pendiente'}</button>`;
 }
+function payAction(a){
+  return a.paid
+    ? `<button class="btn btn-sm btn-soft pay-btn" type="button" onclick="togglePaid('${a.id}')">${icon('check', 18, 2.6)} Pagado · Deshacer</button>`
+    : `<button class="btn btn-sm btn-primary pay-btn" type="button" onclick="togglePaid('${a.id}')">${icon('check', 18, 2.6)} Marcar como pagado</button>`;
+}
 function adminHeader(title, eyebrow){
   return `
     <div class="hdr" style="margin-top:16px;align-items:flex-start;">
@@ -1318,6 +1326,7 @@ function renderAdminInicio(){
               <div class="row-main"><div class="row-title">${escapeHtml(a.name)}</div>${a.staffName ? `<div class="secondary">${escapeHtml(a.staffName)}</div>` : ''}</div>
               <div class="appt-chips">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente', false, 'pay')}</div>
               <div class="appt-actions two">
+                ${payAction(a)}
                 <button class="btn btn-sm btn-soft" type="button" onclick="sendReminder('${a.id}')" aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}">${icon('chat', 18)} Recordar</button>
                 <button class="btn btn-sm btn-soft" type="button" onclick="askReschedule('${a.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}">${icon('refresh', 18)} Reagendar</button>
               </div>
@@ -1382,7 +1391,8 @@ function renderAdminCitas(){
                   ? `<span class="secondary" style="font-weight:600;">¿Seguro que quieres cancelar esta cita?</span>
                      <button class="btn btn-sm btn-danger" type="button" onclick="doCancel('${a.id}')">Sí, cancelar</button>
                      <button class="btn btn-sm btn-soft" type="button" onclick="dismissCancel()">No</button>`
-                  : `<button class="btn btn-sm btn-soft" type="button" onclick="sendReminder('${a.id}')">${icon('chat', 18)} Recordar</button>
+                  : `${payAction(a)}
+                     <button class="btn btn-sm btn-soft" type="button" onclick="sendReminder('${a.id}')">${icon('chat', 18)} Recordar</button>
                      <button class="btn btn-sm btn-soft" type="button" onclick="askReschedule('${a.id}')">${icon('refresh', 18)} Reagendar</button>
                      <button class="btn btn-sm btn-danger" type="button" onclick="askCancel('${a.id}')">Cancelar</button>`}
               </div>` : ''}
