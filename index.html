@@ -108,6 +108,8 @@ button:disabled { cursor: default; }
 
 /* Chips */
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--radius-pill); font-size: 13px; font-weight: 700; white-space: nowrap; border: 0; }
+.chip.state { min-width: 108px; justify-content: center; }
+.chip.pay { min-width: 122px; justify-content: center; }
 .chip-success { background: var(--color-success-bg); color: var(--color-success); }
 .chip-warning { background: var(--color-warning-bg); color: var(--color-warning); }
 .chip-danger { background: var(--color-danger-bg); color: var(--color-danger); }
@@ -994,8 +996,8 @@ function brandMark(size){
 function brandBlock(){
   return `<div class="brand">${brandMark(36)}<span class="brand-name">${escapeHtml(state.brand.name)}</span></div>`;
 }
-function chip(kind, text, withCheck){
-  return `<span class="chip chip-${kind}">${withCheck ? icon('check', 14, 3) : ''}${text}</span>`;
+function chip(kind, text, withCheck, extra){
+  return `<span class="chip chip-${kind}${extra ? ' ' + extra : ''}">${withCheck ? icon('check', 14, 3) : ''}${text}</span>`;
 }
 function cap(s){ return s.replace(/^./, c => c.toUpperCase()); }
 function longDate(iso){ return cap(displayDateLong(iso)); }
@@ -1060,11 +1062,9 @@ function renderPatientRow(a, isPast){
       <div class="row-main">
         <div class="row-title">${longDate(a.date)}</div>
         <div class="secondary"><span class="tnum">${a.start}</span>${staffLine(a)}</div>
+        ${canReschedule ? `<button class="btn-text" type="button" style="padding-left:0;min-height:36px;" onclick="startReschedule('${a.id}')">Reagendar</button>` : ''}
       </div>
-      <div class="row-side">
-        ${chip(kind, label)}
-        ${canReschedule ? `<button class="btn-text" type="button" onclick="startReschedule('${a.id}')">Reagendar</button>` : ''}
-      </div>
+      <div class="row-side">${chip(kind, label, false, 'state')}</div>
     </div>`;
 }
 
@@ -1231,11 +1231,11 @@ function renderPaciente(){
 
 /* ---------- Admin ---------- */
 function statusChip(a){
-  return a.status === 'CANCELLED' ? chip('danger', 'Cancelada') : chip('success', 'Confirmada');
+  return a.status === 'CANCELLED' ? chip('danger', 'Cancelada', false, 'state') : chip('success', 'Confirmada', false, 'state');
 }
 function paidChip(a){
   if (a.status === 'CANCELLED') return '';
-  return `<button class="chip ${a.paid ? 'chip-success' : 'chip-warning'}" type="button" onclick="togglePaid('${a.id}')" aria-label="${a.paid ? 'Pagado' : 'Pago pendiente'}: tocar para cambiar">${a.paid ? 'Pagado' : 'Pago pendiente'}</button>`;
+  return `<button class="chip pay ${a.paid ? 'chip-success' : 'chip-warning'}" type="button" onclick="togglePaid('${a.id}')" aria-label="${a.paid ? 'Pagado' : 'Pago pendiente'}: tocar para cambiar">${a.paid ? 'Pagado' : 'Pago pendiente'}</button>`;
 }
 function adminHeader(title, eyebrow){
   return `
@@ -1291,17 +1291,17 @@ function renderAdminInicio(){
             <div class="row-card">
               <div class="date-tile"><b class="time tnum">${a.start}</b><i>Hoy</i></div>
               <div class="row-main"><div class="row-title">${escapeHtml(a.name)}</div>${a.staffName ? `<div class="secondary">${escapeHtml(a.staffName)}</div>` : ''}</div>
-              <div class="row-side">
-                ${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente')}
-                <button class="icon-btn" type="button" onclick="sendReminder('${a.id}')" aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}">${icon('chat', 20)}</button>
-                <button class="icon-btn" type="button" onclick="requestReschedule('${a.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}">${icon('refresh', 20)}</button>
+              <div class="row-side">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente', false, 'pay')}</div>
+              <div class="row-actions">
+                <button class="btn btn-sm btn-soft" type="button" onclick="sendReminder('${a.id}')" aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}">${icon('chat', 18)} Recordar</button>
+                <button class="btn btn-sm btn-soft" type="button" onclick="requestReschedule('${a.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}">${icon('refresh', 18)} Reagendar</button>
               </div>
             </div>`).join('')
           : (later.length ? later.map(a => `
             <div class="row-card">
               <div class="date-tile"><b class="time tnum">${a.start}</b><i>${escapeHtml(displayDateShort(a.date))}</i></div>
               <div class="row-main"><div class="row-title">${escapeHtml(a.name)}</div></div>
-              <div class="row-side">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente')}</div>
+              <div class="row-side">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente', false, 'pay')}</div>
             </div>`).join('') : `<p class="secondary">No hay más citas.</p>`)}
         </div>
       </section>
@@ -1313,7 +1313,7 @@ function renderAdminInicio(){
         <div class="row-card">
           <div class="date-tile"><b class="time tnum">${a.start}</b><i>${escapeHtml(displayDateShort(a.date))}</i></div>
           <div class="row-main"><div class="row-title">${escapeHtml(a.name)}</div></div>
-          <div class="row-side">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente')}</div>
+          <div class="row-side">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente', false, 'pay')}</div>
         </div>`).join('')}</div>` : ''}`;
 }
 
@@ -1345,10 +1345,10 @@ function renderAdminCitas(){
             <div class="row-main">
               <div class="row-title">${escapeHtml(a.name)}</div>
               <div class="secondary">${a.phone ? `<span class="tnum">${escapeHtml(a.phone)}</span>` : 'Sin teléfono'}${staffLine(a)}</div>
+              ${a.rescheduleRequested ? `<div style="margin-top:6px;">${chip('warning', 'Reagenda solicitada')}</div>` : ''}
             </div>
             <div class="row-side">
-              ${a.rescheduleRequested ? chip('warning', 'Reagenda solicitada') : ''}
-              ${statusChip(a)}${paidChip(a)}
+              ${statusChip(a)}${a.status === 'CANCELLED' ? `<span class="chip pay" style="visibility:hidden" aria-hidden="true"></span>` : paidChip(a)}
             </div>
             ${a.status === 'CONFIRMED' ? `
               <div class="row-actions">
