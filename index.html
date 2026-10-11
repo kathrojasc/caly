@@ -258,6 +258,12 @@ button.chip { cursor: pointer; }
 .hero { border-radius: var(--radius-l); background: var(--color-primary); color: var(--color-on-primary); padding: 20px; min-height: 176px; display: flex; flex-direction: column; justify-content: space-between; gap: 28px; }
 .hero .chip-hero { align-self: flex-start; height: 34px; padding: 0 14px; display: inline-flex; align-items: center; border-radius: var(--radius-pill); background: rgba(255,255,255,0.16); font-size: 14px; font-weight: 700; }
 .hero .h-meta { margin-top: 6px; font-size: 15px; line-height: 20px; opacity: .7; }
+.hero.light { background: var(--color-bg); color: var(--color-text); border: 1px solid var(--color-border); }
+.hero.light .chip-hero.warn { background: var(--color-warning-bg); color: var(--color-warning); }
+.hero.light .chip-hero.ok { background: var(--color-success-bg); color: var(--color-success); }
+.hero.light .h-meta { opacity: 1; color: var(--color-text-secondary); }
+.hero.light .h-sub { opacity: 1; }
+.hero.light .hero-actions button { background: var(--color-surface); color: var(--color-text); }
 .hero-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .hero-actions button { min-height: 60px; padding: 6px 4px; border: 0; border-radius: var(--radius-s); background: rgba(255,255,255,0.14); color: var(--color-on-primary); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 13px; font-weight: 600; line-height: 16px; text-align: center; }
 .hero .h-title { font-size: 34px; line-height: 38px; font-weight: 700; letter-spacing: -0.8px; font-variant-numeric: tabular-nums; }
@@ -1585,6 +1591,26 @@ function adminHeader(title, eyebrow){
     </div>`;
 }
 
+function upcomingCard(a, light, todayIso){
+  const when = a.date === todayIso ? 'Hoy' : cap(displayDateShort(a.date));
+  const meta = [a.serviceName, a.staffName].filter(Boolean).map(escapeHtml).join(' · ');
+  const payLabel = a.paid ? 'Pagado' : 'Pago pendiente';
+  return `
+    <div class="hero${light ? ' light' : ''}">
+      <span class="chip-hero ${light ? (a.paid ? 'ok' : 'warn') : ''}">${payLabel}</span>
+      <div>
+        <div class="h-title">${when} · ${a.start}</div>
+        <div class="h-sub">${escapeHtml(a.name)}</div>
+        ${meta ? `<div class="h-meta">${meta}</div>` : ''}
+      </div>
+      <div class="hero-actions">
+        <button type="button" onclick="togglePaid('${a.id}')">${icon('check', 20, 2.4)}<span>${a.paid ? 'Deshacer pago' : 'Marcar pagado'}</span></button>
+        <button type="button" onclick="sendReminder('${a.id}')" aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}">${icon('chat', 20)}<span>Recordar</span></button>
+        <button type="button" onclick="askReschedule('${a.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}">${icon('refresh', 20)}<span>Reagendar</span></button>
+      </div>
+    </div>`;
+}
+
 function renderAdminInicio(){
   const todayIso = todayISO();
   const next7Iso = addDaysISO(todayIso, 7);
@@ -1628,34 +1654,8 @@ function renderAdminInicio(){
 
     <h2 class="title-2">Próximos</h2>
     ${nextAppt ? `
-      <div class="hero">
-        <span class="chip-hero">${nextAppt.paid ? 'Pagado' : 'Pago pendiente'}</span>
-        <div>
-          <div class="h-title">${nextWhen} · ${nextAppt.start}</div>
-          <div class="h-sub">${escapeHtml(nextAppt.name)}</div>
-          ${[nextAppt.serviceName, nextAppt.staffName].filter(Boolean).length ? `<div class="h-meta">${[nextAppt.serviceName, nextAppt.staffName].filter(Boolean).map(escapeHtml).join(' · ')}</div>` : ''}
-        </div>
-        <div class="hero-actions">
-          <button type="button" onclick="togglePaid('${nextAppt.id}')">${icon('check', 20, 2.4)}<span>${nextAppt.paid ? 'Deshacer pago' : 'Marcar pagado'}</span></button>
-          <button type="button" onclick="sendReminder('${nextAppt.id}')" aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(nextAppt.name)}">${icon('chat', 20)}<span>Recordar</span></button>
-          <button type="button" onclick="askReschedule('${nextAppt.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(nextAppt.name)}">${icon('refresh', 20)}<span>Reagendar</span></button>
-        </div>
-      </div>
-      ${restUpcoming.length ? `<div class="rows" style="margin-top:12px;">${restUpcoming.map(a => {
-        const isToday = a.date === todayIso;
-        const meta = [a.serviceName, a.staffName].filter(Boolean).map(escapeHtml).join(' · ');
-        return `
-        <div class="appt-card">
-          <div class="date-tile"><b class="time tnum">${a.start}</b><i>${isToday ? 'Hoy' : escapeHtml(displayDateShort(a.date))}</i></div>
-          <div class="row-main"><div class="row-title">${escapeHtml(a.name)}</div>${meta ? `<div class="secondary">${meta}</div>` : ''}</div>
-          <div class="appt-chips">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente', false, 'pay')}</div>
-          ${isToday ? `
-          <div class="appt-actions two">
-            ${payAction(a)}
-            <button class="btn btn-sm btn-soft" type="button" onclick="sendReminder('${a.id}')" aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}">${icon('chat', 18)} Recordar</button>
-            <button class="btn btn-sm btn-soft" type="button" onclick="askReschedule('${a.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}">${icon('refresh', 18)} Reagendar</button>
-          </div>` : ''}
-        </div>`;}).join('')}</div>` : ''}` : `<p class="secondary">No tienes citas próximas.</p>`}`;
+      ${upcomingCard(nextAppt, false, todayIso)}
+      ${restUpcoming.length ? `<div class="rows" style="margin-top:12px;">${restUpcoming.map(a => upcomingCard(a, true, todayIso)).join('')}</div>` : ''}` : `<p class="secondary">No tienes citas próximas.</p>`}`;
 }
 
 function renderAdminCitas(){
