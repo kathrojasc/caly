@@ -288,6 +288,7 @@ input[type=time]::-webkit-datetime-edit-fields-wrapper { padding: 0; }
 .dark-cta { display: flex; align-items: center; justify-content: center; height: 60px; border: 0; border-radius: var(--radius-pill); background: rgba(255,255,255,.94); color: var(--color-text); font-size: 17px; font-weight: 600; box-shadow: var(--shadow-dark-cta); }
 
 .modal-back { position: fixed; inset: 0; z-index: 70; background: rgba(11,11,12,0.45); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal.sheet { max-width: 480px; max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow-y: auto; }
 .modal { width: 100%; max-width: 400px; background: #fff; border-radius: var(--radius-l); padding: 24px; box-shadow: var(--shadow-dark-tile); }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(104px + env(safe-area-inset-bottom, 0px)); z-index: 80; background: var(--color-primary); color: var(--color-on-primary); padding: 12px 20px; border-radius: var(--radius-pill); font-weight: 600; font-size: 14px; box-shadow: var(--shadow-dock); max-width: calc(100% - 32px); text-align: center; }
 footer.foot { text-align: center; color: var(--color-text-secondary); font-size: 13px; padding: 8px 20px 24px; }
@@ -383,6 +384,7 @@ function buildDefaultState(){
     newRule: { staffId: 'staff-1', day: '1', start: '09:00', end: '13:00' },
     newStaffName: '',
     confirmCancelId: null,
+    newAppt: null,
     toast: null,
     businesses: [
       { id: 'biz-1', name: 'Caly Demo — Valentina Rossi', adminUser: 'valentina@caly.app', adminPass: 'caly2026', plan: 'Prueba', enabled: true },
@@ -420,6 +422,7 @@ function loadState(){
       if (!['inicio', 'citas', 'horarios', 'marca', 'cuenta'].includes(parsed.adminTab)) parsed.adminTab = 'inicio';
       parsed.confirmCancelId = null;
       parsed.confirmRescheduleId = null;
+      parsed.newAppt = null;
       parsed.toast = null;
       return parsed;
     }
@@ -757,6 +760,78 @@ function sendReminder(id){
   const msg = `Hola! Recuerda que ${dateLabel} tienes una reserva. Te esperamos.`;
   window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
+function firstAvailableDate(){
+  for (let i = 0; i <= state.config.windowDays; i++) {
+    const iso = addDaysISO(todayISO(), i);
+    if (getAvailableSlots(iso).length) return iso;
+  }
+  return todayISO();
+}
+function openNewAppt(){
+  state.newAppt = { dni: '', name: '', phone: '', date: firstAvailableDate(), slot: null, error: null, known: false };
+  render();
+}
+function closeNewAppt(){ state.newAppt = null; render(); }
+function updateNewAppt(field, value){ state.newAppt[field] = value; }
+function lookupNewApptDni(value){
+  const n = state.newAppt;
+  n.dni = normalizeDni(value);
+  const existing = state.patients[n.dni];
+  const wasKnown = n.known;
+  n.known = !!existing;
+  n.error = null;
+  if (existing) {
+    n.name = existing.name; n.phone = existing.phone || '';
+    render();
+  } else if (wasKnown) {
+    n.name = ''; n.phone = '';
+    render();
+  }
+}
+function setNewApptDate(iso){
+  if (!iso) return;
+  state.newAppt.date = iso;
+  state.newAppt.slot = null;
+  state.newAppt.error = null;
+  render();
+}
+function pickNewApptSlot(start, end){
+  state.newAppt.slot = { start, end };
+  state.newAppt.error = null;
+  render();
+}
+function createAdminAppointment(){
+  const n = state.newAppt;
+  if (!n) return;
+  const fail = msg => { n.error = msg; render(); };
+  if (!isValidDni(n.dni)) return fail('Ingresa un DNI válido (solo números, 6 a 10 dígitos).');
+  if ((n.name || '').trim().length < 2) return fail('Ingresa el nombre completo del cliente.');
+  if (!n.slot) return fail('Elige un horario.');
+  if (!getAvailableSlots(n.date).some(s => s.start === n.slot.start)) {
+    n.slot = null;
+    return fail('Ese horario se acaba de ocupar. Elige otro.');
+  }
+  const assigned = assignStaffRoundRobin(n.date, n.slot.start, n.slot.end);
+  if (!assigned) {
+    n.slot = null;
+    return fail('Ese horario se acaba de ocupar. Elige otro.');
+  }
+  const name = n.name.trim();
+  const phone = (n.phone || '').trim();
+  state.patients[n.dni] = { name, phone };
+  state.appointments.push({
+    id: 'a' + Date.now(),
+    dni: n.dni, name, phone,
+    date: n.date, start: n.slot.start, end: n.slot.end,
+    status: 'CONFIRMED', paid: false,
+    staffId: assigned.id, staffName: assigned.name,
+    rescheduleRequested: false,
+  });
+  state.newAppt = null;
+  saveState();
+  render();
+  showToast(`Cita creada para ${name}`);
+}
 function askReschedule(id){
   const a = state.appointments.find(x => x.id === id);
   if (!a) return;
@@ -1004,6 +1079,7 @@ const ICONS = {
   palette: `<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1 0 1.6-.7 1.6-1.5 0-.4-.2-.8-.4-1.1-.2-.3-.4-.6-.4-1 0-.8.7-1.4 1.5-1.4H16a4 4 0 0 0 4-4c0-4.2-3.6-7.5-8-7.5Z"/><circle cx="7.6" cy="11.5" r="1.1" fill="currentColor"/><circle cx="10" cy="8" r="1.1" fill="currentColor"/><circle cx="14.5" cy="8" r="1.1" fill="currentColor"/>`,
   user: `<circle cx="12" cy="8.5" r="3.5"/><path d="M4.5 20c1-3.5 4-5.5 7.5-5.5s6.5 2 7.5 5.5"/>`,
   check: `<path d="M5 12.5l4.5 4.5L19 7.5"/>`,
+  plus: `<path d="M12 5v14M5 12h14"/>`,
   left: `<path d="M15 5l-7 7 7 7"/>`,
   right: `<path d="M9 5l7 7-7 7"/>`,
   close: `<path d="M6 6l12 12M18 6L6 18"/>`,
@@ -1373,9 +1449,12 @@ function renderAdminCitas(){
 
   return `
     ${adminHeader('Citas')}
-    <div class="seg" role="group" aria-label="Filtro de citas" style="margin-top:20px;">
-      <button type="button" aria-pressed="${!state.includePast}" onclick="state.includePast=false; render()">Próximas</button>
-      <button type="button" aria-pressed="${state.includePast}" onclick="state.includePast=true; render()">Todas</button>
+    <div class="row between" style="margin-top:20px;">
+      <div class="seg" role="group" aria-label="Filtro de citas">
+        <button type="button" aria-pressed="${!state.includePast}" onclick="state.includePast=false; render()">Próximas</button>
+        <button type="button" aria-pressed="${state.includePast}" onclick="state.includePast=true; render()">Todas</button>
+      </div>
+      <button class="btn btn-primary btn-sm" type="button" onclick="openNewAppt()">${icon('plus', 18, 2.6)} Nueva cita</button>
     </div>
 
     ${groups.length === 0 ? `<p class="secondary" style="margin-top:24px;">No hay citas para mostrar.</p>` : groups.map(g => `
@@ -1580,6 +1659,54 @@ function renderRescheduleModal(){
     </div>`;
 }
 
+function renderNewApptModal(){
+  const n = state.newAppt;
+  if (!n) return '';
+  const slots = getAvailableSlots(n.date);
+  const maxIso = addDaysISO(todayISO(), state.config.windowDays);
+  const ready = isValidDni(n.dni) && (n.name || '').trim().length >= 2 && n.slot;
+  return `
+    <div class="modal-back" onclick="if (event.target === this) closeNewAppt()">
+      <div class="modal sheet" role="dialog" aria-modal="true" aria-labelledby="na-title">
+        <div class="row between" style="flex-wrap:nowrap;">
+          <h2 class="title-3" id="na-title">Nueva cita</h2>
+          <button class="icon-btn" type="button" onclick="closeNewAppt()" aria-label="Cerrar">${icon('close', 20, 2.4)}</button>
+        </div>
+        <p class="secondary" style="margin-top:4px;">Registra una cita para un cliente nuevo o ya existente.</p>
+
+        <div class="stack" style="margin-top:20px;">
+          <div class="field">
+            <label for="na-dni">DNI del cliente</label>
+            <input id="na-dni" inputmode="numeric" placeholder="Ej: 30123456" value="${escapeHtml(n.dni)}" oninput="lookupNewApptDni(this.value)">
+            ${n.known
+              ? `<span class="hint" style="color:var(--color-success);font-weight:600;">Cliente existente: datos completados.</span>`
+              : `<span class="hint">Solo números, de 6 a 10 dígitos. Si es un cliente nuevo, completa sus datos.</span>`}
+          </div>
+          <div class="field">
+            <label for="na-name">Nombre completo</label>
+            <input id="na-name" value="${escapeHtml(n.name)}" oninput="updateNewAppt('name', this.value)">
+          </div>
+          <div class="field">
+            <label for="na-phone">Teléfono (opcional)</label>
+            <input id="na-phone" inputmode="tel" value="${escapeHtml(n.phone)}" oninput="updateNewAppt('phone', this.value)">
+          </div>
+          <div class="field">
+            <label for="na-date">Fecha</label>
+            <input id="na-date" type="date" value="${n.date}" min="${todayISO()}" max="${maxIso}" onchange="setNewApptDate(this.value)">
+          </div>
+          <div>
+            <p class="label">Horarios disponibles · ${longDate(n.date)}</p>
+            ${slots.length === 0
+              ? `<p class="secondary" style="margin-top:10px;">No hay horarios disponibles este día. Prueba otra fecha.</p>`
+              : `<div class="slot-grid" style="margin-top:10px;">${slots.map(s => `<button type="button" class="slot" onclick="pickNewApptSlot('${s.start}','${s.end}')" aria-pressed="${!!(n.slot && n.slot.start === s.start)}">${s.start}</button>`).join('')}</div>`}
+          </div>
+          ${n.error ? `<p class="error-text">${escapeHtml(n.error)}</p>` : ''}
+          <button class="btn btn-primary btn-block" type="button" onclick="createAdminAppointment()" ${ready ? '' : 'aria-disabled="true"'} style="${ready ? '' : 'background:var(--color-disabled-btn);color:var(--color-disabled-text);'}">Crear cita</button>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderCancelModal(){
   const a = state.appointments.find(x => x.id === state.confirmCancelId);
   if (!a) return '';
@@ -1611,7 +1738,7 @@ function renderAdmin(){
   }
   return `
     <div class="page w880 admin-page">${renderAdminContent()}</div>
-    ${renderRescheduleModal()}${renderCancelModal()}
+    ${renderRescheduleModal()}${renderCancelModal()}${renderNewApptModal()}
     <nav class="tabbar" aria-label="Secciones">
       ${ADMIN_NAV.map(t => `
         <button class="tab" type="button" ${state.adminTab === t.id ? 'aria-current="page"' : ''} onclick="setAdminTab('${t.id}')">
@@ -1692,10 +1819,14 @@ function render(){
     el.setAttribute('aria-pressed', String(state.view === v));
   });
   document.getElementById('reset-btn').textContent = state.confirmingReset ? '¿Seguro? Toca de nuevo' : 'Reiniciar demo';
+  const sheetEl = document.querySelector('.sheet');
+  const sheetTop = sheetEl ? sheetEl.scrollTop : 0;
   document.getElementById('view').innerHTML =
     state.view === 'paciente' ? renderPaciente() :
     state.view === 'super' ? renderSuper() :
     renderAdmin();
+  const newSheet = document.querySelector('.sheet');
+  if (newSheet && sheetEl) newSheet.scrollTop = sheetTop;
   renderToast();
 }
 
