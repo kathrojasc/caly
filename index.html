@@ -298,6 +298,7 @@ input[type=time]::-webkit-datetime-edit-fields-wrapper { padding: 0; }
   .rule-form > .btn { grid-column: auto; width: auto; }
 }
 .rule-chip { display: inline-flex; align-items: center; gap: 4px; height: 44px; padding: 0 6px 0 16px; border-radius: var(--radius-pill); background: #fff; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rule-chip.warn { background: var(--color-warning-bg); color: var(--color-warning); }
 .rule-chip button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--color-text-secondary); display: inline-flex; align-items: center; justify-content: center; }
 .checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
 .checks li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -350,7 +351,7 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
 <div id="toast-root"></div>
 
 <script>
-const STORAGE_KEY = 'caly_proto_state_v7';
+const STORAGE_KEY = 'caly_proto_state_v8';
 const WEEKDAYS_SHORT = ['dom','lun','mar','mié','jué','vie','sáb'];
 const WEEKDAYS_LONG = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -420,6 +421,10 @@ function buildDefaultState(){
     ],
     booking: { step: 'dni', dni: '', name: '', phone: '', selectedDate: t, selectedSlot: null, error: null, calendarMonth: ymFromISO(t), rescheduleId: null, lastApptId: null },
     newRule: { staffId: 'staff-1', day: '1', start: '09:00', end: '13:00' },
+    businessHours: { '1': [{ start: '09:00', end: '19:00' }], '2': [{ start: '09:00', end: '19:00' }], '3': [{ start: '09:00', end: '19:00' }], '4': [{ start: '09:00', end: '19:00' }], '5': [{ start: '09:00', end: '19:00' }] },
+    closedDays: [],
+    newBizRule: { day: '1', start: '09:00', end: '19:00' },
+    newClosed: { from: '', to: '', note: '' },
     newStaffName: '',
     confirmCancelId: null,
     newAppt: null,
@@ -467,6 +472,10 @@ function loadState(){
       parsed.confirmCancelId = null;
       parsed.confirmRescheduleId = null;
       parsed.newAppt = null;
+      if (!parsed.businessHours) parsed.businessHours = def.businessHours;
+      if (!Array.isArray(parsed.closedDays)) parsed.closedDays = [];
+      if (!parsed.newBizRule) parsed.newBizRule = def.newBizRule;
+      if (!parsed.newClosed) parsed.newClosed = def.newClosed;
       if (!Array.isArray(parsed.services)) parsed.services = def.services;
       if (!parsed.newService) parsed.newService = def.newService;
       parsed.serviceAssign = {};
@@ -516,8 +525,15 @@ function refreshBrandUI(){
   applyBrandTheme();
 }
 
+function isClosedDay(iso){ return state.closedDays.some(c => iso >= c.from && iso <= c.to); }
+function insideRanges(ranges, start, end){
+  return (ranges || []).some(r => timeToMinutes(r.start) <= timeToMinutes(start) && timeToMinutes(end) <= timeToMinutes(r.end));
+}
 function getStaffRawSlots(staffMember, iso, minutes){
   const dur = minutes || state.config.slotMinutes;
+  if (isClosedDay(iso)) return [];
+  const bizRanges = state.businessHours[String(dayOfWeek(iso))] || [];
+  if (!bizRanges.length) return [];
   const dow = String(dayOfWeek(iso));
   const rules = (staffMember.schedule && staffMember.schedule[dow]) || [];
   if (!rules.length) return [];
@@ -539,6 +555,7 @@ function getStaffRawSlots(staffMember, iso, minutes){
     }
   });
 
+  candidates = candidates.filter(s => insideRanges(bizRanges, s.start, s.end));
   candidates = candidates.filter(s => combineDateTime(iso, s.start) >= minNoticeAt);
 
   const busy = state.appointments.filter(a => a.date === iso && a.status === 'CONFIRMED' && a.staffId === staffMember.id);
@@ -1127,12 +1144,96 @@ function saveConfig(){
 }
 
 function updateNewRule(field, value){ state.newRule[field] = value; }
+const DAY_ORDER = ['1', '2', '3', '4', '5', '6', '0'];
+function groupSchedule(sched){
+  const groups = [];
+  DAY_ORDER.forEach(d => {
+    const r = (sched && sched[d]) || [];
+    if (!r.length) return;
+    const key = JSON.stringify(r);
+    const g = groups.find(x => x.key === key);
+    if (g) g.days.push(d); else groups.push({ key, days: [d], ranges: r });
+  });
+  return groups;
+}
+function dayGroupLabel(days){
+  const idx = days.map(d => DAY_ORDER.indexOf(d));
+  const consecutive = days.length > 2 && idx.every((v, i) => i === 0 || v === idx[i - 1] + 1);
+  if (consecutive) return `${WEEKDAYS_LONG[days[0]]} a ${WEEKDAYS_LONG[days[days.length - 1]].toLowerCase()}`;
+  const names = days.map(d => WEEKDAYS_LONG[d]);
+  return names.length > 1 ? names.slice(0, -1).join(', ') + ' y ' + names[names.length - 1].toLowerCase() : names[0];
+}
+function deleteBizRuleGroup(daysCsv, idx){
+  daysCsv.split(',').forEach(d => {
+    state.businessHours[d].splice(idx, 1);
+    if (!state.businessHours[d].length) delete state.businessHours[d];
+  });
+  saveState();
+  render();
+}
+function deleteRuleGroup(staffId, daysCsv, idx){
+  const member = state.staff.find(m => m.id === staffId);
+  if (!member) return;
+  daysCsv.split(',').forEach(d => {
+    member.schedule[d].splice(idx, 1);
+    if (!member.schedule[d].length) delete member.schedule[d];
+  });
+  saveState();
+  render();
+}
+function updateNewBizRule(field, value){ state.newBizRule[field] = value; }
+function addBizRule(){
+  const { day, start, end } = state.newBizRule;
+  if (start >= end) return showToast('La hora de inicio debe ser antes que la de fin');
+  state.businessHours[day] = state.businessHours[day] || [];
+  state.businessHours[day].push({ start, end });
+  state.businessHours[day].sort((a, b) => a.start.localeCompare(b.start));
+  saveState();
+  render();
+}
+function deleteBizRule(day, idx){
+  state.businessHours[day].splice(idx, 1);
+  if (!state.businessHours[day].length) delete state.businessHours[day];
+  saveState();
+  render();
+}
+function updateNewClosed(field, value){ state.newClosed[field] = value; }
+function closedAffected(c){
+  return state.appointments.filter(a => a.status === 'CONFIRMED' && a.date >= c.from && a.date <= c.to && a.date >= todayISO()).length;
+}
+function addClosedDay(){
+  const n = state.newClosed;
+  const from = n.from;
+  const to = n.to || n.from;
+  if (!from) return showToast('Elige la fecha desde la que cierras');
+  if (to < from) return showToast('La fecha final no puede ser antes que la inicial');
+  if (to < todayISO()) return showToast('Elige fechas de hoy en adelante');
+  const entry = { id: 'cd' + Date.now(), from, to, note: (n.note || '').trim() };
+  state.closedDays.push(entry);
+  state.closedDays.sort((a, b) => a.from.localeCompare(b.from));
+  state.newClosed = { from: '', to: '', note: '' };
+  saveState();
+  render();
+  const aff = closedAffected(entry);
+  showToast(aff ? `Días cerrados. Hay ${aff} cita(s) en esas fechas` : 'Días cerrados');
+}
+function deleteClosedDay(id){
+  state.closedDays = state.closedDays.filter(c => c.id !== id);
+  saveState();
+  render();
+  showToast('Días reabiertos');
+}
 function addRule(){
   const { staffId, day, start, end } = state.newRule;
   const member = state.staff.find(s => s.id === staffId);
   if (!member) return;
   if (start >= end) {
     showToast('La hora de inicio debe ser antes que la de fin');
+    return;
+  }
+  const biz = state.businessHours[day] || [];
+  if (!insideRanges(biz, start, end)) {
+    showToast(biz.length ? `Fuera del horario del negocio (${biz.map(r => r.start + '–' + r.end).join(', ')})` : 'El negocio no atiende ese día. Configúralo en "Horario del negocio"');
     return;
   }
   member.schedule[day] = member.schedule[day] || [];
@@ -1868,6 +1969,60 @@ function renderServiceMigration(pend){
     </div>`;
 }
 
+function fmtDay(iso){ const d = dateFromISO(iso); return `${cap(WEEKDAYS_SHORT[d.getDay()])} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`; }
+function renderBusinessHoursSection(){
+  const days = ['1', '2', '3', '4', '5', '6', '0'];
+  const nb = state.newBizRule;
+  const nc = state.newClosed;
+  return `
+    <h2 class="title-2" style="margin-top:28px;">Horario del negocio</h2>
+    <p class="secondary" style="margin-bottom:14px;">Las horas en que atiendes. Los horarios de cada trabajador deben estar dentro de este.</p>
+    <div class="card stack">
+      <div class="rule-form">
+        <div class="field day">
+          <label for="bh-day">Día</label>
+          <select id="bh-day" onchange="updateNewBizRule('day', this.value)">
+            ${days.map(d => `<option value="${d}" ${nb.day === d ? 'selected' : ''}>${WEEKDAYS_LONG[d]}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label for="bh-start">Desde</label><input id="bh-start" type="time" value="${nb.start}" onchange="updateNewBizRule('start', this.value)"></div>
+        <div class="field"><label for="bh-end">Hasta</label><input id="bh-end" type="time" value="${nb.end}" onchange="updateNewBizRule('end', this.value)"></div>
+        <button class="btn btn-primary" type="button" onclick="addBizRule()">Agregar</button>
+      </div>
+      <div class="stack" style="gap:12px;">
+        ${groupSchedule(state.businessHours).map(g => `
+          <div>
+            <p class="label" style="margin-bottom:6px;">${dayGroupLabel(g.days)}</p>
+            <div class="row">${g.ranges.map((r, idx) => `<span class="rule-chip">${r.start} – ${r.end}<button type="button" onclick="deleteBizRuleGroup('${g.days.join(',')}', ${idx})" aria-label="Eliminar horario ${r.start} a ${r.end}">${icon('close', 16, 2.4)}</button></span>`).join('')}</div>
+          </div>`).join('') || `<p class="secondary">El negocio todavía no tiene horario: nadie podrá reservar.</p>`}
+      </div>
+    </div>
+
+    <h2 class="title-2">Días cerrados</h2>
+    <p class="secondary" style="margin-bottom:14px;">Feriados, vacaciones o cualquier día en que no atiendes. No se podrá reservar en esas fechas.</p>
+    <div class="card stack">
+      <div class="rule-form">
+        <div class="field"><label for="cd-from">Desde</label><input id="cd-from" type="date" min="${todayISO()}" value="${nc.from}" onchange="updateNewClosed('from', this.value)"></div>
+        <div class="field"><label for="cd-to">Hasta (opcional)</label><input id="cd-to" type="date" min="${todayISO()}" value="${nc.to}" onchange="updateNewClosed('to', this.value)"></div>
+        <div class="field day"><label for="cd-note">Motivo (opcional)</label><input id="cd-note" placeholder="Ej: Feriado, vacaciones" value="${escapeHtml(nc.note)}" oninput="updateNewClosed('note', this.value)"></div>
+        <button class="btn btn-primary" type="button" onclick="addClosedDay()">Cerrar estos días</button>
+      </div>
+      ${state.closedDays.length ? `<div class="rows">${state.closedDays.map(c => {
+        const aff = closedAffected(c);
+        return `
+        <div class="card-line" style="padding:14px 16px;background:#fff;">
+          <div class="row between" style="flex-wrap:nowrap;gap:10px;">
+            <div style="min-width:0;">
+              <p class="row-title" style="font-size:16px;">${c.from === c.to ? fmtDay(c.from) : `${fmtDay(c.from)} – ${fmtDay(c.to)}`}</p>
+              ${c.note ? `<p class="secondary">${escapeHtml(c.note)}</p>` : ''}
+            </div>
+            <button class="btn-text danger" type="button" onclick="deleteClosedDay('${c.id}')">Reabrir</button>
+          </div>
+          ${aff ? `<div style="margin-top:8px;">${chip('warning', `${aff} cita${aff === 1 ? '' : 's'} en estas fechas`)}</div>` : ''}
+        </div>`;}).join('')}</div>` : ''}
+    </div>`;
+}
+
 function renderAdminHorarios(){
   const days = ['0', '1', '2', '3', '4', '5', '6'];
   const cfg = state.config;
@@ -1875,6 +2030,8 @@ function renderAdminHorarios(){
 
   return `
     ${adminHeader('Horarios')}
+
+    ${renderBusinessHoursSection()}
 
     ${renderServicesSection()}
 
@@ -1943,11 +2100,11 @@ function renderAdminHorarios(){
         </div>
 
         <div class="stack" style="gap:12px;">
-          ${days.filter(d => (member.schedule[d] || []).length).map(d => `
+          ${groupSchedule(member.schedule).map(g => `
             <div>
-              <p class="label" style="margin-bottom:6px;">${WEEKDAYS_LONG[d]}</p>
+              <p class="label" style="margin-bottom:6px;">${dayGroupLabel(g.days)}</p>
               <div class="row">
-                ${member.schedule[d].map((r, idx) => `<span class="rule-chip">${r.start} – ${r.end}<button type="button" onclick="deleteRule('${member.id}', '${d}', ${idx})" aria-label="Eliminar horario ${r.start} a ${r.end}">${icon('close', 16, 2.4)}</button></span>`).join('')}
+                ${g.ranges.map((r, idx) => { const ok = g.days.every(d => insideRanges(state.businessHours[d], r.start, r.end)); return `<span class="rule-chip${ok ? '' : ' warn'}" ${ok ? '' : 'title="Fuera del horario del negocio: no se ofrece a los clientes"'}>${r.start} – ${r.end}<button type="button" onclick="deleteRuleGroup('${member.id}', '${g.days.join(',')}', ${idx})" aria-label="Eliminar horario ${r.start} a ${r.end}">${icon('close', 16, 2.4)}</button></span>`; }).join('')}
               </div>
             </div>`).join('') || `<p class="secondary">Todavía no configuraste ningún horario para ${escapeHtml(member.name)}.</p>`}
         </div>
