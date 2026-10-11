@@ -264,6 +264,11 @@ button.chip { cursor: pointer; }
 .hero.light .h-meta { opacity: 1; color: var(--color-text-secondary); }
 .hero.light .h-sub { opacity: 1; }
 .hero.light .hero-actions button { background: var(--color-surface); color: var(--color-text); }
+.hero.light .chip-hero.cancel { background: var(--color-danger-bg); color: var(--color-danger); }
+.hero.light .hero-actions button.danger { background: var(--color-danger-bg); color: var(--color-danger); }
+.hero-actions.c1 { grid-template-columns: 1fr; }
+.hero-actions.c4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 640px) { .hero-actions.c4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .hero-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .hero-actions button { min-height: 60px; padding: 6px 4px; border: 0; border-radius: var(--radius-s); background: rgba(255,255,255,0.14); color: var(--color-on-primary); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 13px; font-weight: 600; line-height: 16px; text-align: center; }
 .hero .h-title { font-size: 34px; line-height: 38px; font-weight: 700; letter-spacing: -0.8px; font-variant-numeric: tabular-nums; }
@@ -1658,6 +1663,34 @@ function renderAdminInicio(){
       ${restUpcoming.length ? `<div class="rows" style="margin-top:12px;">${restUpcoming.map(a => upcomingCard(a, true, todayIso)).join('')}</div>` : ''}` : `<p class="secondary">No tienes citas próximas.</p>`}`;
 }
 
+function citaCard(a, now){
+  const cancelled = a.status === 'CANCELLED';
+  const upcoming = !cancelled && a.date >= now;
+  const when = a.date === now ? 'Hoy' : cap(displayDateShort(a.date));
+  const meta = [a.serviceName, a.staffName].filter(Boolean).map(escapeHtml).join(' · ');
+  const chipHtml = cancelled
+    ? `<span class="chip-hero cancel">Cancelada</span>`
+    : `<span class="chip-hero ${a.paid ? 'ok' : 'warn'}">${a.paid ? 'Pagado' : 'Pago pendiente'}</span>`;
+  const btns = [];
+  if (!cancelled) btns.push(`<button type="button" onclick="togglePaid('${a.id}')">${icon('check', 20, 2.4)}<span>${a.paid ? 'Deshacer pago' : 'Marcar pagado'}</span></button>`);
+  if (upcoming) {
+    btns.push(`<button type="button" onclick="sendReminder('${a.id}')" aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}">${icon('chat', 20)}<span>Recordar</span></button>`);
+    btns.push(`<button type="button" onclick="askReschedule('${a.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}">${icon('refresh', 20)}<span>Reagendar</span></button>`);
+    btns.push(`<button type="button" class="danger" onclick="askCancel('${a.id}')">${icon('close', 20, 2.4)}<span>Cancelar</span></button>`);
+  }
+  return `
+    <div class="hero light">
+      ${chipHtml}
+      <div>
+        <div class="h-title">${when} · ${a.start}</div>
+        <div class="h-sub">${escapeHtml(a.name)}</div>
+        ${a.phone ? `<div class="h-meta tnum">${escapeHtml(a.phone)}</div>` : ''}
+        ${meta ? `<div class="h-meta" style="margin-top:2px;">${meta}</div>` : ''}
+      </div>
+      ${btns.length ? `<div class="hero-actions c${btns.length}">${btns.join('')}</div>` : ''}
+    </div>`;
+}
+
 function renderAdminCitas(){
   const now = todayISO();
   const f = state.citasFilter || 'proximas';
@@ -1669,11 +1702,6 @@ function renderAdminCitas(){
       ? (b.date + b.start).localeCompare(a.date + a.start)
       : (a.date + a.start).localeCompare(b.date + b.start));
 
-  const groups = [];
-  list.forEach(a => {
-    const last = groups[groups.length - 1];
-    if (last && last.date === a.date) last.items.push(a); else groups.push({ date: a.date, items: [a] });
-  });
 
   return `
     ${adminHeader('Citas')}
@@ -1686,30 +1714,7 @@ function renderAdminCitas(){
       </div>
     </div>
 
-    ${groups.length === 0 ? `<p class="secondary" style="margin-top:24px;">${f === 'pasadas' ? 'Todavía no hay citas en el historial.' : 'No hay citas para mostrar.'}</p>` : groups.map(g => `
-      <p class="day-label">${longDate(g.date)}</p>
-      <div class="rows">
-        ${g.items.map(a => `
-          <div class="appt-card">
-            <div class="date-tile"><b class="time tnum">${a.start}</b><i>${a.end}</i></div>
-            <div class="row-main">
-              <div class="row-title">${escapeHtml(a.name)}</div>
-              <div class="secondary">${a.phone ? `<span class="tnum">${escapeHtml(a.phone)}</span>` : 'Sin teléfono'}${staffLine(a)}</div>
-              ${a.rescheduleRequested ? `<div style="margin-top:6px;">${chip('info', 'Reagenda solicitada')}</div>` : ''}
-            </div>
-            <div class="appt-chips">
-              ${statusChip(a)}${paidChip(a)}
-            </div>
-            ${a.status === 'CONFIRMED' ? `
-              <div class="appt-actions">
-                ${payAction(a)}
-                ${a.date >= now ? `
-                <button class="btn btn-sm btn-soft" type="button" onclick="sendReminder('${a.id}')">${icon('chat', 18)} Recordar</button>
-                <button class="btn btn-sm btn-soft" type="button" onclick="askReschedule('${a.id}')">${icon('refresh', 18)} Reagendar</button>
-                <button class="btn btn-sm btn-danger" type="button" onclick="askCancel('${a.id}')">${icon('close', 18, 2.4)} Cancelar</button>` : ''}
-              </div>` : ''}
-          </div>`).join('')}
-      </div>`).join('')}`;
+    ${list.length === 0 ? `<p class="secondary" style="margin-top:24px;">${f === 'pasadas' ? 'Todavía no hay citas en el historial.' : 'No hay citas para mostrar.'}</p>` : `<div class="rows" style="margin-top:20px;">${list.map(a => citaCard(a, now)).join('')}</div>`}`;
 }
 
 function renderServicesEditor(){
