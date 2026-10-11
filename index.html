@@ -251,8 +251,10 @@ button.chip { cursor: pointer; }
 .rule-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: end; }
 .rule-form .field.day, .rule-form > .btn { grid-column: 1 / -1; }
 .rule-form > .btn { width: 100%; }
-input[type=time] { min-width: 0; max-width: 100%; display: block; -webkit-appearance: none; appearance: none; text-align: left; }
-input[type=time]::-webkit-date-and-time-value { text-align: left; }
+input[type=time] { min-width: 0; max-width: 100%; display: flex; align-items: center; -webkit-appearance: none; appearance: none; text-align: left; line-height: normal; }
+input[type=time]::-webkit-date-and-time-value { text-align: left; margin: 0; min-height: 1.4em; display: flex; align-items: center; }
+input[type=time]::-webkit-datetime-edit { padding: 0; display: flex; align-items: center; }
+input[type=time]::-webkit-datetime-edit-fields-wrapper { padding: 0; }
 @media (min-width: 640px) {
   .rule-form { grid-template-columns: 1.5fr 1fr 1fr auto; }
   .rule-form .field.day { grid-column: auto; }
