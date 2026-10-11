@@ -290,6 +290,10 @@ button.chip { cursor: pointer; }
 .switch[aria-checked="true"] { background: var(--color-primary); }
 .switch[aria-checked="true"]::after { transform: translateX(20px); }
 
+.day-picks { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.day-pick { width: 100%; max-width: 48px; justify-self: center; height: 44px; border: 0; border-radius: 22px; background: var(--color-surface); font-size: 15px; font-weight: 600; }
+.card .day-pick:not([aria-pressed="true"]) { background: #fff; }
+.day-pick[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); font-weight: 700; }
 .rule-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: end; }
 .rule-form .field.day, .rule-form > .btn { grid-column: 1 / -1; }
 .rule-form > .btn { width: 100%; }
@@ -430,10 +434,10 @@ function buildDefaultState(){
       { id: 'a5', dni: '28999888', name: 'Julián Ortiz', phone: '11-2233-4455', date: nextDayWhere(t, [1,3]), start: '16:30', end: '17:15', status: 'CONFIRMED', paid: false, staffId: 'staff-2', staffName: 'Camila Torres', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
     ],
     booking: { step: 'dni', dni: '', name: '', phone: '', selectedDate: t, selectedSlot: null, error: null, calendarMonth: ymFromISO(t), rescheduleId: null, lastApptId: null },
-    newRule: { staffId: 'staff-1', day: '1', start: '09:00', end: '13:00' },
+    newRule: { staffId: 'staff-1', days: ['1', '2', '3', '4', '5'], start: '09:00', end: '13:00' },
     businessHours: { '1': [{ start: '09:00', end: '19:00' }], '2': [{ start: '09:00', end: '19:00' }], '3': [{ start: '09:00', end: '19:00' }], '4': [{ start: '09:00', end: '19:00' }], '5': [{ start: '09:00', end: '19:00' }] },
     closedDays: [],
-    newBizRule: { day: '1', start: '09:00', end: '19:00' },
+    newBizRule: { days: ['1', '2', '3', '4', '5'], start: '09:00', end: '19:00' },
     newClosed: { from: '', to: '', note: '' },
     newStaffName: '',
     confirmCancelId: null,
@@ -488,7 +492,8 @@ function loadState(){
       parsed.notifyCancelId = null;
       if (!parsed.businessHours) parsed.businessHours = def.businessHours;
       if (!Array.isArray(parsed.closedDays)) parsed.closedDays = [];
-      if (!parsed.newBizRule) parsed.newBizRule = def.newBizRule;
+      if (!parsed.newBizRule || !Array.isArray(parsed.newBizRule.days)) parsed.newBizRule = def.newBizRule;
+      if (!parsed.newRule || !Array.isArray(parsed.newRule.days)) parsed.newRule = def.newRule;
       if (!parsed.newClosed) parsed.newClosed = def.newClosed;
       if (!Array.isArray(parsed.services)) parsed.services = def.services;
       if (!parsed.newService) parsed.newService = def.newService;
@@ -1231,14 +1236,29 @@ function deleteRuleGroup(staffId, daysCsv, idx){
   warnNewPending(before);
 }
 function updateNewBizRule(field, value){ state.newBizRule[field] = value; }
+function toggleBizDay(d){
+  const ids = state.newBizRule.days;
+  state.newBizRule.days = ids.includes(d) ? ids.filter(x => x !== d) : ids.concat(d);
+  render();
+}
+function toggleRuleDay(staffId, d){
+  state.newRule.staffId = staffId;
+  const ids = state.newRule.days;
+  state.newRule.days = ids.includes(d) ? ids.filter(x => x !== d) : ids.concat(d);
+  render();
+}
 function addBizRule(){
-  const { day, start, end } = state.newBizRule;
+  const { days, start, end } = state.newBizRule;
+  if (!days.length) return showToast('Marca al menos un día');
   if (start >= end) return showToast('La hora de inicio debe ser antes que la de fin');
-  state.businessHours[day] = state.businessHours[day] || [];
-  state.businessHours[day].push({ start, end });
-  state.businessHours[day].sort((a, b) => a.start.localeCompare(b.start));
+  days.forEach(day => {
+    state.businessHours[day] = state.businessHours[day] || [];
+    if (!state.businessHours[day].some(r => r.start === start && r.end === end)) state.businessHours[day].push({ start, end });
+    state.businessHours[day].sort((a, b) => a.start.localeCompare(b.start));
+  });
   saveState();
   render();
+  showToast(days.length === 1 ? 'Horario agregado' : `Horario agregado a ${days.length} días`);
 }
 function deleteBizRule(day, idx){
   state.businessHours[day].splice(idx, 1);
@@ -1281,23 +1301,24 @@ function deleteClosedDay(id){
   showToast('Días reabiertos');
 }
 function addRule(){
-  const { staffId, day, start, end } = state.newRule;
+  const { staffId, days, start, end } = state.newRule;
   const member = state.staff.find(s => s.id === staffId);
   if (!member) return;
-  if (start >= end) {
-    showToast('La hora de inicio debe ser antes que la de fin');
-    return;
-  }
-  const biz = state.businessHours[day] || [];
-  if (!insideRanges(biz, start, end)) {
-    showToast(biz.length ? `Fuera del horario del negocio (${biz.map(r => r.start + '–' + r.end).join(', ')})` : 'El negocio no atiende ese día. Configúralo en "Horario del negocio"');
-    return;
-  }
-  member.schedule[day] = member.schedule[day] || [];
-  member.schedule[day].push({ start, end });
-  member.schedule[day].sort((a,b) => a.start.localeCompare(b.start));
+  if (!days.length) return showToast('Marca al menos un día');
+  if (start >= end) return showToast('La hora de inicio debe ser antes que la de fin');
+  const skipped = [];
+  let added = 0;
+  days.forEach(day => {
+    if (!insideRanges(state.businessHours[day] || [], start, end)) { skipped.push(WEEKDAYS_LONG[day]); return; }
+    member.schedule[day] = member.schedule[day] || [];
+    if (!member.schedule[day].some(r => r.start === start && r.end === end)) member.schedule[day].push({ start, end });
+    member.schedule[day].sort((a, b) => a.start.localeCompare(b.start));
+    added++;
+  });
+  if (!added) return showToast(`Fuera del horario del negocio: ${skipped.join(', ')}. Ajusta el horario del negocio primero`);
   saveState();
   render();
+  showToast(skipped.length ? `Agregado a ${added} día${added === 1 ? '' : 's'}. No se agregó en: ${skipped.join(', ')} (fuera del horario del negocio)` : (added === 1 ? 'Horario agregado' : `Horario agregado a ${added} días`));
 }
 function deleteRule(staffId, day, idx){
   const member = state.staff.find(s => s.id === staffId);
@@ -2046,6 +2067,10 @@ function renderServiceMigration(pend){
 }
 
 function fmtDay(iso){ const d = dateFromISO(iso); return `${cap(WEEKDAYS_SHORT[d.getDay()])} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`; }
+function dayPicks(selected, onclickFn){
+  const letters = { '1': 'L', '2': 'M', '3': 'M', '4': 'J', '5': 'V', '6': 'S', '0': 'D' };
+  return `<div class="day-picks" role="group" aria-label="Días">${DAY_ORDER.map(d => `<button type="button" class="day-pick" aria-pressed="${selected.includes(d)}" aria-label="${WEEKDAYS_LONG[d]}" onclick="${onclickFn(d)}">${letters[d]}</button>`).join('')}</div>`;
+}
 function renderBusinessHoursSection(){
   const days = ['1', '2', '3', '4', '5', '6', '0'];
   const nb = state.newBizRule;
@@ -2056,10 +2081,8 @@ function renderBusinessHoursSection(){
     <div class="card stack">
       <div class="rule-form">
         <div class="field day">
-          <label for="bh-day">Día</label>
-          <select id="bh-day" onchange="updateNewBizRule('day', this.value)">
-            ${days.map(d => `<option value="${d}" ${nb.day === d ? 'selected' : ''}>${WEEKDAYS_LONG[d]}</option>`).join('')}
-          </select>
+          <span class="label">Días</span>
+          ${dayPicks(nb.days, d => `toggleBizDay('${d}')`)}
         </div>
         <div class="field"><label for="bh-start">Desde</label><input id="bh-start" type="time" value="${nb.start}" onchange="updateNewBizRule('start', this.value)"></div>
         <div class="field"><label for="bh-end">Hasta</label><input id="bh-end" type="time" value="${nb.end}" onchange="updateNewBizRule('end', this.value)"></div>
@@ -2159,10 +2182,8 @@ function renderAdminHorarios(){
         </div>
         <div class="rule-form">
           <div class="field day">
-            <label for="nr-day-${member.id}">Día</label>
-            <select id="nr-day-${member.id}" onchange="updateNewRule('day', this.value); updateNewRule('staffId','${member.id}')">
-              ${days.map(d => `<option value="${d}" ${nr.day === d ? 'selected' : ''}>${WEEKDAYS_LONG[d]}</option>`).join('')}
-            </select>
+            <span class="label">Días</span>
+            ${dayPicks(nr.days, d => `toggleRuleDay('${member.id}','${d}')`)}
           </div>
           <div class="field">
             <label for="nr-start-${member.id}">Desde</label>
