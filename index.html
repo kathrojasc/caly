@@ -1793,14 +1793,21 @@ function renderAdminHorarios(){
       <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="saveConfig()">Guardar configuración</button>
     </div>
 
+    <h2 class="title-2">Reserva del cliente</h2>
+    <div class="card">
+      ${isProPlan() ? `
+        <div class="row between" style="flex-wrap:nowrap;">
+          <div style="min-width:0;">
+            <p class="card-title" style="font-size:17px;">Mostrar trabajadores al cliente</p>
+            <p class="secondary" style="margin-top:2px;">Si lo activas, el cliente elige con quién agendar. Si no, Caly asigna al trabajador disponible por turnos.</p>
+          </div>
+          <button class="switch" type="button" role="switch" aria-checked="${state.allowClientStaffPick}" aria-label="Mostrar trabajadores al cliente" onclick="toggleAllowClientStaffPick()"></button>
+        </div>` : `<div class="row">${chip('neutral', 'Plan Pro')}<span class="secondary">Mostrar los trabajadores al cliente al agendar</span></div>`}
+    </div>
+
     <h2 class="title-2">Equipo y asignación</h2>
     <div class="card stack">
       <p class="secondary">Cada trabajador tiene su propio horario. Cuando un cliente reserva, Caly asigna automáticamente al trabajador disponible siguiendo un turno rotativo (round robin), para repartir las citas de forma pareja.</p>
-      ${isProPlan() ? `
-        <div class="row between" style="flex-wrap:nowrap;">
-          <div style="min-width:0;"><p class="card-title" style="font-size:17px;">Mostrar trabajadores al cliente</p><p class="secondary">Si lo activas, el cliente elige con quién agendar. Si no, Caly asigna al trabajador disponible por turnos.</p></div>
-          <button class="switch" type="button" role="switch" aria-checked="${state.allowClientStaffPick}" aria-label="Mostrar trabajadores al cliente" onclick="toggleAllowClientStaffPick()"></button>
-        </div>` : `<div class="row">${chip('neutral', 'Plan Pro')}<span class="secondary">Mostrar los trabajadores al cliente al agendar</span></div>`}
       <div class="row row-end" style="flex-wrap:nowrap;">
         <div class="field" style="flex:1;">
           <label for="new-staff-name">Nuevo trabajador</label>
