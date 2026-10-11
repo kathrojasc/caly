@@ -381,6 +381,7 @@ function buildDefaultState(){
     view: 'admin',
     adminTab: 'inicio',
     includePast: false,
+    citasFilter: 'proximas',
     brand: { name: 'Caly', color: '#0B0B0C', logo: null },
     account: { name: 'Valentina Rossi', email: 'valentina@caly.app' },
     config: { slotMinutes: 45, bufferMinutes: 0, minNoticeHours: 2, windowDays: 21 },
@@ -1656,10 +1657,14 @@ function renderAdminInicio(){
 
 function renderAdminCitas(){
   const now = todayISO();
+  const f = state.citasFilter || 'proximas';
+  const isUpcoming = a => a.status === 'CONFIRMED' && a.date >= now;
   const list = state.appointments
     .filter(a => !a.rescheduleRequested)
-    .filter(a => state.includePast || a.date >= now)
-    .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+    .filter(a => f === 'todas' ? true : (f === 'pasadas' ? !isUpcoming(a) : isUpcoming(a)))
+    .sort((a, b) => f === 'pasadas'
+      ? (b.date + b.start).localeCompare(a.date + a.start)
+      : (a.date + a.start).localeCompare(b.date + b.start));
 
   const groups = [];
   list.forEach(a => {
@@ -1671,13 +1676,14 @@ function renderAdminCitas(){
     ${adminHeader('Citas')}
     <div class="row between" style="margin-top:20px;">
       <div class="seg" role="group" aria-label="Filtro de citas">
-        <button type="button" aria-pressed="${!state.includePast}" onclick="state.includePast=false; render()">Próximas</button>
-        <button type="button" aria-pressed="${state.includePast}" onclick="state.includePast=true; render()">Todas</button>
+        <button type="button" aria-pressed="${f === 'proximas'}" onclick="state.citasFilter='proximas'; render()">Próximas</button>
+        <button type="button" aria-pressed="${f === 'pasadas'}" onclick="state.citasFilter='pasadas'; render()">Pasadas</button>
+        <button type="button" aria-pressed="${f === 'todas'}" onclick="state.citasFilter='todas'; render()">Todas</button>
       </div>
       <button class="btn btn-primary btn-sm" type="button" onclick="openNewAppt()">${icon('plus', 18, 2.6)} Nueva cita</button>
     </div>
 
-    ${groups.length === 0 ? `<p class="secondary" style="margin-top:24px;">No hay citas para mostrar.</p>` : groups.map(g => `
+    ${groups.length === 0 ? `<p class="secondary" style="margin-top:24px;">${f === 'pasadas' ? 'Todavía no hay citas en el historial.' : 'No hay citas para mostrar.'}</p>` : groups.map(g => `
       <p class="day-label">${longDate(g.date)}</p>
       <div class="rows">
         ${g.items.map(a => `
@@ -1694,9 +1700,10 @@ function renderAdminCitas(){
             ${a.status === 'CONFIRMED' ? `
               <div class="appt-actions">
                 ${payAction(a)}
+                ${a.date >= now ? `
                 <button class="btn btn-sm btn-soft" type="button" onclick="sendReminder('${a.id}')">${icon('chat', 18)} Recordar</button>
                 <button class="btn btn-sm btn-soft" type="button" onclick="askReschedule('${a.id}')">${icon('refresh', 18)} Reagendar</button>
-                <button class="btn btn-sm btn-danger" type="button" onclick="askCancel('${a.id}')">${icon('close', 18, 2.4)} Cancelar</button>
+                <button class="btn btn-sm btn-danger" type="button" onclick="askCancel('${a.id}')">${icon('close', 18, 2.4)} Cancelar</button>` : ''}
               </div>` : ''}
           </div>`).join('')}
       </div>`).join('')}`;
