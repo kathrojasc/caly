@@ -99,6 +99,7 @@ button:disabled { cursor: default; }
 .btn-soft { background: var(--color-surface); color: var(--color-text); }
 .btn-disabled, .btn:disabled { background: var(--color-disabled-btn); color: var(--color-disabled-text); }
 .btn-block { width: 100%; }
+.btn-xl { height: 60px; font-size: 18px; font-weight: 700; }
 .btn-sm { height: 44px; padding: 0 16px; font-size: 14px; }
 .btn-danger-solid { background: var(--color-danger); color: #fff; }
 .btn-danger { background: var(--color-danger-bg); color: var(--color-danger); }
@@ -187,9 +188,6 @@ button.chip { cursor: pointer; }
 .card-title { font-size: 19px; line-height: 25px; font-weight: 700; }
 
 /* CTA tipo buscador */
-.cta-search { margin-top: 24px; display: flex; align-items: center; gap: 12px; height: 68px; padding: 0 8px 0 22px; border-radius: var(--radius-pill); background: #fff; box-shadow: var(--shadow-search); border: 0; width: 100%; text-align: left; text-decoration: none; color: var(--color-text); }
-.cta-search span.t { flex: 1; font-size: 16px; color: var(--color-text-secondary); }
-.cta-search span.b { height: 52px; padding: 0 24px; display: inline-flex; align-items: center; border-radius: var(--radius-pill); background: var(--color-primary); color: var(--color-on-primary); font-size: 16px; font-weight: 600; }
 
 /* Calendario */
 .calendar { background: var(--color-surface-calendar); border-radius: var(--radius-l); padding: 8px 12px 14px; }
@@ -1372,11 +1370,7 @@ function renderPacientePanel(b){
       <h1 class="title-1" style="margin-top:24px;">Hola, ${escapeHtml(b.name.split(' ')[0])}</h1>
       <p class="secondary tnum" style="margin-top:4px;">DNI ${b.dni}</p>
 
-      <button class="cta-search" type="button" onclick="goToReservar()">
-        ${icon('calendar', 22)}
-        <span class="t">Reserva tu próxima cita</span>
-        <span class="b">Reservar</span>
-      </button>
+      <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:24px;" onclick="goToReservar()">Reservar</button>
 
       <h2 class="title-2">Próxima cita</h2>
       ${next ? `
