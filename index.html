@@ -149,6 +149,10 @@ button.chip { cursor: pointer; }
 .media .day { font-size: 88px; line-height: 88px; font-weight: 600; letter-spacing: -3px; }
 .media .mon { margin-top: 2px; font-size: 17px; font-weight: 700; letter-spacing: 3px; color: var(--color-text-secondary); text-transform: uppercase; }
 .media .chip-badge { position: absolute; top: 14px; left: 14px; height: 34px; padding: 0 14px 0 10px; display: inline-flex; align-items: center; gap: 6px; border-radius: var(--radius-pill); background: #fff; font-size: 14px; font-weight: 700; box-shadow: var(--shadow-badge); }
+.next-line { display: flex; align-items: center; justify-content: space-between; gap: 4px 12px; flex-wrap: wrap; padding: 10px 4px 0; }
+.next-info { font-size: 14px; line-height: 21px; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1 1 auto; }
+@media (max-width: 560px) { .next-info { flex-basis: 100%; } }
+.next-info strong { font-size: 16px; font-weight: 700; color: var(--color-text); }
 .card-title { font-size: 19px; line-height: 25px; font-weight: 700; }
 
 /* CTA tipo buscador */
@@ -1096,10 +1100,9 @@ function renderPacientePanel(b){
             <span class="day">${dayNum(next.date)}</span>
             <span class="mon">${monthAbbr(next.date)}</span>
           </div>
-          <div style="padding:14px 4px 0;">
-            <div class="card-title">${longDate(next.date)}</div>
-            <div class="secondary" style="margin-top:2px;"><span class="tnum">${next.start}</span> · ${durationMin(next)} min${staffLine(next)}</div>
-            <button class="btn-text" type="button" style="padding-left:0;" onclick="startReschedule('${next.id}')">Reagendar esta cita</button>
+          <div class="next-line">
+            <span class="next-info"><strong>${longDate(next.date)}</strong> · <span class="tnum">${next.start}</span> · ${durationMin(next)} min${staffLine(next)}</span>
+            <button class="btn-text" type="button" onclick="startReschedule('${next.id}')">Reagendar</button>
           </div>
         </div>` : `<p class="secondary">No tienes citas próximas.</p>`}
 
