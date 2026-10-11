@@ -240,7 +240,7 @@ button.chip { cursor: pointer; }
 .tab[aria-current="page"] { background: var(--color-surface-active); color: var(--color-text); font-weight: 700; }
 
 /* Métricas */
-.link-card { margin-top: 24px; background: var(--color-surface); border-radius: var(--radius-l); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.link-card { margin-top: 16px; background: var(--color-surface); border-radius: var(--radius-l); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .link-card .ic { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
 .link-url { background: #fff; border-radius: var(--radius-s); min-height: 52px; padding: 14px 16px; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; display: flex; align-items: center; }
 .link-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -819,6 +819,7 @@ function firstAvailableDate(serviceId){
   }
   return todayISO();
 }
+function goNewAppt(){ state.adminTab = 'citas'; openNewAppt(); }
 function openNewAppt(){
   const act = activeServices();
   state.newAppt = { dni: '', name: '', phone: '', date: todayISO(), slot: null, error: null, known: false, serviceId: isProPlan() && act.length ? act[0].id : null };
@@ -1601,6 +1602,8 @@ function renderAdminInicio(){
   return `
     ${adminHeader('Hola de nuevo', longDate(todayIso))}
 
+    <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:20px;" onclick="goNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
+
     <div class="link-card">
       <div class="row" style="flex-wrap:nowrap;gap:12px;align-items:flex-start;">
         <span class="ic">${icon('link', 22)}</span>
@@ -1611,7 +1614,7 @@ function renderAdminInicio(){
       </div>
       <div class="link-url tnum" aria-label="Enlace de reservas">${escapeHtml(bookingLink())}</div>
       <div class="link-actions">
-        <button class="btn btn-primary" type="button" onclick="copyBookingLink()">Copiar enlace</button>
+        <button class="btn btn-inverse" type="button" onclick="copyBookingLink()">Copiar enlace</button>
         <button class="btn btn-soft" type="button" onclick="shareBookingLinkWhatsApp()">${icon('chat', 18)} Enviar por WhatsApp</button>
         <button class="btn-text" type="button" onclick="viewAsClient()">Ver como cliente</button>
       </div>
@@ -1674,13 +1677,13 @@ function renderAdminCitas(){
 
   return `
     ${adminHeader('Citas')}
-    <div class="row between" style="margin-top:20px;">
+    <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:20px;" onclick="openNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
+    <div style="margin-top:16px;">
       <div class="seg" role="group" aria-label="Filtro de citas">
         <button type="button" aria-pressed="${f === 'proximas'}" onclick="state.citasFilter='proximas'; render()">Próximas</button>
         <button type="button" aria-pressed="${f === 'pasadas'}" onclick="state.citasFilter='pasadas'; render()">Pasadas</button>
         <button type="button" aria-pressed="${f === 'todas'}" onclick="state.citasFilter='todas'; render()">Todas</button>
       </div>
-      <button class="btn btn-primary btn-sm" type="button" onclick="openNewAppt()">${icon('plus', 18, 2.6)} Nueva cita</button>
     </div>
 
     ${groups.length === 0 ? `<p class="secondary" style="margin-top:24px;">${f === 'pasadas' ? 'Todavía no hay citas en el historial.' : 'No hay citas para mostrar.'}</p>` : groups.map(g => `
