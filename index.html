@@ -335,7 +335,7 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
 <div class="demo-bar">
   <span class="demo-note">Prototipo interactivo: los datos se guardan solo en tu navegador, sin servidor.</span>
   <div class="seg" role="group" aria-label="Vista del prototipo">
-    <button id="tab-paciente" type="button" onclick="setView('paciente')">Paciente</button>
+    <button id="tab-paciente" type="button" onclick="setView('paciente')">Cliente</button>
     <button id="tab-admin" type="button" onclick="setView('admin')">Admin</button>
     <button id="tab-super" type="button" onclick="setView('super')">Superadmin</button>
   </div>
@@ -826,7 +826,7 @@ function sendReminder(id){
   if (!a) return;
   const digits = cleanPhoneForWhatsapp(a.phone);
   if (!digits) {
-    showToast('Este paciente no tiene teléfono registrado');
+    showToast('Este cliente no tiene teléfono registrado');
     return;
   }
   const dateLabel = displayDateLong(a.date).replace(/^./, c => c.toUpperCase());
@@ -917,7 +917,7 @@ function askReschedule(id){
   const a = state.appointments.find(x => x.id === id);
   if (!a) return;
   if (!cleanPhoneForWhatsapp(a.phone)) {
-    showToast('Este paciente no tiene teléfono registrado');
+    showToast('Este cliente no tiene teléfono registrado');
     return;
   }
   state.confirmRescheduleId = id;
@@ -929,7 +929,7 @@ function requestReschedule(id){
   if (!a) return;
   const digits = cleanPhoneForWhatsapp(a.phone);
   if (!digits) {
-    showToast('Este paciente no tiene teléfono registrado');
+    showToast('Este cliente no tiene teléfono registrado');
     return;
   }
   const msg = `Hola! por motivos de fuerza mayor, nos gustaría reagendar nuestra sesión contigo. Te enviamos un nuevo enlace para que puedas visitarnos pronto.`;
@@ -1450,7 +1450,7 @@ function renderResumen(b, cfg){
           <p style="margin:6px 0 0;text-align:center;font-size:18px;line-height:24px;color:var(--dark-text-secondary);"><span class="tnum">${b.selectedSlot.start}</span> · ${dur} min</p>
         </div>
         <div class="glass">
-          <div class="g-row"><span>Paciente</span><span>${escapeHtml(b.name)}</span></div>
+          <div class="g-row"><span>Cliente</span><span>${escapeHtml(b.name)}</span></div>
           <div class="g-row"><span>DNI</span><span class="tnum">${b.dni}</span></div>
           ${bookingServiceId(b) ? `<div class="g-row"><span>Servicio</span><span>${escapeHtml(findService(bookingServiceId(b)).name)}</span></div>` : ''}
           ${canClientPickStaff(b) ? `<div class="g-row"><span>Profesional</span><span>${pickIdFor(b) ? escapeHtml((state.staff.find(m => m.id === pickIdFor(b)) || {}).name || '') : 'Cualquiera disponible'}</span></div>` : ''}
@@ -1536,7 +1536,7 @@ function renderPaciente(){
             ${b.error ? `<span class="error-text">${escapeHtml(b.error)}</span>` : `<span class="hint">Solo números, de 6 a 10 dígitos.</span>`}
           </div>
           <button class="btn btn-primary btn-block" type="button" onclick="dniLookupSubmit()">Continuar</button>
-          <p class="hint">¿Quieres ver a un paciente ya registrado? Prueba con <code>30111222</code> o <code>28999888</code>.</p>
+          <p class="hint">¿Quieres ver a un cliente ya registrado? Prueba con <code>30111222</code> o <code>28999888</code>.</p>
         </div>
       </div>`;
   }
@@ -1891,7 +1891,7 @@ function renderAdminHorarios(){
 function renderAdminMarca(){
   return `
     ${adminHeader('Marca')}
-    <p class="secondary" style="margin-top:6px;">Personaliza el nombre, color y logo que ven tus pacientes.</p>
+    <p class="secondary" style="margin-top:6px;">Personaliza el nombre, color y logo que ven tus clientes.</p>
 
     <div class="card stack" style="margin-top:24px;">
       <div class="field">
