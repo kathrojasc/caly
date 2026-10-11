@@ -268,6 +268,8 @@ button.chip { cursor: pointer; }
 .glass .g-row span:last-child { font-weight: 600; text-align: right; }
 .dark-cta { display: flex; align-items: center; justify-content: center; height: 60px; border: 0; border-radius: var(--radius-pill); background: rgba(255,255,255,.94); color: var(--color-text); font-size: 17px; font-weight: 600; box-shadow: var(--shadow-dark-cta); }
 
+.modal-back { position: fixed; inset: 0; z-index: 70; background: rgba(11,11,12,0.45); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal { width: 100%; max-width: 400px; background: #fff; border-radius: var(--radius-l); padding: 24px; box-shadow: var(--shadow-dark-tile); }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(104px + env(safe-area-inset-bottom, 0px)); z-index: 80; background: var(--color-primary); color: var(--color-on-primary); padding: 12px 20px; border-radius: var(--radius-pill); font-weight: 600; font-size: 14px; box-shadow: var(--shadow-dock); max-width: calc(100% - 32px); text-align: center; }
 footer.foot { text-align: center; color: var(--color-text-secondary); font-size: 13px; padding: 8px 20px 24px; }
 @media (max-width: 520px) { .hdr { padding: 0 -4px; } .media .day { font-size: 80px; } }
@@ -398,6 +400,7 @@ function loadState(){
       if (parsed.adminTab === 'resumen') parsed.adminTab = 'inicio';
       if (!['inicio', 'citas', 'horarios', 'marca', 'cuenta'].includes(parsed.adminTab)) parsed.adminTab = 'inicio';
       parsed.confirmCancelId = null;
+      parsed.confirmRescheduleId = null;
       parsed.toast = null;
       return parsed;
     }
@@ -734,6 +737,17 @@ function sendReminder(id){
   const msg = `Hola! Recuerda que ${dateLabel} tienes una reserva. Te esperamos.`;
   window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
+function askReschedule(id){
+  const a = state.appointments.find(x => x.id === id);
+  if (!a) return;
+  if (!cleanPhoneForWhatsapp(a.phone)) {
+    showToast('Este paciente no tiene teléfono registrado');
+    return;
+  }
+  state.confirmRescheduleId = id;
+  render();
+}
+function closeRescheduleModal(){ state.confirmRescheduleId = null; render(); }
 function requestReschedule(id){
   const a = state.appointments.find(x => x.id === id);
   if (!a) return;
@@ -745,6 +759,7 @@ function requestReschedule(id){
   const msg = `Hola! por motivos de fuerza mayor, nos gustaría reagendar nuestra sesión contigo. Te enviamos un nuevo enlace para que puedas visitarnos pronto.`;
   window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
   a.rescheduleRequested = true;
+  state.confirmRescheduleId = null;
   saveState();
   render();
   showToast('Solicitud de reagenda enviada por WhatsApp');
@@ -1253,12 +1268,12 @@ function renderAdminInicio(){
   const next7Iso = addDaysISO(todayIso, 7);
 
   const upcoming = state.appointments
-    .filter(a => a.status === 'CONFIRMED' && a.date >= todayIso)
+    .filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && a.date >= todayIso)
     .sort((a, c) => (a.date + a.start).localeCompare(c.date + c.start));
   const todayAppts = upcoming.filter(a => a.date === todayIso);
   const later = upcoming.filter(a => a.date > todayIso).slice(0, 4);
   const next7Count = upcoming.filter(a => a.date <= next7Iso).length;
-  const pendingPayCount = state.appointments.filter(a => a.status === 'CONFIRMED' && !a.paid).length;
+  const pendingPayCount = state.appointments.filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && !a.paid).length;
   const nextAppt = upcoming[0];
   const nextWhen = nextAppt ? (nextAppt.date === todayIso ? 'Hoy' : cap(displayDateShort(nextAppt.date))) : '';
 
@@ -1294,7 +1309,7 @@ function renderAdminInicio(){
               <div class="appt-chips">${chip(a.paid ? 'success' : 'warning', a.paid ? 'Pagado' : 'Pago pendiente', false, 'pay')}</div>
               <div class="appt-actions two">
                 <button class="btn btn-sm btn-soft" type="button" onclick="sendReminder('${a.id}')" aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}">${icon('chat', 18)} Recordar</button>
-                <button class="btn btn-sm btn-soft" type="button" onclick="requestReschedule('${a.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}">${icon('refresh', 18)} Reagendar</button>
+                <button class="btn btn-sm btn-soft" type="button" onclick="askReschedule('${a.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}">${icon('refresh', 18)} Reagendar</button>
               </div>
             </div>`).join('')
           : (later.length ? later.map(a => `
@@ -1320,6 +1335,7 @@ function renderAdminInicio(){
 function renderAdminCitas(){
   const now = todayISO();
   const list = state.appointments
+    .filter(a => !a.rescheduleRequested)
     .filter(a => state.includePast || a.date >= now)
     .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
 
@@ -1357,7 +1373,7 @@ function renderAdminCitas(){
                      <button class="btn btn-sm btn-danger" type="button" onclick="doCancel('${a.id}')">Sí, cancelar</button>
                      <button class="btn btn-sm btn-soft" type="button" onclick="dismissCancel()">No</button>`
                   : `<button class="btn btn-sm btn-soft" type="button" onclick="sendReminder('${a.id}')">${icon('chat', 18)} Recordar</button>
-                     <button class="btn btn-sm btn-soft" type="button" onclick="requestReschedule('${a.id}')">${icon('refresh', 18)} Reagendar</button>
+                     <button class="btn btn-sm btn-soft" type="button" onclick="askReschedule('${a.id}')">${icon('refresh', 18)} Reagendar</button>
                      <button class="btn btn-sm btn-danger" type="button" onclick="askCancel('${a.id}')">Cancelar</button>`}
               </div>` : ''}
           </div>`).join('')}
@@ -1525,6 +1541,22 @@ function renderAdminContent(){
   }
 }
 
+function renderRescheduleModal(){
+  const a = state.appointments.find(x => x.id === state.confirmRescheduleId);
+  if (!a) return '';
+  return `
+    <div class="modal-back" onclick="if (event.target === this) closeRescheduleModal()">
+      <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="rs-title" aria-describedby="rs-desc">
+        <h2 class="title-3" id="rs-title">¿Solicitar reagendado a ${escapeHtml(a.name)}?</h2>
+        <p class="secondary" id="rs-desc" style="margin-top:8px;">Se abrirá WhatsApp con el mensaje para que ${escapeHtml(a.name)} elija un nuevo horario, y la cita del ${displayDateLong(a.date)} a las ${a.start} saldrá de tu lista. <strong style="color:var(--color-text);">Esta acción es irreversible.</strong></p>
+        <div class="stack" style="margin-top:20px;gap:10px;">
+          <button class="btn btn-primary btn-block" type="button" onclick="requestReschedule('${a.id}')">Sí, solicitar reagendado</button>
+          <button class="btn btn-soft btn-block" type="button" autofocus onclick="closeRescheduleModal()">Cancelar</button>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderAdmin(){
   const myBiz = state.businesses.find(b => b.id === 'biz-1');
   if (myBiz && !myBiz.enabled) {
@@ -1540,6 +1572,7 @@ function renderAdmin(){
   }
   return `
     <div class="page w880 admin-page">${renderAdminContent()}</div>
+    ${renderRescheduleModal()}
     <nav class="tabbar" aria-label="Secciones">
       ${ADMIN_NAV.map(t => `
         <button class="tab" type="button" ${state.adminTab === t.id ? 'aria-current="page"' : ''} onclick="setAdminTab('${t.id}')">
