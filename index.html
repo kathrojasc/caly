@@ -260,6 +260,7 @@ button.chip { cursor: pointer; }
 .hero .h-meta { margin-top: 6px; font-size: 15px; line-height: 20px; opacity: .7; }
 .hero.light { background: var(--color-bg); color: var(--color-text); border: 1px solid var(--color-border); }
 .hero.light .chip-hero.warn { background: var(--color-warning-bg); color: var(--color-warning); }
+.hero.light .chip-hero.neu { background: var(--color-chip-neutral); color: var(--color-chip-neutral-text); }
 .hero.light .chip-hero.ok { background: var(--color-success-bg); color: var(--color-success); }
 .hero.light .h-meta { opacity: 1; color: var(--color-text-secondary); }
 .hero.light .h-sub { opacity: 1; }
@@ -1367,6 +1368,23 @@ function renderPatientRow(a, isPast){
     </div>`;
 }
 
+function patientCard(a, light){
+  const todayIso = todayISO();
+  const when = a.date === todayIso ? 'Hoy' : cap(displayDateShort(a.date));
+  return `
+    <div class="hero${light ? ' light' : ''}">
+      <span class="chip-hero ${light ? 'neu' : ''}">${escapeHtml(a.serviceName || 'Cita')}</span>
+      <div>
+        <div class="h-title">${when} · ${a.start}</div>
+        ${a.staffName ? `<div class="h-sub">${escapeHtml(a.staffName)}</div>` : ''}
+        <div class="h-meta">${durationMin(a)} min</div>
+      </div>
+      <div class="hero-actions c1">
+        <button type="button" onclick="startReschedule('${a.id}')">${icon('refresh', 20)}<span>Reagendar</span></button>
+      </div>
+    </div>`;
+}
+
 function renderPacientePanel(b){
   const todayIso = todayISO();
   const mine = state.appointments.filter(a => a.dni === b.dni);
@@ -1387,23 +1405,10 @@ function renderPacientePanel(b){
 
       <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:24px;" onclick="goToReservar()">Reservar</button>
 
-      <h2 class="title-2">Próxima cita</h2>
+      <h2 class="title-2">${upcoming.length > 1 ? 'Próximas citas' : 'Próxima cita'}</h2>
       ${next ? `
-        <div>
-          <div class="media">
-            <span class="day">${dayNum(next.date)}</span>
-            <span class="mon">${monthAbbr(next.date)}</span>
-          </div>
-          <div class="next-bar">
-            <span class="nb-info"><strong>${longDate(next.date)}</strong> · <span class="tnum">${next.start}</span></span>
-          </div>
-          <p class="next-detail">${[next.serviceName, durationMin(next) + ' min', next.staffName].filter(Boolean).map(escapeHtml).join(' · ')}</p>
-          <button class="next-resched" type="button" onclick="startReschedule('${next.id}')">¿Necesitas cambiarla? Reagendar</button>
-        </div>` : `<p class="secondary">No tienes citas próximas.</p>`}
-
-      ${rest.length ? `
-        <h2 class="title-2">Más adelante</h2>
-        <div class="rows">${rest.map(a => renderPatientRow(a, false)).join('')}</div>` : ''}
+        ${patientCard(next, false)}
+        ${rest.length ? `<div class="rows" style="margin-top:12px;">${rest.map(a => patientCard(a, true)).join('')}</div>` : ''}` : `<p class="secondary">No tienes citas próximas.</p>`}
 
       <div class="hist" style="margin-top:36px;">
         <button class="hist-head" type="button" aria-expanded="${!!b.historyOpen}" aria-controls="hist-list" onclick="toggleHistory()">
