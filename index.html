@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Toki</title>
+<title>Caly</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -286,11 +286,11 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
 
 <main id="view"></main>
 
-<footer class="foot"><span id="footer-brand">Toki</span> · prototipo de producto, sin conexión a sistemas reales.</footer>
+<footer class="foot"><span id="footer-brand">Caly</span> · prototipo de producto, sin conexión a sistemas reales.</footer>
 <div id="toast-root"></div>
 
 <script>
-const STORAGE_KEY = 'toki_proto_state_v5';
+const STORAGE_KEY = 'caly_proto_state_v5';
 const WEEKDAYS_SHORT = ['dom','lun','mar','mié','jué','vie','sáb'];
 const WEEKDAYS_LONG = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -337,8 +337,8 @@ function buildDefaultState(){
     view: 'admin',
     adminTab: 'inicio',
     includePast: false,
-    brand: { name: 'Toki', color: '#0B0B0C', logo: null },
-    account: { name: 'Valentina Rossi', email: 'valentina@toki.app' },
+    brand: { name: 'Caly', color: '#0B0B0C', logo: null },
+    account: { name: 'Valentina Rossi', email: 'valentina@caly.app' },
     config: { slotMinutes: 45, bufferMinutes: 0, minNoticeHours: 2, windowDays: 21 },
     staff: [
       { id: 'staff-1', name: 'Valentina Rossi', schedule: defaultWeekSchedule() },
@@ -363,7 +363,7 @@ function buildDefaultState(){
     confirmCancelId: null,
     toast: null,
     businesses: [
-      { id: 'biz-1', name: 'Toki Demo — Valentina Rossi', adminUser: 'valentina@toki.app', adminPass: 'toki2026', plan: 'Prueba', enabled: true },
+      { id: 'biz-1', name: 'Caly Demo — Valentina Rossi', adminUser: 'valentina@caly.app', adminPass: 'caly2026', plan: 'Prueba', enabled: true },
       { id: 'biz-2', name: 'Clínica Dental Sonric', adminUser: 'admin@sonric.pe', adminPass: 'sonric123', plan: 'Prueba', enabled: true },
       { id: 'biz-3', name: 'Estudio Pilates Flow', adminUser: 'admin@flowpilates.pe', adminPass: 'flow456', plan: 'Prueba', enabled: false },
     ],
@@ -826,7 +826,7 @@ function createBusinessAccount(){
 }
 
 function saveBrand(){
-  const name = document.getElementById('brand-name').value.trim() || 'Toki';
+  const name = document.getElementById('brand-name').value.trim() || 'Caly';
   const colorInput = document.getElementById('brand-color-hex').value.trim();
   const color = /^#[0-9a-fA-F]{6}$/.test(colorInput) ? colorInput : document.getElementById('brand-color').value;
 
@@ -957,7 +957,7 @@ function toggleAllowClientStaffPick(){
 }
 
 
-/* ===================== UI (sistema visual Toki · Glass) ===================== */
+/* ===================== UI (sistema visual Caly · Glass) ===================== */
 function svg(size, body, sw){
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" aria-hidden="true" stroke="currentColor" stroke-width="${sw || 2}" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 }
@@ -1385,7 +1385,7 @@ function renderAdminHorarios(){
 
     <h2 class="title-2">Equipo y asignación</h2>
     <div class="card stack">
-      <p class="secondary">Cada trabajador tiene su propio horario. Cuando un cliente reserva, Toki asigna automáticamente al trabajador disponible siguiendo un turno rotativo (round robin), para repartir las citas de forma pareja.</p>
+      <p class="secondary">Cada trabajador tiene su propio horario. Cuando un cliente reserva, Caly asigna automáticamente al trabajador disponible siguiendo un turno rotativo (round robin), para repartir las citas de forma pareja.</p>
       <div class="row">${chip('neutral', 'Próximamente (según plan)')}<span class="secondary">Permitir que el cliente elija un profesional específico</span></div>
       <div class="row row-end" style="flex-wrap:nowrap;">
         <div class="field" style="flex:1;">
@@ -1490,7 +1490,7 @@ function renderAdminCuenta(){
         <p class="card-title">Periodo de prueba</p>
         ${chip('neutral', 'Prueba')}
       </div>
-      <p class="secondary">Todavía no definimos precios ni planes. Por ahora estás probando Toki sin costo; te avisaremos antes de que eso cambie.</p>
+      <p class="secondary">Todavía no definimos precios ni planes. Por ahora estás probando Caly sin costo; te avisaremos antes de que eso cambie.</p>
       <ul class="checks">
         ${planFeatures.map(f => `<li><span class="check-dot">${icon('check', 14, 3.2)}</span>${f}</li>`).join('')}
         <li><span class="check-dot soon">${icon('check', 14, 3.2)}</span>Que el cliente elija un profesional específico ${chip('neutral', 'Según plan (próximamente)')}</li>
@@ -1533,7 +1533,7 @@ function renderAdmin(){
         <div style="text-align:center;margin-top:48px;">
           <div class="success-icon" style="background:var(--color-danger-bg);color:var(--color-danger);">${icon('alert', 26)}</div>
           <h1 class="title-1">Cuenta desactivada</h1>
-          <p class="secondary" style="margin-top:8px;">El superadministrador desactivó temporalmente esta cuenta. Contacta a Toki para reactivarla.</p>
+          <p class="secondary" style="margin-top:8px;">El superadministrador desactivó temporalmente esta cuenta. Contacta a Caly para reactivarla.</p>
           <button class="btn btn-primary" type="button" style="margin-top:24px;" onclick="setView('super')">Ir a Superadmin</button>
         </div>
       </div>`;
@@ -1558,7 +1558,7 @@ function renderSuper(){
     <div class="page w880">
       <div class="hdr" style="margin-top:16px;align-items:flex-start;">
         <div>
-          <p class="eyebrow" style="font-size:14px;line-height:20px;">Panel interno de Toki</p>
+          <p class="eyebrow" style="font-size:14px;line-height:20px;">Panel interno de Caly</p>
           <h1 class="title-1" style="margin-top:2px;">Superadministrador</h1>
         </div>
         ${brandMark(44)}
