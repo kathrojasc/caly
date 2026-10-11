@@ -209,6 +209,7 @@ button.chip { cursor: pointer; }
 .cols > .c300 { flex: 1 1 300px; min-width: 0; }
 .pills { display: flex; flex-wrap: wrap; gap: 8px; }
 .pill-opt { height: 44px; padding: 0 18px; border: 0; border-radius: var(--radius-pill); background: var(--color-surface); font-size: 15px; font-weight: 600; }
+.card .pill-opt:not([aria-pressed="true"]) { background: #fff; }
 .pill-opt[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); font-weight: 700; }
 .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; margin-top: 14px; }
 .slot { height: 52px; border: 0; border-radius: var(--radius-s); background: var(--color-surface); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -321,7 +322,7 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
 <div id="toast-root"></div>
 
 <script>
-const STORAGE_KEY = 'caly_proto_state_v6';
+const STORAGE_KEY = 'caly_proto_state_v7';
 const WEEKDAYS_SHORT = ['dom','lun','mar','mié','jué','vie','sáb'];
 const WEEKDAYS_LONG = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -382,17 +383,23 @@ function buildDefaultState(){
       '28999888': { name: 'Julián Ortiz', phone: '11-2233-4455' },
     },
     appointments: [
-      { id: 'a1', dni: '30111222', name: 'Marina Ibáñez', phone: '11-4455-6677', date: addDaysISO(t,1), start: '09:00', end: '09:45', status: 'CONFIRMED', paid: false, staffId: 'staff-1', staffName: 'Valentina Rossi', rescheduleRequested: false },
-      { id: 'a2', dni: '28999888', name: 'Julián Ortiz', phone: '11-2233-4455', date: addDaysISO(t,1), start: '15:00', end: '15:45', status: 'CONFIRMED', paid: true, staffId: 'staff-2', staffName: 'Camila Torres', rescheduleRequested: false },
-      { id: 'a3', dni: '27555444', name: 'Facundo López', phone: '11-9988-7766', date: addDaysISO(t,2), start: '11:30', end: '12:15', status: 'CANCELLED', paid: false, staffId: 'staff-1', staffName: 'Valentina Rossi', rescheduleRequested: false },
-      { id: 'a4', dni: '30111222', name: 'Marina Ibáñez', phone: '11-4455-6677', date: addDaysISO(t,-1), start: '11:00', end: '11:45', status: 'CONFIRMED', paid: true, staffId: 'staff-1', staffName: 'Valentina Rossi', rescheduleRequested: false },
-      { id: 'a5', dni: '28999888', name: 'Julián Ortiz', phone: '11-2233-4455', date: t, start: '16:30', end: '17:15', status: 'CONFIRMED', paid: false, staffId: 'staff-2', staffName: 'Camila Torres', rescheduleRequested: false },
+      { id: 'a1', dni: '30111222', name: 'Marina Ibáñez', phone: '11-4455-6677', date: addDaysISO(t,1), start: '09:00', end: '09:45', status: 'CONFIRMED', paid: false, staffId: 'staff-1', staffName: 'Valentina Rossi', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
+      { id: 'a2', dni: '28999888', name: 'Julián Ortiz', phone: '11-2233-4455', date: addDaysISO(t,1), start: '15:00', end: '15:45', status: 'CONFIRMED', paid: true, staffId: 'staff-2', staffName: 'Camila Torres', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
+      { id: 'a3', dni: '27555444', name: 'Facundo López', phone: '11-9988-7766', date: addDaysISO(t,2), start: '11:30', end: '12:15', status: 'CANCELLED', paid: false, staffId: 'staff-1', staffName: 'Valentina Rossi', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
+      { id: 'a4', dni: '30111222', name: 'Marina Ibáñez', phone: '11-4455-6677', date: addDaysISO(t,-1), start: '11:00', end: '11:45', status: 'CONFIRMED', paid: true, staffId: 'staff-1', staffName: 'Valentina Rossi', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
+      { id: 'a5', dni: '28999888', name: 'Julián Ortiz', phone: '11-2233-4455', date: t, start: '16:30', end: '17:15', status: 'CONFIRMED', paid: false, staffId: 'staff-2', staffName: 'Camila Torres', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
     ],
     booking: { step: 'dni', dni: '', name: '', phone: '', selectedDate: t, selectedSlot: null, error: null, calendarMonth: ymFromISO(t), rescheduleId: null, lastApptId: null },
     newRule: { staffId: 'staff-1', day: '1', start: '09:00', end: '13:00' },
     newStaffName: '',
     confirmCancelId: null,
     newAppt: null,
+    services: [
+      { id: 'svc-1', name: 'Kinesiología', minutes: 45, staffIds: ['staff-1', 'staff-2'] },
+      { id: 'svc-2', name: 'Evaluación inicial', minutes: 60, staffIds: ['staff-1'] },
+    ],
+    newService: { name: '', minutes: 45, staffIds: [] },
+    serviceAssign: {},
     toast: null,
     businesses: [
       { id: 'biz-1', name: 'Caly Demo — Valentina Rossi', adminUser: 'valentina@caly.app', adminPass: 'caly2026', plan: 'Pro', enabled: true },
@@ -431,6 +438,9 @@ function loadState(){
       parsed.confirmCancelId = null;
       parsed.confirmRescheduleId = null;
       parsed.newAppt = null;
+      if (!Array.isArray(parsed.services)) parsed.services = def.services;
+      if (!parsed.newService) parsed.newService = def.newService;
+      parsed.serviceAssign = {};
       parsed.toast = null;
       return parsed;
     }
@@ -477,7 +487,8 @@ function refreshBrandUI(){
   applyBrandTheme();
 }
 
-function getStaffRawSlots(staffMember, iso){
+function getStaffRawSlots(staffMember, iso, minutes){
+  const dur = minutes || state.config.slotMinutes;
   const dow = String(dayOfWeek(iso));
   const rules = (staffMember.schedule && staffMember.schedule[dow]) || [];
   if (!rules.length) return [];
@@ -485,7 +496,7 @@ function getStaffRawSlots(staffMember, iso){
   const maxDateISO = addDaysISO(todayISO(), state.config.windowDays);
   if (iso > maxDateISO) return [];
 
-  const step = state.config.slotMinutes + state.config.bufferMinutes;
+  const step = dur + state.config.bufferMinutes;
   const now = new Date();
   const minNoticeAt = new Date(now.getTime() + state.config.minNoticeHours * 3600000);
 
@@ -493,8 +504,8 @@ function getStaffRawSlots(staffMember, iso){
   rules.forEach(r => {
     let cursor = timeToMinutes(r.start);
     const end = timeToMinutes(r.end);
-    while (cursor + state.config.slotMinutes <= end) {
-      candidates.push({ start: minutesToTime(cursor), end: minutesToTime(cursor + state.config.slotMinutes) });
+    while (cursor + dur <= end) {
+      candidates.push({ start: minutesToTime(cursor), end: minutesToTime(cursor + dur) });
       cursor += step;
     }
   });
@@ -509,14 +520,23 @@ function getStaffRawSlots(staffMember, iso){
 
 // Horarios disponibles para un día, excluyendo una cita puntual (útil al reagendar, para
 // no descartar el propio turno que se está moviendo como si estuviera "ocupado").
-function getAvailableSlots(iso, excludeApptId, staffId){
+function findService(id){ return state.services.find(x => x.id === id) || null; }
+function serviceMinutes(id){ const v = findService(id); return v ? v.minutes : state.config.slotMinutes; }
+function serviceStaff(id){
+  const v = findService(id);
+  return v ? state.staff.filter(m => v.staffIds.includes(m.id)) : state.staff;
+}
+function activeServices(){ return state.services.filter(v => serviceStaff(v.id).length > 0); }
+
+function getAvailableSlots(iso, excludeApptId, staffId, serviceId){
+  const minutes = serviceMinutes(serviceId);
   const originalAppointments = state.appointments;
   if (excludeApptId) state.appointments = state.appointments.filter(a => a.id !== excludeApptId);
   try {
     const seen = new Set();
     const result = [];
-    state.staff.filter(m => !staffId || m.id === staffId).forEach(member => {
-      getStaffRawSlots(member, iso).forEach(s => {
+    serviceStaff(serviceId).filter(m => !staffId || m.id === staffId).forEach(member => {
+      getStaffRawSlots(member, iso, minutes).forEach(s => {
         if (!seen.has(s.start)) { seen.add(s.start); result.push(s); }
       });
     });
@@ -527,11 +547,12 @@ function getAvailableSlots(iso, excludeApptId, staffId){
   }
 }
 
-function getStaffAvailableForSlot(iso, start, end, excludeApptId){
+function getStaffAvailableForSlot(iso, start, end, excludeApptId, serviceId){
+  const minutes = timeToMinutes(end) - timeToMinutes(start);
   const originalAppointments = state.appointments;
   if (excludeApptId) state.appointments = state.appointments.filter(a => a.id !== excludeApptId);
   try {
-    return state.staff.filter(member => getStaffRawSlots(member, iso).some(s => s.start === start && s.end === end));
+    return serviceStaff(serviceId).filter(member => getStaffRawSlots(member, iso, minutes).some(s => s.start === start && s.end === end));
   } finally {
     state.appointments = originalAppointments;
   }
@@ -539,8 +560,8 @@ function getStaffAvailableForSlot(iso, start, end, excludeApptId){
 
 // Asignación round-robin: entre el personal disponible para ese turno, elige el siguiente
 // en la rotación (no siempre el primero), para repartir las citas de forma pareja.
-function assignStaffRoundRobin(iso, start, end, excludeApptId, staffId){
-  const available = getStaffAvailableForSlot(iso, start, end, excludeApptId);
+function assignStaffRoundRobin(iso, start, end, excludeApptId, staffId, serviceId){
+  const available = getStaffAvailableForSlot(iso, start, end, excludeApptId, serviceId);
   if (!available.length) return null;
   if (staffId) return available.find(m => m.id === staffId) || null;
   const chosen = available[state.roundRobinCursor % available.length];
@@ -647,9 +668,10 @@ function pickSlot(start, end){
 function confirmBooking(){
   const { dni, name, phone, selectedDate, selectedSlot, rescheduleId } = state.booking;
   if (!selectedSlot) return;
-  const pickId = canClientPickStaff() ? state.booking.staffId : null;
+  const pickId = pickIdFor(state.booking);
+  const svcId = bookingServiceId(state.booking);
 
-  const stillFree = getAvailableSlots(selectedDate, rescheduleId, pickId).some(s => s.start === selectedSlot.start);
+  const stillFree = getAvailableSlots(selectedDate, rescheduleId, pickId, svcId).some(s => s.start === selectedSlot.start);
   if (!stillFree) {
     state.booking.error = 'Ese horario se acaba de ocupar. Elige otro.';
     state.booking.selectedSlot = null;
@@ -658,7 +680,7 @@ function confirmBooking(){
     return;
   }
 
-  const assigned = assignStaffRoundRobin(selectedDate, selectedSlot.start, selectedSlot.end, rescheduleId, pickId);
+  const assigned = assignStaffRoundRobin(selectedDate, selectedSlot.start, selectedSlot.end, rescheduleId, pickId, svcId);
   if (!assigned) {
     // Caso hipotético de doble reserva: no debería pasar porque ya filtramos por disponibilidad,
     // pero si ocurriera (ej. carrera entre dos reservas simultáneas), avisamos al superadmin.
@@ -696,6 +718,8 @@ function confirmBooking(){
       staffId: assigned.id,
       staffName: assigned.name,
       rescheduleRequested: false,
+      serviceId: svcId,
+      serviceName: svcId ? findService(svcId).name : null,
     });
     state.booking.lastApptId = id;
   }
@@ -770,15 +794,17 @@ function sendReminder(id){
   const msg = `Hola! Recuerda que ${dateLabel} tienes una reserva. Te esperamos.`;
   window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
-function firstAvailableDate(){
+function firstAvailableDate(serviceId){
   for (let i = 0; i <= state.config.windowDays; i++) {
     const iso = addDaysISO(todayISO(), i);
-    if (getAvailableSlots(iso).length) return iso;
+    if (getAvailableSlots(iso, null, null, serviceId).length) return iso;
   }
   return todayISO();
 }
 function openNewAppt(){
-  state.newAppt = { dni: '', name: '', phone: '', date: firstAvailableDate(), slot: null, error: null, known: false };
+  const act = activeServices();
+  state.newAppt = { dni: '', name: '', phone: '', date: todayISO(), slot: null, error: null, known: false, serviceId: isProPlan() && act.length ? act[0].id : null };
+  state.newAppt.date = firstAvailableDate(state.newAppt.serviceId);
   render();
 }
 function closeNewAppt(){ state.newAppt = null; render(); }
@@ -798,6 +824,14 @@ function lookupNewApptDni(value){
     render();
   }
 }
+function setNewApptService(id){
+  const n = state.newAppt;
+  n.serviceId = id;
+  n.slot = null;
+  n.error = null;
+  n.date = firstAvailableDate(id);
+  render();
+}
 function setNewApptDate(iso){
   if (!iso) return;
   state.newAppt.date = iso;
@@ -816,12 +850,14 @@ function createAdminAppointment(){
   const fail = msg => { n.error = msg; render(); };
   if (!isValidDni(n.dni)) return fail('Ingresa un DNI válido (solo números, 6 a 10 dígitos).');
   if ((n.name || '').trim().length < 2) return fail('Ingresa el nombre completo del cliente.');
+  if (isProPlan() && !n.serviceId) return fail('Elige un servicio.');
   if (!n.slot) return fail('Elige un horario.');
-  if (!getAvailableSlots(n.date).some(s => s.start === n.slot.start)) {
+  const svcId = isProPlan() ? n.serviceId : null;
+  if (!getAvailableSlots(n.date, null, null, svcId).some(s => s.start === n.slot.start)) {
     n.slot = null;
     return fail('Ese horario se acaba de ocupar. Elige otro.');
   }
-  const assigned = assignStaffRoundRobin(n.date, n.slot.start, n.slot.end);
+  const assigned = assignStaffRoundRobin(n.date, n.slot.start, n.slot.end, null, null, svcId);
   if (!assigned) {
     n.slot = null;
     return fail('Ese horario se acaba de ocupar. Elige otro.');
@@ -836,6 +872,7 @@ function createAdminAppointment(){
     status: 'CONFIRMED', paid: false,
     staffId: assigned.id, staffName: assigned.name,
     rescheduleRequested: false,
+    serviceId: svcId, serviceName: svcId ? findService(svcId).name : null,
   });
   state.newAppt = null;
   saveState();
@@ -1088,13 +1125,91 @@ function removeStaffMember(id){
     return;
   }
   state.staff = state.staff.filter(s => s.id !== id);
+  state.services.forEach(v => { v.staffIds = v.staffIds.filter(x => x !== id); });
   saveState();
   render();
   showToast('Trabajador eliminado');
 }
+function pendingServiceAppts(){
+  const today = todayISO();
+  return state.appointments
+    .filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && a.date >= today && !(a.serviceId && findService(a.serviceId)))
+    .sort((a, c) => (a.date + a.start).localeCompare(c.date + c.start));
+}
+function updateNewService(field, value){ state.newService[field] = value; }
+function toggleNewServiceStaff(id){
+  const ids = state.newService.staffIds;
+  state.newService.staffIds = ids.includes(id) ? ids.filter(x => x !== id) : ids.concat(id);
+  render();
+}
+function addService(){
+  const n = state.newService;
+  const name = (n.name || '').trim();
+  const minutes = Number(n.minutes);
+  if (name.length < 2) return showToast('Ingresa el nombre del servicio');
+  if (!(minutes >= 5 && minutes <= 480)) return showToast('La duración debe estar entre 5 y 480 min');
+  if (!n.staffIds.length) return showToast('Asocia al menos un trabajador al servicio');
+  state.services.push({ id: 'svc' + Date.now(), name, minutes: Math.round(minutes), staffIds: n.staffIds.slice() });
+  state.newService = { name: '', minutes: 45, staffIds: [] };
+  saveState();
+  render();
+  showToast('Servicio creado');
+}
+function toggleServiceStaff(svcId, staffId){
+  const v = findService(svcId);
+  if (!v) return;
+  v.staffIds = v.staffIds.includes(staffId) ? v.staffIds.filter(x => x !== staffId) : v.staffIds.concat(staffId);
+  saveState();
+  render();
+}
+function deleteService(id){
+  const used = state.appointments.some(a => a.serviceId === id && a.status === 'CONFIRMED' && a.date >= todayISO());
+  if (used) return showToast('Hay citas próximas con este servicio. Reasígnalas o cancélalas primero');
+  state.services = state.services.filter(v => v.id !== id);
+  saveState();
+  render();
+  showToast('Servicio eliminado');
+}
+function setServiceAssign(apptId, svcId){
+  if (svcId) state.serviceAssign[apptId] = svcId; else delete state.serviceAssign[apptId];
+  render();
+}
+function saveServiceAssign(){
+  const pend = pendingServiceAppts();
+  if (!pend.length || !pend.every(a => state.serviceAssign[a.id])) return showToast('Asigna un servicio a cada cita');
+  pend.forEach(a => {
+    const v = findService(state.serviceAssign[a.id]);
+    a.serviceId = v.id;
+    a.serviceName = v.name;
+  });
+  state.serviceAssign = {};
+  saveState();
+  render();
+  showToast('Servicios asignados');
+}
 function currentBusiness(){ return state.businesses.find(b => b.id === 'biz-1'); }
 function isProPlan(){ const b = currentBusiness(); return !!b && b.plan === 'Pro'; }
-function canClientPickStaff(){ return isProPlan() && state.allowClientStaffPick && state.staff.length > 1; }
+function bookingServiceId(b){
+  b = b || state.booking;
+  if (!isProPlan()) return null;
+  if (b.rescheduleId) {
+    const a = state.appointments.find(x => x.id === b.rescheduleId);
+    return a && a.serviceId && findService(a.serviceId) ? a.serviceId : null;
+  }
+  return b.serviceId || null;
+}
+function clientStaffOptions(b){
+  b = b || state.booking;
+  return isProPlan() && state.allowClientStaffPick ? serviceStaff(bookingServiceId(b)) : [];
+}
+function canClientPickStaff(b){ return clientStaffOptions(b).length > 1; }
+function pickService(id){
+  state.booking.serviceId = id;
+  state.booking.staffId = null;
+  state.booking.selectedSlot = null;
+  state.booking.error = null;
+  render();
+}
 function pickStaff(id){
   state.booking.staffId = id || null;
   state.booking.selectedSlot = null;
@@ -1107,7 +1222,8 @@ function toggleBusinessPlan(id){
   biz.plan = biz.plan === 'Pro' ? 'Prueba' : 'Pro';
   saveState();
   render();
-  showToast(`${biz.name}: plan ${biz.plan}`);
+  const pend = biz.id === 'biz-1' && biz.plan === 'Pro' ? pendingServiceAppts().length : 0;
+  showToast(pend ? `Plan Pro activado: el admin debe asignar servicio a ${pend} cita(s)` : `${biz.name}: plan ${biz.plan}`);
 }
 function toggleAllowClientStaffPick(){
   state.allowClientStaffPick = !state.allowClientStaffPick;
@@ -1165,10 +1281,17 @@ function longDate(iso){ return cap(displayDateLong(iso)); }
 function monthAbbr(iso){ return MONTHS[dateFromISO(iso).getMonth()].slice(0, 3).toUpperCase(); }
 function dayNum(iso){ return dateFromISO(iso).getDate(); }
 function durationMin(a){ return timeToMinutes(a.end) - timeToMinutes(a.start); }
-function staffLine(a){ return a.staffName ? ` · ${escapeHtml(a.staffName)}` : ''; }
+function staffLine(a){ return `${a.serviceName ? ` · ${escapeHtml(a.serviceName)}` : ''}${a.staffName ? ` · ${escapeHtml(a.staffName)}` : ''}`; }
 
 /* ---------- Calendario ---------- */
-function pickIdFor(b){ return canClientPickStaff() ? (b.staffId || null) : null; }
+function pickIdFor(b){
+  return canClientPickStaff(b) && clientStaffOptions(b).some(m => m.id === b.staffId) ? b.staffId : null;
+}
+function ensureBookingService(b){
+  if (!isProPlan() || b.rescheduleId) return;
+  const act = activeServices();
+  if (!act.some(v => v.id === b.serviceId)) b.serviceId = act.length ? act[0].id : null;
+}
 
 function renderCalendarPicker(b){
   const cal = state.booking.calendarMonth;
@@ -1188,7 +1311,7 @@ function renderCalendarPicker(b){
     const iso = isoFromYMD(cal.y, cal.m, d);
     const isPast = iso < todayIso;
     const isTooFar = iso > maxIso;
-    const count = !isPast && !isTooFar ? getAvailableSlots(iso, b.rescheduleId, pickIdFor(b)).length : 0;
+    const count = !isPast && !isTooFar ? getAvailableSlots(iso, b.rescheduleId, pickIdFor(b), bookingServiceId(b)).length : 0;
     const disabled = isPast || isTooFar || count === 0;
     const selected = iso === b.selectedDate;
     const cls = `cal-day${selected ? ' selected' : ''}${iso === todayIso ? ' today' : ''}`;
@@ -1284,7 +1407,7 @@ function renderPacientePanel(b){
 }
 
 function renderResumen(b){
-  const dur = state.config.slotMinutes;
+  const dur = timeToMinutes(b.selectedSlot.end) - timeToMinutes(b.selectedSlot.start);
   return `
     <div class="dark" role="dialog" aria-modal="true" aria-label="Confirmar cita">
       <div class="dark-wrap">
@@ -1298,7 +1421,8 @@ function renderResumen(b){
         <div class="glass">
           <div class="g-row"><span>Paciente</span><span>${escapeHtml(b.name)}</span></div>
           <div class="g-row"><span>DNI</span><span class="tnum">${b.dni}</span></div>
-          ${canClientPickStaff() ? `<div class="g-row"><span>Profesional</span><span>${b.staffId ? escapeHtml((state.staff.find(m => m.id === b.staffId) || {}).name || '') : 'Cualquiera disponible'}</span></div>` : ''}
+          ${bookingServiceId(b) ? `<div class="g-row"><span>Servicio</span><span>${escapeHtml(findService(bookingServiceId(b)).name)}</span></div>` : ''}
+          ${canClientPickStaff(b) ? `<div class="g-row"><span>Profesional</span><span>${pickIdFor(b) ? escapeHtml((state.staff.find(m => m.id === pickIdFor(b)) || {}).name || '') : 'Cualquiera disponible'}</span></div>` : ''}
           ${b.rescheduleId ? `<div class="g-row"><span>Tipo</span><span>Reagendado</span></div>` : ''}
         </div>
         <div style="flex:1;min-height:32px;"></div>
@@ -1352,13 +1476,14 @@ function renderPaciente(){
 
   if (b.step === 'panel') return renderPacientePanel(b);
 
-  if (!getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b)).length) {
+  ensureBookingService(b);
+  if (!getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b), bookingServiceId(b)).length) {
     for (let i = 0; i <= state.config.windowDays; i++) {
       const iso = addDaysISO(todayISO(), i);
-      if (getAvailableSlots(iso, b.rescheduleId, pickIdFor(b)).length) { b.selectedDate = iso; b.calendarMonth = ymFromISO(iso); break; }
+      if (getAvailableSlots(iso, b.rescheduleId, pickIdFor(b), bookingServiceId(b)).length) { b.selectedDate = iso; b.calendarMonth = ymFromISO(iso); break; }
     }
   }
-  const slots = getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b));
+  const slots = getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b), bookingServiceId(b));
   const dayText = longDate(b.selectedDate);
 
   const page = `
@@ -1367,12 +1492,19 @@ function renderPaciente(){
         <button class="icon-btn" type="button" onclick="goToPanel()" aria-label="Volver a mis citas">${icon('left', 22, 2.4)}</button>
       </div>
       <h1 class="title-1" style="margin:20px 0;">${b.rescheduleId ? 'Reagenda tu cita' : 'Elige día y hora'}</h1>
-      ${canClientPickStaff() ? `
+      ${isProPlan() && !b.rescheduleId ? (activeServices().length ? `
+        <div style="margin-bottom:20px;">
+          <p class="label" style="margin-bottom:8px;">Servicio</p>
+          <div class="pills" role="group" aria-label="Elegir servicio">
+            ${activeServices().map(v => `<button type="button" class="pill-opt" aria-pressed="${b.serviceId === v.id}" onclick="pickService('${v.id}')">${escapeHtml(v.name)} · ${v.minutes} min</button>`).join('')}
+          </div>
+        </div>` : `<p class="secondary" style="margin-bottom:20px;">Por ahora no hay servicios disponibles para reservar.</p>`) : ''}
+      ${canClientPickStaff(b) ? `
         <div style="margin-bottom:20px;">
           <p class="label" style="margin-bottom:8px;">Profesional</p>
           <div class="pills" role="group" aria-label="Elegir profesional">
-            <button type="button" class="pill-opt" aria-pressed="${!b.staffId}" onclick="pickStaff(null)">Cualquiera disponible</button>
-            ${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${b.staffId === m.id}" onclick="pickStaff('${m.id}')">${escapeHtml(m.name)}</button>`).join('')}
+            <button type="button" class="pill-opt" aria-pressed="${!pickIdFor(b)}" onclick="pickStaff(null)">Cualquiera disponible</button>
+            ${clientStaffOptions(b).map(m => `<button type="button" class="pill-opt" aria-pressed="${b.staffId === m.id}" onclick="pickStaff('${m.id}')">${escapeHtml(m.name)}</button>`).join('')}
           </div>
         </div>` : ''}
 
@@ -1558,6 +1690,91 @@ function renderAdminCitas(){
       </div>`).join('')}`;
 }
 
+function renderServicesEditor(){
+  const nsv = state.newService;
+  return `
+    <div class="rows">
+      ${state.services.length === 0 ? `<p class="secondary">Todavía no creaste ningún servicio.</p>` : state.services.map(v => {
+        const noStaff = serviceStaff(v.id).length === 0;
+        return `
+        <div class="card-line stack" style="gap:12px;">
+          <div class="row between" style="flex-wrap:nowrap;">
+            <div style="min-width:0;"><p class="row-title">${escapeHtml(v.name)}</p><p class="secondary">${v.minutes} min</p></div>
+            <div class="row" style="flex-wrap:nowrap;">
+              ${noStaff ? chip('warning', 'Sin trabajador') : ''}
+              <button class="btn-text danger" type="button" onclick="deleteService('${v.id}')">Eliminar</button>
+            </div>
+          </div>
+          <div>
+            <p class="label" style="margin-bottom:8px;">Trabajadores que lo prestan</p>
+            <div class="pills">${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${v.staffIds.includes(m.id)}" onclick="toggleServiceStaff('${v.id}','${m.id}')">${escapeHtml(m.name)}</button>`).join('')}</div>
+            ${noStaff ? `<p class="hint" style="margin-top:8px;">Mientras no tenga trabajadores, este servicio no se puede reservar.</p>` : ''}
+          </div>
+        </div>`;}).join('')}
+    </div>
+    <div class="card stack" style="margin-top:14px;">
+      <p class="card-title" style="font-size:17px;">Nuevo servicio</p>
+      <div class="grid-2">
+        <div class="field"><label for="ns-name">Nombre</label><input id="ns-name" placeholder="Ej: Masaje descontracturante" value="${escapeHtml(nsv.name)}" oninput="updateNewService('name', this.value)"></div>
+        <div class="field"><label for="ns-min">Duración (min)</label><input id="ns-min" type="number" inputmode="numeric" value="${nsv.minutes}" oninput="updateNewService('minutes', this.value)"></div>
+      </div>
+      <div>
+        <p class="label" style="margin-bottom:8px;">Trabajadores que lo prestan</p>
+        <div class="pills">${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${nsv.staffIds.includes(m.id)}" onclick="toggleNewServiceStaff('${m.id}')">${escapeHtml(m.name)}</button>`).join('')}</div>
+      </div>
+      <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="addService()">Crear servicio</button>
+    </div>`;
+}
+
+function renderServicesSection(){
+  if (!isProPlan()) {
+    return `
+      <h2 class="title-2" style="margin-top:28px;">Servicios</h2>
+      <div class="card stack">
+        <div class="row">${chip('neutral', 'Plan Pro')}<span class="secondary">Crea servicios con su propia duración y asócialos a tus trabajadores.</span></div>
+      </div>`;
+  }
+  return `
+    <h2 class="title-2" style="margin-top:28px;">Servicios</h2>
+    <p class="secondary" style="margin-bottom:14px;">Crea tus servicios y elige qué trabajadores los prestan. El cliente elegirá un servicio al agendar.</p>
+    ${renderServicesEditor()}`;
+}
+
+function renderServiceMigration(pend){
+  const allChosen = pend.every(a => state.serviceAssign[a.id]);
+  return `
+    <div class="page w880">
+      <div style="margin-top:16px;">
+        <span class="chip chip-danger">${icon('alert', 16, 2.4)} Proceso urgente</span>
+        <h1 class="title-1" style="margin-top:12px;">Asigna un servicio a tus citas pendientes</h1>
+        <p class="secondary" style="margin-top:8px;">Pasaste al plan Pro y ${pend.length === 1 ? 'tienes 1 cita próxima que aún no tiene' : `tienes ${pend.length} citas próximas que aún no tienen`} servicio. Es obligatorio asignarlo para seguir usando el panel.</p>
+      </div>
+
+      <div class="rows" style="margin-top:24px;">
+        ${pend.map(a => {
+          const opts = state.services.filter(v => v.staffIds.includes(a.staffId));
+          return `
+          <div class="appt-card" style="grid-template-columns:60px minmax(0,1fr);">
+            <div class="date-tile"><b class="time tnum">${a.start}</b><i>${escapeHtml(displayDateShort(a.date))}</i></div>
+            <div class="row-main"><div class="row-title">${escapeHtml(a.name)}</div><div class="secondary">${a.staffName ? escapeHtml(a.staffName) : 'Sin profesional'}</div></div>
+            <div class="field" style="grid-column:1 / -1;">
+              <label for="sa-${a.id}">Servicio</label>
+              <select id="sa-${a.id}" onchange="setServiceAssign('${a.id}', this.value)">
+                <option value="">Elige un servicio</option>
+                ${opts.map(v => `<option value="${v.id}" ${state.serviceAssign[a.id] === v.id ? 'selected' : ''}>${escapeHtml(v.name)} · ${v.minutes} min</option>`).join('')}
+              </select>
+              ${opts.length === 0 ? `<span class="error-text">Ningún servicio incluye a ${escapeHtml(a.staffName || 'este trabajador')}. Asócialo a uno aquí abajo.</span>` : ''}
+            </div>
+          </div>`;}).join('')}
+      </div>
+      <button class="btn btn-primary btn-block" type="button" style="margin-top:20px;${allChosen ? '' : 'background:var(--color-disabled-btn);color:var(--color-disabled-text);'}" onclick="saveServiceAssign()">Guardar asignación</button>
+
+      <h2 class="title-2">Servicios</h2>
+      <p class="secondary" style="margin-bottom:14px;">¿Falta un servicio? Créalo o asocia trabajadores aquí mismo.</p>
+      ${renderServicesEditor()}
+    </div>`;
+}
+
 function renderAdminHorarios(){
   const days = ['0', '1', '2', '3', '4', '5', '6'];
   const cfg = state.config;
@@ -1565,6 +1782,8 @@ function renderAdminHorarios(){
 
   return `
     ${adminHeader('Horarios')}
+
+    ${renderServicesSection()}
 
     <h2 class="title-2" style="margin-top:28px;">Configuración de citas</h2>
     <div class="card stack">
@@ -1574,6 +1793,7 @@ function renderAdminHorarios(){
         <div class="field"><label for="cfg-notice">Anticipación mínima (horas)</label><input id="cfg-notice" type="number" inputmode="numeric" value="${cfg.minNoticeHours}"></div>
         <div class="field"><label for="cfg-window">Reservas hasta (días a futuro)</label><input id="cfg-window" type="number" inputmode="numeric" value="${cfg.windowDays}"></div>
       </div>
+      ${isProPlan() ? `<p class="hint">En el plan Pro, cada servicio define su propia duración. La de arriba se usa solo cuando una cita no tiene servicio.</p>` : ''}
       <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="saveConfig()">Guardar configuración</button>
     </div>
 
@@ -1582,9 +1802,9 @@ function renderAdminHorarios(){
       <p class="secondary">Cada trabajador tiene su propio horario. Cuando un cliente reserva, Caly asigna automáticamente al trabajador disponible siguiendo un turno rotativo (round robin), para repartir las citas de forma pareja.</p>
       ${isProPlan() ? `
         <div class="row between" style="flex-wrap:nowrap;">
-          <div style="min-width:0;"><p class="card-title" style="font-size:17px;">Que el cliente elija profesional</p><p class="secondary">Al reservar, el cliente podrá escoger con quién atenderse o dejar "Cualquiera disponible".</p></div>
-          <button class="switch" type="button" role="switch" aria-checked="${state.allowClientStaffPick}" aria-label="Permitir que el cliente elija profesional" onclick="toggleAllowClientStaffPick()"></button>
-        </div>` : `<div class="row">${chip('neutral', 'Plan Pro')}<span class="secondary">Permitir que el cliente elija un profesional específico</span></div>`}
+          <div style="min-width:0;"><p class="card-title" style="font-size:17px;">Mostrar trabajadores al cliente</p><p class="secondary">Si lo activas, el cliente elige con quién agendar. Si no, Caly asigna al trabajador disponible por turnos.</p></div>
+          <button class="switch" type="button" role="switch" aria-checked="${state.allowClientStaffPick}" aria-label="Mostrar trabajadores al cliente" onclick="toggleAllowClientStaffPick()"></button>
+        </div>` : `<div class="row">${chip('neutral', 'Plan Pro')}<span class="secondary">Mostrar los trabajadores al cliente al agendar</span></div>`}
       <div class="row row-end" style="flex-wrap:nowrap;">
         <div class="field" style="flex:1;">
           <label for="new-staff-name">Nuevo trabajador</label>
@@ -1688,10 +1908,10 @@ function renderAdminCuenta(){
         <p class="card-title">${isProPlan() ? 'Plan Pro' : 'Periodo de prueba'}</p>
         ${chip(isProPlan() ? 'success' : 'neutral', isProPlan() ? 'Activo' : 'Prueba')}
       </div>
-      <p class="secondary">${isProPlan() ? 'Incluye todo lo del periodo de prueba y la elección de profesional por parte del cliente. Los precios aún no están definidos.' : 'Todavía no definimos precios ni planes. Por ahora estás probando Caly sin costo; te avisaremos antes de que eso cambie.'}</p>
+      <p class="secondary">${isProPlan() ? 'Incluye todo lo del periodo de prueba, más servicios con su propia duración, trabajadores asociados y la opción de mostrar los trabajadores al cliente. Los precios aún no están definidos.' : 'Todavía no definimos precios ni planes. Por ahora estás probando Caly sin costo; te avisaremos antes de que eso cambie.'}</p>
       <ul class="checks">
         ${planFeatures.map(f => `<li><span class="check-dot">${icon('check', 14, 3.2)}</span>${f}</li>`).join('')}
-        <li><span class="check-dot ${isProPlan() ? '' : 'soon'}">${icon('check', 14, 3.2)}</span>Que el cliente elija un profesional específico ${isProPlan() ? '' : chip('neutral', 'Plan Pro')}</li>
+        <li><span class="check-dot ${isProPlan() ? '' : 'soon'}">${icon('check', 14, 3.2)}</span>Servicios con duración propia y trabajadores asociados ${isProPlan() ? '' : chip('neutral', 'Plan Pro')}</li>
       </ul>
     </div>
 
@@ -1742,9 +1962,9 @@ function renderRescheduleModal(){
 function renderNewApptModal(){
   const n = state.newAppt;
   if (!n) return '';
-  const slots = getAvailableSlots(n.date);
+  const slots = getAvailableSlots(n.date, null, null, isProPlan() ? n.serviceId : null);
   const maxIso = addDaysISO(todayISO(), state.config.windowDays);
-  const ready = isValidDni(n.dni) && (n.name || '').trim().length >= 2 && n.slot;
+  const ready = isValidDni(n.dni) && (n.name || '').trim().length >= 2 && n.slot && (!isProPlan() || n.serviceId);
   return `
     <div class="modal-back" onclick="if (event.target === this) closeNewAppt()">
       <div class="modal sheet" role="dialog" aria-modal="true" aria-labelledby="na-title">
@@ -1770,6 +1990,13 @@ function renderNewApptModal(){
             <label for="na-phone">Teléfono (opcional)</label>
             <input id="na-phone" inputmode="tel" value="${escapeHtml(n.phone)}" oninput="updateNewAppt('phone', this.value)">
           </div>
+          ${isProPlan() ? `
+          <div class="field">
+            <label for="na-service">Servicio</label>
+            <select id="na-service" onchange="setNewApptService(this.value)">
+              ${activeServices().map(v => `<option value="${v.id}" ${n.serviceId === v.id ? 'selected' : ''}>${escapeHtml(v.name)} · ${v.minutes} min</option>`).join('') || '<option value="">Sin servicios disponibles</option>'}
+            </select>
+          </div>` : ''}
           <div class="field">
             <label for="na-date">Fecha</label>
             <input id="na-date" type="date" value="${n.date}" min="${todayISO()}" max="${maxIso}" onchange="setNewApptDate(this.value)">
@@ -1815,6 +2042,9 @@ function renderAdmin(){
           <button class="btn btn-primary" type="button" style="margin-top:24px;" onclick="setView('super')">Ir a Superadmin</button>
         </div>
       </div>`;
+  }
+  if (isProPlan() && pendingServiceAppts().length) {
+    return renderServiceMigration(pendingServiceAppts());
   }
   return `
     <div class="page w880 admin-page">${renderAdminContent()}</div>
