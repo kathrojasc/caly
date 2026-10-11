@@ -207,6 +207,9 @@ button.chip { cursor: pointer; }
 .cols { display: flex; flex-wrap: wrap; gap: 28px 24px; align-items: flex-start; }
 .cols > .c340 { flex: 1 1 340px; min-width: 0; }
 .cols > .c300 { flex: 1 1 300px; min-width: 0; }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill-opt { height: 44px; padding: 0 18px; border: 0; border-radius: var(--radius-pill); background: var(--color-surface); font-size: 15px; font-weight: 600; }
+.pill-opt[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); font-weight: 700; }
 .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; margin-top: 14px; }
 .slot { height: 52px; border: 0; border-radius: var(--radius-s); background: var(--color-surface); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .slot[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); font-weight: 700; }
@@ -313,7 +316,7 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
 <div id="toast-root"></div>
 
 <script>
-const STORAGE_KEY = 'caly_proto_state_v5';
+const STORAGE_KEY = 'caly_proto_state_v6';
 const WEEKDAYS_SHORT = ['dom','lun','mar','mié','jué','vie','sáb'];
 const WEEKDAYS_LONG = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -368,7 +371,7 @@ function buildDefaultState(){
       { id: 'staff-2', name: 'Camila Torres', schedule: { '1': [{ start: '14:00', end: '19:00' }], '3': [{ start: '14:00', end: '19:00' }], '5': [{ start: '09:00', end: '13:00' }] } },
     ],
     roundRobinCursor: 0,
-    allowClientStaffPick: false,
+    allowClientStaffPick: true,
     patients: {
       '30111222': { name: 'Marina Ibáñez', phone: '11-4455-6677' },
       '28999888': { name: 'Julián Ortiz', phone: '11-2233-4455' },
@@ -387,7 +390,7 @@ function buildDefaultState(){
     newAppt: null,
     toast: null,
     businesses: [
-      { id: 'biz-1', name: 'Caly Demo — Valentina Rossi', adminUser: 'valentina@caly.app', adminPass: 'caly2026', plan: 'Prueba', enabled: true },
+      { id: 'biz-1', name: 'Caly Demo — Valentina Rossi', adminUser: 'valentina@caly.app', adminPass: 'caly2026', plan: 'Pro', enabled: true },
       { id: 'biz-2', name: 'Clínica Dental Sonric', adminUser: 'admin@sonric.pe', adminPass: 'sonric123', plan: 'Prueba', enabled: true },
       { id: 'biz-3', name: 'Estudio Pilates Flow', adminUser: 'admin@flowpilates.pe', adminPass: 'flow456', plan: 'Prueba', enabled: false },
     ],
@@ -501,13 +504,13 @@ function getStaffRawSlots(staffMember, iso){
 
 // Horarios disponibles para un día, excluyendo una cita puntual (útil al reagendar, para
 // no descartar el propio turno que se está moviendo como si estuviera "ocupado").
-function getAvailableSlots(iso, excludeApptId){
+function getAvailableSlots(iso, excludeApptId, staffId){
   const originalAppointments = state.appointments;
   if (excludeApptId) state.appointments = state.appointments.filter(a => a.id !== excludeApptId);
   try {
     const seen = new Set();
     const result = [];
-    state.staff.forEach(member => {
+    state.staff.filter(m => !staffId || m.id === staffId).forEach(member => {
       getStaffRawSlots(member, iso).forEach(s => {
         if (!seen.has(s.start)) { seen.add(s.start); result.push(s); }
       });
@@ -531,9 +534,10 @@ function getStaffAvailableForSlot(iso, start, end, excludeApptId){
 
 // Asignación round-robin: entre el personal disponible para ese turno, elige el siguiente
 // en la rotación (no siempre el primero), para repartir las citas de forma pareja.
-function assignStaffRoundRobin(iso, start, end, excludeApptId){
+function assignStaffRoundRobin(iso, start, end, excludeApptId, staffId){
   const available = getStaffAvailableForSlot(iso, start, end, excludeApptId);
   if (!available.length) return null;
+  if (staffId) return available.find(m => m.id === staffId) || null;
   const chosen = available[state.roundRobinCursor % available.length];
   state.roundRobinCursor = (state.roundRobinCursor + 1) % Math.max(state.staff.length, 1);
   return chosen;
@@ -638,8 +642,9 @@ function pickSlot(start, end){
 function confirmBooking(){
   const { dni, name, phone, selectedDate, selectedSlot, rescheduleId } = state.booking;
   if (!selectedSlot) return;
+  const pickId = canClientPickStaff() ? state.booking.staffId : null;
 
-  const stillFree = getAvailableSlots(selectedDate, rescheduleId).some(s => s.start === selectedSlot.start);
+  const stillFree = getAvailableSlots(selectedDate, rescheduleId, pickId).some(s => s.start === selectedSlot.start);
   if (!stillFree) {
     state.booking.error = 'Ese horario se acaba de ocupar. Elige otro.';
     state.booking.selectedSlot = null;
@@ -648,7 +653,7 @@ function confirmBooking(){
     return;
   }
 
-  const assigned = assignStaffRoundRobin(selectedDate, selectedSlot.start, selectedSlot.end, rescheduleId);
+  const assigned = assignStaffRoundRobin(selectedDate, selectedSlot.start, selectedSlot.end, rescheduleId, pickId);
   if (!assigned) {
     // Caso hipotético de doble reserva: no debería pasar porque ya filtramos por disponibilidad,
     // pero si ocurriera (ej. carrera entre dos reservas simultáneas), avisamos al superadmin.
@@ -1061,6 +1066,23 @@ function removeStaffMember(id){
   render();
   showToast('Trabajador eliminado');
 }
+function currentBusiness(){ return state.businesses.find(b => b.id === 'biz-1'); }
+function isProPlan(){ const b = currentBusiness(); return !!b && b.plan === 'Pro'; }
+function canClientPickStaff(){ return isProPlan() && state.allowClientStaffPick && state.staff.length > 1; }
+function pickStaff(id){
+  state.booking.staffId = id || null;
+  state.booking.selectedSlot = null;
+  state.booking.error = null;
+  render();
+}
+function toggleBusinessPlan(id){
+  const biz = state.businesses.find(b => b.id === id);
+  if (!biz) return;
+  biz.plan = biz.plan === 'Pro' ? 'Prueba' : 'Pro';
+  saveState();
+  render();
+  showToast(`${biz.name}: plan ${biz.plan}`);
+}
 function toggleAllowClientStaffPick(){
   state.allowClientStaffPick = !state.allowClientStaffPick;
   saveState();
@@ -1119,6 +1141,8 @@ function durationMin(a){ return timeToMinutes(a.end) - timeToMinutes(a.start); }
 function staffLine(a){ return a.staffName ? ` · ${escapeHtml(a.staffName)}` : ''; }
 
 /* ---------- Calendario ---------- */
+function pickIdFor(b){ return canClientPickStaff() ? (b.staffId || null) : null; }
+
 function renderCalendarPicker(b){
   const cal = state.booking.calendarMonth;
   const firstWeekday = new Date(cal.y, cal.m, 1).getDay();
@@ -1137,7 +1161,7 @@ function renderCalendarPicker(b){
     const iso = isoFromYMD(cal.y, cal.m, d);
     const isPast = iso < todayIso;
     const isTooFar = iso > maxIso;
-    const count = !isPast && !isTooFar ? getAvailableSlots(iso, b.rescheduleId).length : 0;
+    const count = !isPast && !isTooFar ? getAvailableSlots(iso, b.rescheduleId, pickIdFor(b)).length : 0;
     const disabled = isPast || isTooFar || count === 0;
     const selected = iso === b.selectedDate;
     const cls = `cal-day${selected ? ' selected' : ''}${iso === todayIso ? ' today' : ''}`;
@@ -1247,6 +1271,7 @@ function renderResumen(b){
         <div class="glass">
           <div class="g-row"><span>Paciente</span><span>${escapeHtml(b.name)}</span></div>
           <div class="g-row"><span>DNI</span><span class="tnum">${b.dni}</span></div>
+          ${canClientPickStaff() ? `<div class="g-row"><span>Profesional</span><span>${b.staffId ? escapeHtml((state.staff.find(m => m.id === b.staffId) || {}).name || '') : 'Cualquiera disponible'}</span></div>` : ''}
           ${b.rescheduleId ? `<div class="g-row"><span>Tipo</span><span>Reagendado</span></div>` : ''}
         </div>
         <div style="flex:1;min-height:32px;"></div>
@@ -1300,13 +1325,13 @@ function renderPaciente(){
 
   if (b.step === 'panel') return renderPacientePanel(b);
 
-  if (!getAvailableSlots(b.selectedDate, b.rescheduleId).length) {
+  if (!getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b)).length) {
     for (let i = 0; i <= state.config.windowDays; i++) {
       const iso = addDaysISO(todayISO(), i);
-      if (getAvailableSlots(iso, b.rescheduleId).length) { b.selectedDate = iso; b.calendarMonth = ymFromISO(iso); break; }
+      if (getAvailableSlots(iso, b.rescheduleId, pickIdFor(b)).length) { b.selectedDate = iso; b.calendarMonth = ymFromISO(iso); break; }
     }
   }
-  const slots = getAvailableSlots(b.selectedDate, b.rescheduleId);
+  const slots = getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b));
   const dayText = longDate(b.selectedDate);
 
   const page = `
@@ -1315,6 +1340,14 @@ function renderPaciente(){
         <button class="icon-btn" type="button" onclick="goToPanel()" aria-label="Volver a mis citas">${icon('left', 22, 2.4)}</button>
       </div>
       <h1 class="title-1" style="margin:20px 0;">${b.rescheduleId ? 'Reagenda tu cita' : 'Elige día y hora'}</h1>
+      ${canClientPickStaff() ? `
+        <div style="margin-bottom:20px;">
+          <p class="label" style="margin-bottom:8px;">Profesional</p>
+          <div class="pills" role="group" aria-label="Elegir profesional">
+            <button type="button" class="pill-opt" aria-pressed="${!b.staffId}" onclick="pickStaff(null)">Cualquiera disponible</button>
+            ${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${b.staffId === m.id}" onclick="pickStaff('${m.id}')">${escapeHtml(m.name)}</button>`).join('')}
+          </div>
+        </div>` : ''}
 
       <div class="cols">
         <div class="c340">${renderCalendarPicker(b)}</div>
@@ -1504,7 +1537,11 @@ function renderAdminHorarios(){
     <h2 class="title-2">Equipo y asignación</h2>
     <div class="card stack">
       <p class="secondary">Cada trabajador tiene su propio horario. Cuando un cliente reserva, Caly asigna automáticamente al trabajador disponible siguiendo un turno rotativo (round robin), para repartir las citas de forma pareja.</p>
-      <div class="row">${chip('neutral', 'Próximamente (según plan)')}<span class="secondary">Permitir que el cliente elija un profesional específico</span></div>
+      ${isProPlan() ? `
+        <div class="row between" style="flex-wrap:nowrap;">
+          <div style="min-width:0;"><p class="card-title" style="font-size:17px;">Que el cliente elija profesional</p><p class="secondary">Al reservar, el cliente podrá escoger con quién atenderse o dejar "Cualquiera disponible".</p></div>
+          <button class="switch" type="button" role="switch" aria-checked="${state.allowClientStaffPick}" aria-label="Permitir que el cliente elija profesional" onclick="toggleAllowClientStaffPick()"></button>
+        </div>` : `<div class="row">${chip('neutral', 'Plan Pro')}<span class="secondary">Permitir que el cliente elija un profesional específico</span></div>`}
       <div class="row row-end" style="flex-wrap:nowrap;">
         <div class="field" style="flex:1;">
           <label for="new-staff-name">Nuevo trabajador</label>
@@ -1602,16 +1639,16 @@ function renderAdminCuenta(){
       <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="saveAccount()">Guardar perfil</button>
     </div>
 
-    <h2 class="title-2">Tu cuenta</h2>
+    <h2 class="title-2">Tu plan</h2>
     <div class="card stack">
       <div class="row between" style="flex-wrap:nowrap;">
-        <p class="card-title">Periodo de prueba</p>
-        ${chip('neutral', 'Prueba')}
+        <p class="card-title">${isProPlan() ? 'Plan Pro' : 'Periodo de prueba'}</p>
+        ${chip(isProPlan() ? 'success' : 'neutral', isProPlan() ? 'Activo' : 'Prueba')}
       </div>
-      <p class="secondary">Todavía no definimos precios ni planes. Por ahora estás probando Caly sin costo; te avisaremos antes de que eso cambie.</p>
+      <p class="secondary">${isProPlan() ? 'Incluye todo lo del periodo de prueba y la elección de profesional por parte del cliente. Los precios aún no están definidos.' : 'Todavía no definimos precios ni planes. Por ahora estás probando Caly sin costo; te avisaremos antes de que eso cambie.'}</p>
       <ul class="checks">
         ${planFeatures.map(f => `<li><span class="check-dot">${icon('check', 14, 3.2)}</span>${f}</li>`).join('')}
-        <li><span class="check-dot soon">${icon('check', 14, 3.2)}</span>Que el cliente elija un profesional específico ${chip('neutral', 'Según plan (próximamente)')}</li>
+        <li><span class="check-dot ${isProPlan() ? '' : 'soon'}">${icon('check', 14, 3.2)}</span>Que el cliente elija un profesional específico ${isProPlan() ? '' : chip('neutral', 'Plan Pro')}</li>
       </ul>
     </div>
 
@@ -1792,8 +1829,9 @@ function renderSuper(){
               </div>
             </div>
             <div class="row-side">
-              ${chip('neutral', escapeHtml(biz.plan))}
+              ${chip(biz.plan === 'Pro' ? 'success' : 'neutral', escapeHtml(biz.plan))}
               ${chip(biz.enabled ? 'success' : 'danger', biz.enabled ? 'Activa' : 'Desactivada')}
+              <button class="btn btn-sm btn-soft" type="button" onclick="toggleBusinessPlan('${biz.id}')">${biz.plan === 'Pro' ? 'Pasar a Prueba' : 'Pasar a Pro'}</button>
               <button class="btn btn-sm btn-soft" type="button" onclick="toggleBusinessEnabled('${biz.id}')">${biz.enabled ? 'Desactivar' : 'Activar'}</button>
             </div>
           </div>`).join('')}
