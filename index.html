@@ -114,6 +114,7 @@ button:disabled { cursor: default; }
 .chip-success { background: var(--color-success-bg); color: var(--color-success); }
 .chip-warning { background: var(--color-warning-bg); color: var(--color-warning); }
 .chip-danger { background: var(--color-danger-bg); color: var(--color-danger); }
+.chip-info { background: #E9E7FF; color: #3F37B5; }
 .chip-neutral { background: var(--color-chip-neutral); color: var(--color-chip-neutral-text); }
 button.chip { cursor: pointer; }
 
@@ -1344,7 +1345,7 @@ function renderAdminCitas(){
             <div class="row-main">
               <div class="row-title">${escapeHtml(a.name)}</div>
               <div class="secondary">${a.phone ? `<span class="tnum">${escapeHtml(a.phone)}</span>` : 'Sin teléfono'}${staffLine(a)}</div>
-              ${a.rescheduleRequested ? `<div style="margin-top:6px;">${chip('warning', 'Reagenda solicitada')}</div>` : ''}
+              ${a.rescheduleRequested ? `<div style="margin-top:6px;">${chip('info', 'Reagenda solicitada')}</div>` : ''}
             </div>
             <div class="appt-chips">
               ${statusChip(a)}${paidChip(a)}
