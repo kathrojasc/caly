@@ -181,11 +181,11 @@ button.chip { cursor: pointer; }
 .media .day { font-size: 88px; line-height: 88px; font-weight: 600; letter-spacing: -3px; }
 .media .mon { margin-top: 2px; font-size: 17px; font-weight: 700; letter-spacing: 3px; color: var(--color-text-secondary); text-transform: uppercase; }
 .media .chip-badge { position: absolute; top: 14px; left: 14px; height: 34px; padding: 0 14px 0 10px; display: inline-flex; align-items: center; gap: 6px; border-radius: var(--radius-pill); background: #fff; font-size: 14px; font-weight: 700; box-shadow: var(--shadow-badge); }
-.media-cap { position: absolute; left: 16px; right: 16px; bottom: 14px; text-align: center; font-size: 14px; line-height: 18px; font-weight: 600; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.next-bar { margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 60px; padding: 8px 8px 8px 20px; border-radius: var(--radius-pill); background: var(--color-primary); color: var(--color-on-primary); }
-.nb-info { min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 16px; }
+.next-bar { margin-top: 12px; display: flex; align-items: center; min-height: 60px; padding: 8px 20px; border-radius: var(--radius-pill); background: var(--color-primary); color: var(--color-on-primary); }
+.nb-info { min-width: 0; font-size: 17px; line-height: 22px; white-space: nowrap; }
 .nb-info strong { font-weight: 700; }
-.next-bar .btn { flex-shrink: 0; }
+.next-detail { margin: 12px 4px 0; font-size: 16px; line-height: 22px; font-weight: 600; color: var(--color-text); }
+.next-resched { display: inline-flex; align-items: center; min-height: 44px; margin: 2px 0 0; padding: 0 4px; border: 0; background: transparent; color: var(--color-text-secondary); font-size: 14px; font-weight: 500; text-decoration: underline; }
 .card-title { font-size: 19px; line-height: 25px; font-weight: 700; }
 
 /* CTA tipo buscador */
@@ -1379,12 +1379,12 @@ function renderPacientePanel(b){
           <div class="media">
             <span class="day">${dayNum(next.date)}</span>
             <span class="mon">${monthAbbr(next.date)}</span>
-            <span class="media-cap">${[next.serviceName, durationMin(next) + ' min', next.staffName].filter(Boolean).map(escapeHtml).join(' · ')}</span>
           </div>
           <div class="next-bar">
             <span class="nb-info"><strong>${longDate(next.date)}</strong> · <span class="tnum">${next.start}</span></span>
-            <button class="btn btn-inverse btn-sm" type="button" onclick="startReschedule('${next.id}')">Reagendar</button>
           </div>
+          <p class="next-detail">${[next.serviceName, durationMin(next) + ' min', next.staffName].filter(Boolean).map(escapeHtml).join(' · ')}</p>
+          <button class="next-resched" type="button" onclick="startReschedule('${next.id}')">¿Necesitas cambiarla? Reagendar</button>
         </div>` : `<p class="secondary">No tienes citas próximas.</p>`}
 
       ${rest.length ? `
