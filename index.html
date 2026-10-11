@@ -241,6 +241,16 @@ button.chip { cursor: pointer; }
 .switch[aria-checked="true"] { background: var(--color-primary); }
 .switch[aria-checked="true"]::after { transform: translateX(20px); }
 
+.rule-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: end; }
+.rule-form .field.day, .rule-form > .btn { grid-column: 1 / -1; }
+.rule-form > .btn { width: 100%; }
+input[type=time] { min-width: 0; max-width: 100%; display: block; -webkit-appearance: none; appearance: none; text-align: left; }
+input[type=time]::-webkit-date-and-time-value { text-align: left; }
+@media (min-width: 640px) {
+  .rule-form { grid-template-columns: 1.5fr 1fr 1fr auto; }
+  .rule-form .field.day { grid-column: auto; }
+  .rule-form > .btn { grid-column: auto; width: auto; }
+}
 .rule-chip { display: inline-flex; align-items: center; gap: 4px; height: 44px; padding: 0 6px 0 16px; border-radius: var(--radius-pill); background: #fff; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .rule-chip button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--color-text-secondary); display: inline-flex; align-items: center; justify-content: center; }
 .checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
@@ -1406,7 +1416,7 @@ function renderAdminHorarios(){
       <div class="row row-end" style="flex-wrap:nowrap;">
         <div class="field" style="flex:1;">
           <label for="new-staff-name">Nuevo trabajador</label>
-          <input id="new-staff-name" placeholder="Nombre del trabajador" value="${escapeHtml(state.newStaffName)}" oninput="updateNewStaffName(this.value)">
+          <input id="new-staff-name" placeholder="Nombre" value="${escapeHtml(state.newStaffName)}" oninput="updateNewStaffName(this.value)">
         </div>
         <button class="btn btn-primary" type="button" onclick="addStaffMember()">Agregar</button>
       </div>
@@ -1415,18 +1425,18 @@ function renderAdminHorarios(){
     ${state.staff.map(member => `
       <h2 class="title-2">${escapeHtml(member.name)}</h2>
       <div class="card stack">
-        <div class="row row-end">
-          <div class="field" style="flex:1 1 150px;">
+        <div class="rule-form">
+          <div class="field day">
             <label for="nr-day-${member.id}">Día</label>
             <select id="nr-day-${member.id}" onchange="updateNewRule('day', this.value); updateNewRule('staffId','${member.id}')">
               ${days.map(d => `<option value="${d}" ${nr.day === d ? 'selected' : ''}>${WEEKDAYS_LONG[d]}</option>`).join('')}
             </select>
           </div>
-          <div class="field" style="flex:1 1 110px;">
+          <div class="field">
             <label for="nr-start-${member.id}">Desde</label>
             <input id="nr-start-${member.id}" type="time" value="${nr.start}" onchange="updateNewRule('start', this.value)">
           </div>
-          <div class="field" style="flex:1 1 110px;">
+          <div class="field">
             <label for="nr-end-${member.id}">Hasta</label>
             <input id="nr-end-${member.id}" type="time" value="${nr.end}" onchange="updateNewRule('end', this.value)">
           </div>
