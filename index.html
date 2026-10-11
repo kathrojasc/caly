@@ -650,6 +650,33 @@ function dniLookupSubmit(){
   }
   render();
 }
+function goToPerfil(){
+  state.booking.error = null;
+  state.booking.step = 'perfil';
+  render();
+  window.scrollTo(0, 0);
+}
+function saveProfile(){
+  const b = state.booking;
+  const name = document.getElementById('perfil-name').value.trim();
+  const phone = document.getElementById('perfil-phone').value.trim();
+  if (name.length < 2) {
+    b.error = 'Ingresa tu nombre completo.';
+    render();
+    return;
+  }
+  b.name = name;
+  b.phone = phone;
+  b.error = null;
+  state.patients[b.dni] = { name, phone };
+  // El admin ve los cambios al instante: se actualizan todas las citas de este cliente.
+  state.appointments.forEach(a => { if (a.dni === b.dni) { a.name = name; a.phone = phone; } });
+  b.step = 'panel';
+  saveState();
+  render();
+  window.scrollTo(0, 0);
+  showToast('Datos actualizados');
+}
 function datosSubmit(){
   const name = document.getElementById('datos-name').value.trim();
   const phone = document.getElementById('datos-phone').value.trim();
@@ -1350,7 +1377,7 @@ function renderCalendarPicker(b){
 
 /* ---------- Paciente ---------- */
 function patientHeader(name){
-  return `<div class="hdr">${brandBlock()}${avatar(name)}</div>`;
+  return `<div class="hdr">${brandBlock()}<button class="avatar" type="button" style="border:0;" onclick="goToPerfil()" aria-label="Mis datos">${escapeHtml(initials(name))}</button></div>`;
 }
 
 function renderPatientRow(a, isPast){
@@ -1404,7 +1431,7 @@ function renderPacientePanel(b){
     <div class="page w560">
       ${patientHeader(b.name)}
       <h1 class="title-1" style="margin-top:24px;">Hola, ${escapeHtml(b.name.split(' ')[0])}</h1>
-      <p class="secondary tnum" style="margin-top:4px;">DNI ${b.dni}</p>
+      <p class="secondary" style="margin-top:4px;"><span class="tnum">DNI ${b.dni}</span> · <button class="btn-text" type="button" style="min-height:32px;padding:0;font-size:15px;color:var(--color-text-secondary);" onclick="goToPerfil()">Editar mis datos</button></p>
 
       <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:24px;" onclick="goToReservar()">Reservar</button>
 
@@ -1563,6 +1590,33 @@ function renderPaciente(){
       </div>`;
   }
 
+  if (b.step === 'perfil') {
+    return `
+      <div class="page w456">
+        <div style="display:flex;align-items:center;min-height:48px;">
+          <button class="icon-btn" type="button" onclick="goToPanel()" aria-label="Volver a mis citas">${icon('left', 22, 2.4)}</button>
+        </div>
+        <h1 class="title-1" style="margin:20px 0 4px;">Mis datos</h1>
+        <p class="secondary">Si cambias tus datos, el negocio los verá actualizados al instante.</p>
+        <div class="stack" style="margin-top:24px;gap:18px;">
+          <div class="field">
+            <label for="perfil-dni">DNI</label>
+            <input id="perfil-dni" value="${escapeHtml(b.dni)}" disabled style="color:var(--color-text-secondary);">
+            <span class="hint">El DNI es tu identificación y no se puede cambiar.</span>
+          </div>
+          <div class="field">
+            <label for="perfil-name">Nombre completo</label>
+            <input id="perfil-name" value="${escapeHtml(b.name)}" ${b.error ? 'aria-invalid="true"' : ''}>
+            ${b.error ? `<span class="error-text">${escapeHtml(b.error)}</span>` : ''}
+          </div>
+          <div class="field">
+            <label for="perfil-phone">Teléfono (opcional)</label>
+            <input id="perfil-phone" inputmode="tel" value="${escapeHtml(b.phone || '')}">
+          </div>
+          <button class="btn btn-primary btn-block" type="button" onclick="saveProfile()">Guardar cambios</button>
+        </div>
+      </div>`;
+  }
   if (b.step === 'panel') return renderPacientePanel(b);
 
   return renderBookingScreen(b, {
