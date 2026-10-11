@@ -100,6 +100,7 @@ button:disabled { cursor: default; }
 .btn-disabled, .btn:disabled { background: var(--color-disabled-btn); color: var(--color-disabled-text); }
 .btn-block { width: 100%; }
 .btn-sm { height: 44px; padding: 0 16px; font-size: 14px; }
+.btn-danger-solid { background: var(--color-danger); color: #fff; }
 .btn-danger { background: var(--color-danger-bg); color: var(--color-danger); }
 .btn-text { border: 0; background: transparent; color: var(--color-text); font-size: 15px; font-weight: 600; text-decoration: underline; min-height: 44px; padding: 0 8px; }
 .btn-text.danger { color: var(--color-danger); text-decoration: none; }
@@ -1390,15 +1391,11 @@ function renderAdminCitas(){
               ${statusChip(a)}${paidChip(a)}
             </div>
             ${a.status === 'CONFIRMED' ? `
-              <div class="appt-actions ${state.confirmCancelId === a.id ? 'confirm' : ''}">
-                ${state.confirmCancelId === a.id
-                  ? `<span class="secondary" style="font-weight:600;">¿Seguro que quieres cancelar esta cita?</span>
-                     <button class="btn btn-sm btn-danger" type="button" onclick="doCancel('${a.id}')">Sí, cancelar</button>
-                     <button class="btn btn-sm btn-soft" type="button" onclick="dismissCancel()">No</button>`
-                  : `${payAction(a)}
-                     <button class="btn btn-sm btn-soft" type="button" onclick="sendReminder('${a.id}')">${icon('chat', 18)} Recordar</button>
-                     <button class="btn btn-sm btn-soft" type="button" onclick="askReschedule('${a.id}')">${icon('refresh', 18)} Reagendar</button>
-                     <button class="btn btn-sm btn-danger" type="button" onclick="askCancel('${a.id}')">${icon('close', 18, 2.4)} Cancelar</button>`}
+              <div class="appt-actions">
+                ${payAction(a)}
+                <button class="btn btn-sm btn-soft" type="button" onclick="sendReminder('${a.id}')">${icon('chat', 18)} Recordar</button>
+                <button class="btn btn-sm btn-soft" type="button" onclick="askReschedule('${a.id}')">${icon('refresh', 18)} Reagendar</button>
+                <button class="btn btn-sm btn-danger" type="button" onclick="askCancel('${a.id}')">${icon('close', 18, 2.4)} Cancelar</button>
               </div>` : ''}
           </div>`).join('')}
       </div>`).join('')}`;
@@ -1572,10 +1569,26 @@ function renderRescheduleModal(){
     <div class="modal-back" onclick="if (event.target === this) closeRescheduleModal()">
       <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="rs-title" aria-describedby="rs-desc">
         <h2 class="title-3" id="rs-title">¿Solicitar reagendado a ${escapeHtml(a.name)}?</h2>
-        <p class="secondary" id="rs-desc" style="margin-top:8px;">Se abrirá WhatsApp con el mensaje para que ${escapeHtml(a.name)} elija un nuevo horario, y la cita del ${displayDateLong(a.date)} a las ${a.start} saldrá de tu lista. <strong style="color:var(--color-text);">Esta acción es irreversible.</strong></p>
+        <p class="secondary" id="rs-desc" style="margin-top:8px;">Se abrirá WhatsApp con el mensaje para que ${escapeHtml(a.name)} elija un nuevo horario, y la cita del ${displayDateLong(a.date).toLowerCase()} a las ${a.start} saldrá de tu lista. <strong style="color:var(--color-text);">Esta acción es irreversible.</strong></p>
         <div class="stack" style="margin-top:20px;gap:10px;">
           <button class="btn btn-primary btn-block" type="button" onclick="requestReschedule('${a.id}')">Sí, solicitar reagendado</button>
-          <button class="btn btn-soft btn-block" type="button" autofocus onclick="closeRescheduleModal()">Cancelar</button>
+          <button class="btn btn-soft btn-block" type="button" autofocus onclick="closeRescheduleModal()">Volver</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderCancelModal(){
+  const a = state.appointments.find(x => x.id === state.confirmCancelId);
+  if (!a) return '';
+  return `
+    <div class="modal-back" onclick="if (event.target === this) dismissCancel()">
+      <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="cn-title" aria-describedby="cn-desc">
+        <h2 class="title-3" id="cn-title">¿Cancelar la cita de ${escapeHtml(a.name)}?</h2>
+        <p class="secondary" id="cn-desc" style="margin-top:8px;">La cita del ${displayDateLong(a.date).toLowerCase()} a las ${a.start} quedará cancelada y el horario volverá a estar disponible. <strong style="color:var(--color-text);">Esta acción es irreversible.</strong></p>
+        <div class="stack" style="margin-top:20px;gap:10px;">
+          <button class="btn btn-danger-solid btn-block" type="button" onclick="doCancel('${a.id}')">Sí, cancelar cita</button>
+          <button class="btn btn-soft btn-block" type="button" autofocus onclick="dismissCancel()">Volver</button>
         </div>
       </div>
     </div>`;
@@ -1596,7 +1609,7 @@ function renderAdmin(){
   }
   return `
     <div class="page w880 admin-page">${renderAdminContent()}</div>
-    ${renderRescheduleModal()}
+    ${renderRescheduleModal()}${renderCancelModal()}
     <nav class="tabbar" aria-label="Secciones">
       ${ADMIN_NAV.map(t => `
         <button class="tab" type="button" ${state.adminTab === t.id ? 'aria-current="page"' : ''} onclick="setAdminTab('${t.id}')">
