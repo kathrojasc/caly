@@ -220,6 +220,8 @@ button.chip { cursor: pointer; }
 .pill-opt { height: 44px; padding: 0 18px; border: 0; border-radius: var(--radius-pill); background: var(--color-surface); font-size: 15px; font-weight: 600; }
 .card .pill-opt:not([aria-pressed="true"]) { background: #fff; }
 .pill-opt[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); font-weight: 700; }
+.empty-card { display: flex; gap: 14px; align-items: flex-start; background: var(--color-surface); border-radius: var(--radius-m); padding: 18px; }
+.empty-card .ic { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
 .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; margin-top: 14px; }
 .slot { height: 52px; border: 0; border-radius: var(--radius-s); background: var(--color-surface); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .slot[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); font-weight: 700; }
@@ -1336,7 +1338,7 @@ function ensureBookingService(b){
   if (!act.some(v => v.id === b.serviceId)) b.serviceId = act.length ? act[0].id : null;
 }
 
-function renderCalendarPicker(b){
+function renderCalendarPicker(b, noAvail){
   const cal = state.booking.calendarMonth;
   const firstWeekday = new Date(cal.y, cal.m, 1).getDay();
   const totalDays = new Date(cal.y, cal.m + 1, 0).getDate();
@@ -1356,7 +1358,7 @@ function renderCalendarPicker(b){
     const isTooFar = iso > maxIso;
     const count = !isPast && !isTooFar ? getAvailableSlots(iso, b.rescheduleId, pickIdFor(b), bookingServiceId(b)).length : 0;
     const disabled = isPast || isTooFar || count === 0;
-    const selected = iso === b.selectedDate;
+    const selected = !noAvail && iso === b.selectedDate;
     const cls = `cal-day${selected ? ' selected' : ''}${iso === todayIso ? ' today' : ''}`;
     cells += `<button type="button" class="${cls}" ${disabled ? 'disabled' : `onclick="pickDay('${iso}')"`} aria-label="${longDate(iso)}" aria-pressed="${selected}">${d}</button>`;
   }
@@ -1366,8 +1368,8 @@ function renderCalendarPicker(b){
       <div class="cal-head">
         <span class="cal-month">${cap(MONTHS[cal.m])} ${cal.y}</span>
         <div class="cal-nav">
-          <button type="button" class="icon-btn white" onclick="navCalendar(-1)" ${prevDisabled ? 'disabled' : ''} aria-label="Mes anterior">${icon('left', 20, 2.4)}</button>
-          <button type="button" class="icon-btn white" onclick="navCalendar(1)" ${nextDisabled ? 'disabled' : ''} aria-label="Mes siguiente">${icon('right', 20, 2.4)}</button>
+          <button type="button" class="icon-btn white" onclick="navCalendar(-1)" ${prevDisabled || noAvail ? 'disabled' : ''} aria-label="Mes anterior">${icon('left', 20, 2.4)}</button>
+          <button type="button" class="icon-btn white" onclick="navCalendar(1)" ${nextDisabled || noAvail ? 'disabled' : ''} aria-label="Mes siguiente">${icon('right', 20, 2.4)}</button>
         </div>
       </div>
       <div class="cal-week" aria-hidden="true"><span>D</span><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span></div>
@@ -1491,12 +1493,14 @@ function renderResumen(b, cfg){
 
 function renderBookingScreen(b, cfg){
   ensureBookingService(b);
-  if (!getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b), bookingServiceId(b)).length) {
+  let anyAvail = getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b), bookingServiceId(b)).length > 0;
+  if (!anyAvail) {
     for (let i = 0; i <= state.config.windowDays; i++) {
       const iso = addDaysISO(todayISO(), i);
-      if (getAvailableSlots(iso, b.rescheduleId, pickIdFor(b), bookingServiceId(b)).length) { b.selectedDate = iso; b.calendarMonth = ymFromISO(iso); break; }
+      if (getAvailableSlots(iso, b.rescheduleId, pickIdFor(b), bookingServiceId(b)).length) { b.selectedDate = iso; b.calendarMonth = ymFromISO(iso); anyAvail = true; break; }
     }
   }
+  const noAvail = !anyAvail;
   const slots = getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b), bookingServiceId(b));
   const dayText = longDate(b.selectedDate);
 
@@ -1524,17 +1528,25 @@ function renderBookingScreen(b, cfg){
         </div>` : ''}
 
       <div class="cols">
-        <div class="c340">${renderCalendarPicker(b)}</div>
+        <div class="c340">${renderCalendarPicker(b, noAvail)}</div>
         <div class="c300" id="slots-section" style="scroll-margin-top:16px;">
-          <h2 class="title-3">${dayText}</h2>
-          ${slots.length === 0
+          ${noAvail ? `
+            <div class="empty-card">
+              <span class="ic">${icon('clock', 22)}</span>
+              <div>
+                <p class="card-title">No hay horarios disponibles por ahora</p>
+                <p class="secondary" style="margin-top:4px;">${(isProPlan() && !b.rescheduleId) || canClientPickStaff(b) ? 'Prueba con otro servicio o profesional, o vuelve a intentarlo más tarde.' : 'Vuelve a intentarlo más tarde.'}</p>
+              </div>
+            </div>` : `<h2 class="title-3">${dayText}</h2>`}
+          ${noAvail ? '' : slots.length === 0
             ? `<p class="secondary" style="margin-top:14px;">No hay horarios disponibles este día. Prueba otra fecha.</p>`
             : `<div class="slot-grid">${slots.map(s => `<button type="button" class="slot" onclick="pickSlot('${s.start}','${s.end}')" aria-pressed="${!!(b.selectedSlot && b.selectedSlot.start === s.start)}">${s.start}</button>`).join('')}</div>`}
           ${b.error ? `<p class="error-text" style="margin-top:14px;">${escapeHtml(b.error)}</p>` : ''}
         </div>
       </div>
     </div>
-    ${b.selectedSlot ? `
+    ${noAvail ? `
+      <div class="dock off"><span class="d-off">Sin horarios por ahora</span></div>` : b.selectedSlot ? `
       <div class="dock on">
         <div class="d-main"><span class="d-day">${dayText}</span><span class="d-time">${b.selectedSlot.start}</span></div>
         <button class="btn btn-inverse" type="button" onclick="goToResumen()">${cfg.continueLabel}</button>
