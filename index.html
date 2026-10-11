@@ -230,7 +230,12 @@ button.chip { cursor: pointer; }
 .tab[aria-current="page"] { background: var(--color-surface-active); color: var(--color-text); font-weight: 700; }
 
 /* Métricas */
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100px, 100%), 1fr)); gap: 10px; margin-top: 24px; }
+.link-card { margin-top: 24px; background: var(--color-surface); border-radius: var(--radius-l); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.link-card .ic { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.link-url { background: #fff; border-radius: var(--radius-s); min-height: 52px; padding: 14px 16px; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; display: flex; align-items: center; }
+.link-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.link-actions .btn { flex: 1 1 180px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100px, 100%), 1fr)); gap: 10px; margin-top: 16px; }
 .stat { background: var(--color-surface); border-radius: var(--radius-m); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
 .stat .ic { width: 40px; height: 40px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; }
 .stat .n { font-size: 32px; line-height: 36px; font-weight: 700; letter-spacing: -0.8px; }
@@ -837,6 +842,27 @@ function createAdminAppointment(){
   render();
   showToast(`Cita creada para ${name}`);
 }
+function bookingSlug(){
+  const base = (state.brand.name || 'negocio').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return base || 'negocio';
+}
+function bookingLink(){ return `caly.app/reservar/${bookingSlug()}`; }
+function copyBookingLink(){
+  const url = 'https://' + bookingLink();
+  const done = () => showToast('Enlace copiado');
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done, () => showToast(url));
+      return;
+    }
+  } catch (e) {}
+  showToast(url);
+}
+function shareBookingLinkWhatsApp(){
+  const msg = `Hola! Agenda tu cita con ${state.brand.name} cuando quieras desde aquí: https://${bookingLink()}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+}
+function viewAsClient(){ setView('paciente'); }
 function askReschedule(id){
   const a = state.appointments.find(x => x.id === id);
   if (!a) return;
@@ -1102,6 +1128,7 @@ const ICONS = {
   user: `<circle cx="12" cy="8.5" r="3.5"/><path d="M4.5 20c1-3.5 4-5.5 7.5-5.5s6.5 2 7.5 5.5"/>`,
   check: `<path d="M5 12.5l4.5 4.5L19 7.5"/>`,
   plus: `<path d="M12 5v14M5 12h14"/>`,
+  link: `<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>`,
   left: `<path d="M15 5l-7 7 7 7"/>`,
   right: `<path d="M9 5l7 7-7 7"/>`,
   close: `<path d="M6 6l12 12M18 6L6 18"/>`,
@@ -1413,6 +1440,22 @@ function renderAdminInicio(){
 
   return `
     ${adminHeader('Hola de nuevo', longDate(todayIso))}
+
+    <div class="link-card">
+      <div class="row" style="flex-wrap:nowrap;gap:12px;align-items:flex-start;">
+        <span class="ic">${icon('link', 22)}</span>
+        <div style="min-width:0;">
+          <h2 class="card-title">Enlace de reservas</h2>
+          <p class="secondary">Compártelo con tus clientes para que agenden su cita por su cuenta.</p>
+        </div>
+      </div>
+      <div class="link-url tnum" aria-label="Enlace de reservas">${escapeHtml(bookingLink())}</div>
+      <div class="link-actions">
+        <button class="btn btn-primary" type="button" onclick="copyBookingLink()">Copiar enlace</button>
+        <button class="btn btn-soft" type="button" onclick="shareBookingLinkWhatsApp()">${icon('chat', 18)} Enviar por WhatsApp</button>
+        <button class="btn-text" type="button" onclick="viewAsClient()">Ver como cliente</button>
+      </div>
+    </div>
 
     <div class="stats">
       <div class="stat"><span class="ic">${icon('calendar', 22)}</span><div><div class="n">${todayAppts.length}</div><div class="l">Citas hoy</div></div></div>
