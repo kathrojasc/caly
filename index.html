@@ -1817,9 +1817,16 @@ function renderAdminHorarios(){
       </div>
     </div>
 
+    <p class="label" style="margin:24px 0 0;">Horario de cada trabajador</p>
     ${state.staff.map(member => `
-      <h2 class="title-2">${escapeHtml(member.name)}</h2>
-      <div class="card stack">
+      <div class="card stack" style="margin-top:12px;">
+        <div class="row between" style="flex-wrap:nowrap;">
+          <div class="row" style="flex-wrap:nowrap;gap:12px;min-width:0;">
+            <span class="avatar" style="background:#fff;" aria-hidden="true">${escapeHtml(initials(member.name))}</span>
+            <p class="card-title" style="overflow-wrap:anywhere;">${escapeHtml(member.name)}</p>
+          </div>
+          ${state.staff.length > 1 ? `<button class="btn-text danger" type="button" onclick="removeStaffMember('${member.id}')">Eliminar</button>` : ''}
+        </div>
         <div class="rule-form">
           <div class="field day">
             <label for="nr-day-${member.id}">Día</label>
@@ -1847,7 +1854,6 @@ function renderAdminHorarios(){
               </div>
             </div>`).join('') || `<p class="secondary">Todavía no configuraste ningún horario para ${escapeHtml(member.name)}.</p>`}
         </div>
-        ${state.staff.length > 1 ? `<button class="btn-text danger" type="button" style="align-self:flex-start;padding-left:0;" onclick="removeStaffMember('${member.id}')">Eliminar trabajador</button>` : ''}
       </div>`).join('')}`;
 }
 
