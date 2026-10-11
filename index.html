@@ -174,6 +174,16 @@ button.chip { cursor: pointer; }
   .appt-actions.confirm { display: flex; align-items: center; }
   .appt-actions.confirm > span { margin-right: 4px; }
 }
+.hist-head { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 16px; border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: var(--color-bg); text-align: left; }
+.hist-title { flex: 1; font-size: 16px; font-weight: 700; }
+.hist-count { min-width: 26px; height: 26px; padding: 0 8px; border-radius: var(--radius-pill); background: var(--color-surface); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--color-text-secondary); }
+.hist-chev { display: inline-flex; color: var(--color-text-secondary); transition: transform .15s; }
+.hist-chev.open { transform: rotate(90deg); }
+.hist-list { margin-top: 8px; padding: 4px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-m); }
+.hist-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 6px 0; font-size: 14px; line-height: 19px; color: var(--color-text-secondary); }
+.hist-row + .hist-row { border-top: 1px solid var(--color-border); }
+.hist-main { min-width: 0; overflow-wrap: anywhere; }
+.hist-main strong { color: var(--color-text); font-weight: 700; }
 .day-label { margin: 22px 0 10px; font-size: 13px; font-weight: 700; color: var(--color-text-secondary); }
 
 /* Tarjeta media (paciente) */
@@ -743,8 +753,13 @@ function newBooking(){
   state.booking = { step: 'dni', dni: '', name: '', phone: '', selectedDate: todayISO(), selectedSlot: null, error: null, calendarMonth: ymFromISO(todayISO()), rescheduleId: null, lastApptId: null };
   render();
 }
+function toggleHistory(){
+  state.booking.historyOpen = !state.booking.historyOpen;
+  render();
+}
 function goToPanel(){
   state.booking.step = 'panel';
+  state.booking.historyOpen = false;
   state.booking.rescheduleId = null;
   render();
 }
@@ -1391,10 +1406,22 @@ function renderPacientePanel(b){
         <h2 class="title-2">Más adelante</h2>
         <div class="rows">${rest.map(a => renderPatientRow(a, false)).join('')}</div>` : ''}
 
-      <h2 class="title-2">Historial</h2>
-      ${history.length === 0
-        ? `<p class="secondary">Todavía no tuviste citas.</p>`
-        : `<div class="rows">${history.map(a => renderPatientRow(a, true)).join('')}</div>`}
+      <div class="hist" style="margin-top:36px;">
+        <button class="hist-head" type="button" aria-expanded="${!!b.historyOpen}" aria-controls="hist-list" onclick="toggleHistory()">
+          <span class="hist-title">Historial</span>
+          <span class="hist-count">${history.length}</span>
+          <span class="hist-chev ${b.historyOpen ? 'open' : ''}">${icon('right', 20, 2.4)}</span>
+        </button>
+        ${b.historyOpen ? `
+          <div id="hist-list" class="hist-list">
+            ${history.length === 0
+              ? `<p class="secondary" style="padding:8px 4px;">Todavía no tuviste citas.</p>`
+              : history.map(a => {
+                  const cancelled = a.status === 'CANCELLED';
+                  return `<div class="hist-row"><span class="hist-main"><strong>${escapeHtml(cap(displayDateShort(a.date)))} ${escapeHtml(MONTHS[dateFromISO(a.date).getMonth()].slice(0, 3))}</strong> · <span class="tnum">${a.start}</span>${staffLine(a)}</span>${chip(cancelled ? 'danger' : 'neutral', cancelled ? 'Cancelada' : 'Realizada')}</div>`;
+                }).join('')}
+          </div>` : ''}
+      </div>
 
       <div style="display:flex;justify-content:center;margin-top:28px;">
         <button class="btn-text" type="button" onclick="newBooking()">¿No eres tú? Usa otro DNI</button>
