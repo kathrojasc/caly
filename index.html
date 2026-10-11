@@ -66,7 +66,7 @@ button:disabled { cursor: default; }
 .demo-bar { max-width: 880px; margin: 0 auto; padding: 12px 20px 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .demo-note { font-size: 13px; line-height: 17px; font-weight: 500; color: var(--color-text-secondary); flex: 1 1 220px; }
 .seg { display: inline-flex; background: var(--color-surface); border-radius: var(--radius-pill); padding: 4px; gap: 2px; }
-.seg button { height: 44px; padding: 0 16px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--color-text-secondary); font-size: 14px; font-weight: 600; transition: background .15s, color .15s; }
+.seg button { white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 16px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--color-text-secondary); font-size: 14px; font-weight: 600; transition: background .15s, color .15s; }
 .seg button[aria-pressed="true"], .seg button.active { background: #fff; color: var(--color-text); font-weight: 700; box-shadow: 0 1px 4px rgba(0,0,0,0.10); }
 .link-btn { border: 0; background: transparent; color: var(--color-text); font-size: 14px; font-weight: 600; text-decoration: underline; min-height: 44px; padding: 0 6px; }
 
@@ -242,6 +242,11 @@ button.chip { cursor: pointer; }
 .tab[aria-current="page"] { background: var(--color-surface-active); color: var(--color-text); font-weight: 700; }
 
 /* Métricas */
+.alert-card { margin-top: 16px; background: var(--color-danger-bg); border-radius: var(--radius-l); padding: 18px; display: flex; gap: 14px; align-items: flex-start; }
+.alert-card .ic { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: var(--color-danger); display: inline-flex; align-items: center; justify-content: center; }
+@media (max-width: 440px) { .seg button { padding: 0 11px; font-size: 13.5px; } }
+.seg-scroll { max-width: 100%; overflow-x: auto; }
+.seg .badge { margin-left: 6px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--color-danger); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
 .link-card { margin-top: 16px; background: var(--color-surface); border-radius: var(--radius-l); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .link-card .ic { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
 .link-url { background: #fff; border-radius: var(--radius-s); min-height: 52px; padding: 14px 16px; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; display: flex; align-items: center; }
@@ -351,7 +356,7 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
 <div id="toast-root"></div>
 
 <script>
-const STORAGE_KEY = 'caly_proto_state_v8';
+const STORAGE_KEY = 'caly_proto_state_v9';
 const WEEKDAYS_SHORT = ['dom','lun','mar','mié','jué','vie','sáb'];
 const WEEKDAYS_LONG = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -392,6 +397,11 @@ function defaultWeekSchedule(){
   };
 }
 
+function nextDayWhere(startIso, dows){
+  let iso = startIso;
+  for (let i = 0; i < 14; i++) { if (dows.includes(dayOfWeek(iso))) return iso; iso = addDaysISO(iso, 1); }
+  return startIso;
+}
 function buildDefaultState(){
   const t = todayISO();
   return {
@@ -413,11 +423,11 @@ function buildDefaultState(){
       '28999888': { name: 'Julián Ortiz', phone: '11-2233-4455' },
     },
     appointments: [
-      { id: 'a1', dni: '30111222', name: 'Marina Ibáñez', phone: '11-4455-6677', date: addDaysISO(t,1), start: '09:00', end: '09:45', status: 'CONFIRMED', paid: false, staffId: 'staff-1', staffName: 'Valentina Rossi', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
-      { id: 'a2', dni: '28999888', name: 'Julián Ortiz', phone: '11-2233-4455', date: addDaysISO(t,1), start: '15:00', end: '15:45', status: 'CONFIRMED', paid: true, staffId: 'staff-2', staffName: 'Camila Torres', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
+      { id: 'a1', dni: '30111222', name: 'Marina Ibáñez', phone: '11-4455-6677', date: nextDayWhere(addDaysISO(t,1), [1,2,3,4,5]), start: '09:00', end: '09:45', status: 'CONFIRMED', paid: false, staffId: 'staff-1', staffName: 'Valentina Rossi', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
+      { id: 'a2', dni: '28999888', name: 'Julián Ortiz', phone: '11-2233-4455', date: nextDayWhere(addDaysISO(t,1), [1,3]), start: '15:00', end: '15:45', status: 'CONFIRMED', paid: true, staffId: 'staff-2', staffName: 'Camila Torres', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
       { id: 'a3', dni: '27555444', name: 'Facundo López', phone: '11-9988-7766', date: addDaysISO(t,2), start: '11:30', end: '12:15', status: 'CANCELLED', paid: false, staffId: 'staff-1', staffName: 'Valentina Rossi', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
       { id: 'a4', dni: '30111222', name: 'Marina Ibáñez', phone: '11-4455-6677', date: addDaysISO(t,-1), start: '11:00', end: '11:45', status: 'CONFIRMED', paid: true, staffId: 'staff-1', staffName: 'Valentina Rossi', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
-      { id: 'a5', dni: '28999888', name: 'Julián Ortiz', phone: '11-2233-4455', date: t, start: '16:30', end: '17:15', status: 'CONFIRMED', paid: false, staffId: 'staff-2', staffName: 'Camila Torres', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
+      { id: 'a5', dni: '28999888', name: 'Julián Ortiz', phone: '11-2233-4455', date: nextDayWhere(t, [1,3]), start: '16:30', end: '17:15', status: 'CONFIRMED', paid: false, staffId: 'staff-2', staffName: 'Camila Torres', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
     ],
     booking: { step: 'dni', dni: '', name: '', phone: '', selectedDate: t, selectedSlot: null, error: null, calendarMonth: ymFromISO(t), rescheduleId: null, lastApptId: null },
     newRule: { staffId: 'staff-1', day: '1', start: '09:00', end: '13:00' },
@@ -428,6 +438,8 @@ function buildDefaultState(){
     newStaffName: '',
     confirmCancelId: null,
     newAppt: null,
+    pendingClosure: null,
+    notifyCancelId: null,
     services: [
       { id: 'svc-1', name: 'Kinesiología', minutes: 45, staffIds: ['staff-1', 'staff-2'] },
       { id: 'svc-2', name: 'Evaluación inicial', minutes: 60, staffIds: ['staff-1'] },
@@ -472,6 +484,8 @@ function loadState(){
       parsed.confirmCancelId = null;
       parsed.confirmRescheduleId = null;
       parsed.newAppt = null;
+      parsed.pendingClosure = null;
+      parsed.notifyCancelId = null;
       if (!parsed.businessHours) parsed.businessHours = def.businessHours;
       if (!Array.isArray(parsed.closedDays)) parsed.closedDays = [];
       if (!parsed.newBizRule) parsed.newBizRule = def.newBizRule;
@@ -525,6 +539,23 @@ function refreshBrandUI(){
   applyBrandTheme();
 }
 
+function apptPendingReason(a){
+  if (a.status !== 'CONFIRMED' || a.rescheduleRequested || a.date < todayISO()) return null;
+  if (isClosedDay(a.date)) return 'Día cerrado';
+  const dow = String(dayOfWeek(a.date));
+  if (!insideRanges(state.businessHours[dow], a.start, a.end)) return 'Fuera del horario del negocio';
+  const m = state.staff.find(x => x.id === a.staffId);
+  if (!m) return 'Trabajador ya no disponible';
+  if (!insideRanges(m.schedule && m.schedule[dow], a.start, a.end)) return `Fuera del horario de ${m.name.split(' ')[0]}`;
+  return null;
+}
+function pendingAppts(){
+  return state.appointments.filter(a => apptPendingReason(a)).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+}
+function warnNewPending(before){
+  const n = pendingAppts().length - before;
+  if (n > 0) showToast(`${n} cita${n === 1 ? '' : 's'} pasaron a Pendientes`);
+}
 function isClosedDay(iso){ return state.closedDays.some(c => iso >= c.from && iso <= c.to); }
 function insideRanges(ranges, start, end){
   return (ranges || []).some(r => timeToMinutes(r.start) <= timeToMinutes(start) && timeToMinutes(end) <= timeToMinutes(r.end));
@@ -879,6 +910,7 @@ function sendReminder(id){
   const msg = `Hola! Recuerda que ${dateLabel} tienes una reserva. Te esperamos.`;
   window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
+function goPendientes(){ state.adminTab = 'citas'; state.citasFilter = 'pendientes'; render(); window.scrollTo(0, 0); }
 function goNewAppt(){ state.adminTab = 'citas'; openNewAppt(); }
 function openNewAppt(){
   const act = activeServices();
@@ -991,12 +1023,25 @@ function dismissCancel(){ state.confirmCancelId = null; render(); }
 function doCancel(id){
   const appt = state.appointments.find(a => a.id === id);
   if (!appt) return;
+  const wasPending = state.view === 'admin' && !!apptPendingReason(appt);
   appt.status = 'CANCELLED';
   state.confirmCancelId = null;
+  if (wasPending && cleanPhoneForWhatsapp(appt.phone)) state.notifyCancelId = appt.id;
   saveState();
   render();
   showToast('Cita cancelada');
 }
+function sendCancelNotice(id){
+  const a = state.appointments.find(x => x.id === id);
+  state.notifyCancelId = null;
+  if (a) {
+    const digits = cleanPhoneForWhatsapp(a.phone);
+    const msg = `Hola ${a.name.split(' ')[0]}! Lamentamos avisarte que, por motivos de fuerza mayor, debimos cancelar tu cita del ${displayDateLong(a.date)} a las ${a.start}. Puedes agendar una nueva cuando quieras desde aquí: https://${bookingLink()}`;
+    if (digits) window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+  }
+  render();
+}
+function skipCancelNotice(){ state.notifyCancelId = null; render(); }
 
 // --- Superadministrador: alertas y cuentas de negocio ---
 function reportDoubleBookingAlert(iso, slot, clientName){
@@ -1164,14 +1209,17 @@ function dayGroupLabel(days){
   return names.length > 1 ? names.slice(0, -1).join(', ') + ' y ' + names[names.length - 1].toLowerCase() : names[0];
 }
 function deleteBizRuleGroup(daysCsv, idx){
+  const before = pendingAppts().length;
   daysCsv.split(',').forEach(d => {
     state.businessHours[d].splice(idx, 1);
     if (!state.businessHours[d].length) delete state.businessHours[d];
   });
   saveState();
   render();
+  warnNewPending(before);
 }
 function deleteRuleGroup(staffId, daysCsv, idx){
+  const before = pendingAppts().length;
   const member = state.staff.find(m => m.id === staffId);
   if (!member) return;
   daysCsv.split(',').forEach(d => {
@@ -1180,6 +1228,7 @@ function deleteRuleGroup(staffId, daysCsv, idx){
   });
   saveState();
   render();
+  warnNewPending(before);
 }
 function updateNewBizRule(field, value){ state.newBizRule[field] = value; }
 function addBizRule(){
@@ -1199,7 +1248,7 @@ function deleteBizRule(day, idx){
 }
 function updateNewClosed(field, value){ state.newClosed[field] = value; }
 function closedAffected(c){
-  return state.appointments.filter(a => a.status === 'CONFIRMED' && a.date >= c.from && a.date <= c.to && a.date >= todayISO()).length;
+  return state.appointments.filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && a.date >= c.from && a.date <= c.to && a.date >= todayISO()).length;
 }
 function addClosedDay(){
   const n = state.newClosed;
@@ -1209,14 +1258,22 @@ function addClosedDay(){
   if (to < from) return showToast('La fecha final no puede ser antes que la inicial');
   if (to < todayISO()) return showToast('Elige fechas de hoy en adelante');
   const entry = { id: 'cd' + Date.now(), from, to, note: (n.note || '').trim() };
+  const aff = closedAffected(entry);
+  if (aff) { state.pendingClosure = { entry, aff }; render(); return; }
+  commitClosure(entry);
+}
+function commitClosure(entry){
   state.closedDays.push(entry);
   state.closedDays.sort((a, b) => a.from.localeCompare(b.from));
   state.newClosed = { from: '', to: '', note: '' };
+  state.pendingClosure = null;
   saveState();
   render();
   const aff = closedAffected(entry);
-  showToast(aff ? `Días cerrados. Hay ${aff} cita(s) en esas fechas` : 'Días cerrados');
+  showToast(aff ? `Días cerrados. ${aff} cita${aff === 1 ? '' : 's'} en Pendientes` : 'Días cerrados');
 }
+function confirmClosure(){ if (state.pendingClosure) commitClosure(state.pendingClosure.entry); }
+function cancelClosure(){ state.pendingClosure = null; render(); }
 function deleteClosedDay(id){
   state.closedDays = state.closedDays.filter(c => c.id !== id);
   saveState();
@@ -1263,6 +1320,7 @@ function addStaffMember(){
   showToast('Trabajador agregado');
 }
 function removeStaffMember(id){
+  const before = pendingAppts().length;
   if (state.staff.length <= 1) {
     showToast('Debe quedar al menos un trabajador configurado');
     return;
@@ -1272,6 +1330,7 @@ function removeStaffMember(id){
   saveState();
   render();
   showToast('Trabajador eliminado');
+  setTimeout(() => warnNewPending(before), 2400);
 }
 function pendingServiceAppts(){
   const today = todayISO();
@@ -1788,12 +1847,13 @@ function renderAdminInicio(){
   const next7Iso = addDaysISO(todayIso, 7);
 
   const upcoming = state.appointments
-    .filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && a.date >= todayIso)
+    .filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && a.date >= todayIso && !apptPendingReason(a))
     .sort((a, c) => (a.date + a.start).localeCompare(c.date + c.start));
+  const pendingCount = pendingAppts().length;
   const todayAppts = upcoming.filter(a => a.date === todayIso);
   const restUpcoming = upcoming.slice(1, 7);
   const next7Count = upcoming.filter(a => a.date <= next7Iso).length;
-  const pendingPayCount = state.appointments.filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && !a.paid).length;
+  const pendingPayCount = state.appointments.filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && !a.paid && !apptPendingReason(a)).length;
   const nextAppt = upcoming[0];
   const nextWhen = nextAppt ? (nextAppt.date === todayIso ? 'Hoy' : cap(displayDateShort(nextAppt.date))) : '';
 
@@ -1801,6 +1861,15 @@ function renderAdminInicio(){
     ${adminHeader('Hola de nuevo', longDate(todayIso))}
 
     <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:20px;" onclick="goNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
+    ${pendingCount ? `
+    <div class="alert-card" role="alert">
+      <span class="ic">${icon('alert', 22)}</span>
+      <div style="min-width:0;flex:1;">
+        <p class="card-title">${pendingCount === 1 ? 'Tienes 1 cita por resolver' : `Tienes ${pendingCount} citas por resolver`}</p>
+        <p class="secondary" style="margin-top:2px;">Cambió tu disponibilidad. Cancela o reagenda estas citas.</p>
+        <button class="btn btn-sm btn-danger-solid" type="button" style="margin-top:12px;" onclick="goPendientes()">Ver pendientes</button>
+      </div>
+    </div>` : ''}
 
     <div class="link-card">
       <div class="row" style="flex-wrap:nowrap;gap:12px;align-items:flex-start;">
@@ -1830,17 +1899,21 @@ function renderAdminInicio(){
       ${restUpcoming.length ? `<div class="rows" style="margin-top:12px;">${restUpcoming.map(a => upcomingCard(a, true, todayIso)).join('')}</div>` : ''}` : `<p class="secondary">No tienes citas próximas.</p>`}`;
 }
 
-function citaCard(a, now){
+function citaCard(a, now, pend){
   const cancelled = a.status === 'CANCELLED';
   const upcoming = !cancelled && a.date >= now;
   const when = a.date === now ? 'Hoy' : cap(displayDateShort(a.date));
   const meta = [a.serviceName, a.staffName].filter(Boolean).map(escapeHtml).join(' · ');
-  const chipHtml = cancelled
+  const reason = pend ? apptPendingReason(a) : null;
+  const chipHtml = reason ? `<span class="chip-hero cancel">${escapeHtml(reason)}</span>` : cancelled
     ? `<span class="chip-hero cancel">Cancelada</span>`
     : `<span class="chip-hero ${a.paid ? 'ok' : 'warn'}">${a.paid ? 'Pagado' : 'Pago pendiente'}</span>`;
   const btns = [];
-  if (!cancelled) btns.push(`<button type="button" onclick="togglePaid('${a.id}')">${icon('check', 20, 2.4)}<span>${a.paid ? 'Deshacer pago' : 'Marcar pagado'}</span></button>`);
-  if (upcoming) {
+  if (pend) {
+    btns.push(`<button type="button" onclick="askReschedule('${a.id}')" aria-label="Pedir a ${escapeHtml(a.name)} que reagende por WhatsApp">${icon('refresh', 20)}<span>Reagendar</span></button>`);
+    btns.push(`<button type="button" class="danger" onclick="askCancel('${a.id}')">${icon('close', 20, 2.4)}<span>Cancelar</span></button>`);
+  } else if (!cancelled) btns.push(`<button type="button" onclick="togglePaid('${a.id}')">${icon('check', 20, 2.4)}<span>${a.paid ? 'Deshacer pago' : 'Marcar pagado'}</span></button>`);
+  if (upcoming && !pend) {
     btns.push(`<button type="button" onclick="sendReminder('${a.id}')" aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}">${icon('chat', 20)}<span>Recordar</span></button>`);
     btns.push(`<button type="button" onclick="askReschedule('${a.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}">${icon('refresh', 20)}<span>Reagendar</span></button>`);
     btns.push(`<button type="button" class="danger" onclick="askCancel('${a.id}')">${icon('close', 20, 2.4)}<span>Cancelar</span></button>`);
@@ -1860,11 +1933,13 @@ function citaCard(a, now){
 
 function renderAdminCitas(){
   const now = todayISO();
-  const f = state.citasFilter || 'proximas';
+  const pendList = pendingAppts();
+  let f = state.citasFilter || 'proximas';
+  if (f === 'pendientes' && !pendList.length) f = 'proximas';
   const isUpcoming = a => a.status === 'CONFIRMED' && a.date >= now;
-  const list = state.appointments
+  const list = f === 'pendientes' ? pendList : state.appointments
     .filter(a => !a.rescheduleRequested)
-    .filter(a => f === 'todas' ? true : (f === 'pasadas' ? !isUpcoming(a) : isUpcoming(a)))
+    .filter(a => f === 'todas' ? true : (f === 'pasadas' ? !isUpcoming(a) : (isUpcoming(a) && !apptPendingReason(a))))
     .sort((a, b) => f === 'pasadas'
       ? (b.date + b.start).localeCompare(a.date + a.start)
       : (a.date + a.start).localeCompare(b.date + b.start));
@@ -1874,14 +1949,15 @@ function renderAdminCitas(){
     ${adminHeader('Citas')}
     <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:20px;" onclick="openNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
     <div style="margin-top:16px;">
-      <div class="seg" role="group" aria-label="Filtro de citas">
+      <div class="seg seg-scroll" role="group" aria-label="Filtro de citas">
+        ${pendList.length ? `<button type="button" aria-pressed="${f === 'pendientes'}" onclick="state.citasFilter='pendientes'; render()">Pendientes<span class="badge">${pendList.length}</span></button>` : ''}
         <button type="button" aria-pressed="${f === 'proximas'}" onclick="state.citasFilter='proximas'; render()">Próximas</button>
         <button type="button" aria-pressed="${f === 'pasadas'}" onclick="state.citasFilter='pasadas'; render()">Pasadas</button>
         <button type="button" aria-pressed="${f === 'todas'}" onclick="state.citasFilter='todas'; render()">Todas</button>
       </div>
     </div>
 
-    ${list.length === 0 ? `<p class="secondary" style="margin-top:24px;">${f === 'pasadas' ? 'Todavía no hay citas en el historial.' : 'No hay citas para mostrar.'}</p>` : `<div class="rows" style="margin-top:20px;">${list.map(a => citaCard(a, now)).join('')}</div>`}`;
+    ${list.length === 0 ? `<p class="secondary" style="margin-top:24px;">${f === 'pasadas' ? 'Todavía no hay citas en el historial.' : 'No hay citas para mostrar.'}</p>` : `<div class="rows" style="margin-top:20px;">${list.map(a => citaCard(a, now, f === 'pendientes')).join('')}</div>`}`;
 }
 
 function renderServicesEditor(){
@@ -2250,6 +2326,36 @@ function renderNewApptView(){
   });
 }
 
+function renderClosureModal(){
+  const pc = state.pendingClosure;
+  if (!pc) return '';
+  return `
+    <div class="modal-back" onclick="if (event.target === this) cancelClosure()">
+      <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="cl-title" aria-describedby="cl-desc">
+        <h2 class="title-3" id="cl-title">Hay ${pc.aff} cita${pc.aff === 1 ? '' : 's'} en esas fechas</h2>
+        <p class="secondary" id="cl-desc" style="margin-top:8px;">Si cierras esos días, <strong style="color:var(--color-text);">tendrás que cancelar o reagendar ${pc.aff === 1 ? 'esa cita' : 'esas citas'}</strong>. Aparecerán en la sección Pendientes de Citas.</p>
+        <div class="stack" style="margin-top:20px;gap:10px;">
+          <button class="btn btn-danger-solid btn-block" type="button" onclick="confirmClosure()">Cerrar de todos modos</button>
+          <button class="btn btn-soft btn-block" type="button" autofocus onclick="cancelClosure()">Volver</button>
+        </div>
+      </div>
+    </div>`;
+}
+function renderNotifyModal(){
+  const a = state.appointments.find(x => x.id === state.notifyCancelId);
+  if (!a) return '';
+  return `
+    <div class="modal-back" onclick="if (event.target === this) skipCancelNotice()">
+      <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="nt-title" aria-describedby="nt-desc">
+        <h2 class="title-3" id="nt-title">¿Avisar a ${escapeHtml(a.name)}?</h2>
+        <p class="secondary" id="nt-desc" style="margin-top:8px;">La cita quedó cancelada, pero ${escapeHtml(a.name)} todavía no lo sabe. Te abrimos WhatsApp con el mensaje listo para que se lo envíes.</p>
+        <div class="stack" style="margin-top:20px;gap:10px;">
+          <button class="btn btn-primary btn-block" type="button" onclick="sendCancelNotice('${a.id}')">${icon('chat', 18)} Avisar por WhatsApp</button>
+          <button class="btn btn-soft btn-block" type="button" autofocus onclick="skipCancelNotice()">Ahora no</button>
+        </div>
+      </div>
+    </div>`;
+}
 function renderCancelModal(){
   const a = state.appointments.find(x => x.id === state.confirmCancelId);
   if (!a) return '';
@@ -2285,7 +2391,7 @@ function renderAdmin(){
   }
   return `
     <div class="page w880 admin-page">${renderAdminContent()}</div>
-    ${renderRescheduleModal()}${renderCancelModal()}
+    ${renderRescheduleModal()}${renderCancelModal()}${renderClosureModal()}${renderNotifyModal()}
     <nav class="tabbar" aria-label="Secciones">
       ${ADMIN_NAV.map(t => `
         <button class="tab" type="button" ${state.adminTab === t.id ? 'aria-current="page"' : ''} onclick="setAdminTab('${t.id}')">
