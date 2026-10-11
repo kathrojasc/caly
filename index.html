@@ -158,6 +158,10 @@ button.chip { cursor: pointer; }
 .appt-actions.confirm > span { grid-column: 1 / -1; }
 .appt-actions .btn { padding: 0 10px; width: 100%; }
 .appt-card .btn-text { padding-left: 0; }
+@media (max-width: 639px) {
+  .appt-actions .btn:not(.pay-btn) { flex-direction: column; height: 64px; gap: 6px; padding: 0 4px; font-size: 13px; line-height: 16px; border-radius: var(--radius-s); }
+  .appt-actions .btn:not(.pay-btn) svg { width: 22px; height: 22px; }
+}
 @media (max-width: 639px) { .chip.ph { display: none; } }
 @media (min-width: 640px) {
   .appt-card { grid-template-columns: 60px minmax(0, 1fr) auto; }
@@ -1394,7 +1398,7 @@ function renderAdminCitas(){
                   : `${payAction(a)}
                      <button class="btn btn-sm btn-soft" type="button" onclick="sendReminder('${a.id}')">${icon('chat', 18)} Recordar</button>
                      <button class="btn btn-sm btn-soft" type="button" onclick="askReschedule('${a.id}')">${icon('refresh', 18)} Reagendar</button>
-                     <button class="btn btn-sm btn-danger" type="button" onclick="askCancel('${a.id}')">Cancelar</button>`}
+                     <button class="btn btn-sm btn-danger" type="button" onclick="askCancel('${a.id}')">${icon('close', 18, 2.4)} Cancelar</button>`}
               </div>` : ''}
           </div>`).join('')}
       </div>`).join('')}`;
