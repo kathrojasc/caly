@@ -275,7 +275,7 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
 <body>
 
 <div class="demo-bar">
-  <span class="demo-note">Prototipo interactivo: los datos se guardan solo en tu navegador, sin servidor ni Google Calendar real.</span>
+  <span class="demo-note">Prototipo interactivo: los datos se guardan solo en tu navegador, sin servidor.</span>
   <div class="seg" role="group" aria-label="Vista del prototipo">
     <button id="tab-paciente" type="button" onclick="setView('paciente')">Paciente</button>
     <button id="tab-admin" type="button" onclick="setView('admin')">Admin</button>
@@ -321,14 +321,6 @@ function normalizeDni(raw){ return (raw || '').replace(/\D/g, ''); }
 function isValidDni(raw){ const d = normalizeDni(raw); return d.length >= 6 && d.length <= 10; }
 function escapeHtml(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-function getDemoBusy(iso){
-  const t1 = addDaysISO(todayISO(), 1);
-  const t3 = addDaysISO(todayISO(), 3);
-  if (iso === t1) return [{ start: '10:00', end: '10:45', title: 'Control médico (evento personal)' }];
-  if (iso === t3) return [{ start: '16:00', end: '17:00', title: 'Clase de pilates (evento personal)' }];
-  return [];
-}
-
 function defaultWeekSchedule(){
   return {
     '1': [{ start: '09:00', end: '13:00' }, { start: '15:00', end: '19:00' }],
@@ -347,7 +339,6 @@ function buildDefaultState(){
     includePast: false,
     brand: { name: 'Toki', color: '#0B0B0C', logo: null },
     account: { name: 'Valentina Rossi', email: 'valentina@toki.app' },
-    google: { connected: false, email: 'valentina.rossi.kine@gmail.com' },
     config: { slotMinutes: 45, bufferMinutes: 0, minNoticeHours: 2, windowDays: 21 },
     staff: [
       { id: 'staff-1', name: 'Valentina Rossi', schedule: defaultWeekSchedule() },
@@ -478,11 +469,6 @@ function getStaffRawSlots(staffMember, iso){
 
   const busy = state.appointments.filter(a => a.date === iso && a.status === 'CONFIRMED' && a.staffId === staffMember.id);
   candidates = candidates.filter(s => !busy.some(a => overlaps(s.start, s.end, a.start, a.end)));
-
-  if (state.google.connected && staffMember.id === state.staff[0].id) {
-    const demo = getDemoBusy(iso);
-    candidates = candidates.filter(s => !demo.some(b => overlaps(s.start, s.end, b.start, b.end)));
-  }
 
   return candidates;
 }
@@ -837,13 +823,6 @@ function createBusinessAccount(){
   saveState();
   render();
   showToast('Cuenta de negocio creada');
-}
-
-function toggleGoogle(){
-  state.google.connected = !state.google.connected;
-  saveState();
-  render();
-  showToast(state.google.connected ? 'Google Calendar conectado (simulado)' : 'Google Calendar desconectado');
 }
 
 function saveBrand(){
@@ -1393,20 +1372,7 @@ function renderAdminHorarios(){
   return `
     ${adminHeader('Horarios')}
 
-    <div class="card" style="margin-top:24px;">
-      <div class="row between" style="flex-wrap:nowrap;">
-        <div style="min-width:0;">
-          <h2 class="card-title">Google Calendar</h2>
-          <p class="secondary" style="margin-top:2px;">${state.google.connected
-            ? `Conectado como <strong>${escapeHtml(state.google.email)}</strong>`
-            : 'Las citas se sincronizan automáticamente con tu calendario.'}</p>
-        </div>
-        <button class="switch" type="button" role="switch" aria-checked="${state.google.connected}" aria-label="Google Calendar" onclick="toggleGoogle()"></button>
-      </div>
-      ${state.google.connected ? `<p class="hint" style="margin-top:12px;">Se simulan 2 eventos ocupados de tu calendario personal (mañana 10:00–10:45 y en 3 días 16:00–17:00) para mostrar cómo se cruzan con la disponibilidad que ve el paciente.</p>` : ''}
-    </div>
-
-    <h2 class="title-2">Configuración de citas</h2>
+    <h2 class="title-2" style="margin-top:28px;">Configuración de citas</h2>
     <div class="card stack">
       <div class="grid-2">
         <div class="field"><label for="cfg-slot">Duración de la cita (min)</label><input id="cfg-slot" type="number" inputmode="numeric" value="${cfg.slotMinutes}"></div>
@@ -1505,7 +1471,6 @@ function renderAdminCuenta(){
     'Citas y horarios ilimitados',
     'Equipo con asignación automática (round robin)',
     'Recordatorios y reagendado por WhatsApp',
-    'Sincronización con Google Calendar',
     'Marca personalizada (color y logo)',
   ];
 
