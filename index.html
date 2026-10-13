@@ -241,6 +241,12 @@ button.chip { cursor: pointer; }
 .week-day.sel { background: var(--color-primary); color: var(--color-on-primary); }
 .week-day.sel b { color: var(--color-on-primary); }
 .week-day.sel i.on { background: var(--color-on-primary); color: var(--color-primary); }
+.pay-block { background: #fff; border-radius: var(--radius-m); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.pay-rows { display: flex; flex-direction: column; gap: 6px; }
+.pay-rows > div { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
+.pay-rows span { color: var(--color-text-secondary); }
+.pay-rows b { font-weight: 700; text-align: right; }
+.pay-warn { margin: 0; background: var(--color-danger-bg); color: var(--color-danger); border-radius: var(--radius-s); padding: 10px 12px; font-size: 14px; line-height: 20px; font-weight: 600; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
@@ -574,7 +580,7 @@ function buildDefaultState(){
     serviceAssign: {},
     toast: null,
     businesses: [
-      { id: 'biz-1', name: 'Caly Demo — Valentina Rossi', adminUser: 'valentina@caly.app', adminPassHash: hashPw('caly2026'), mustChange: false, plan: 'Pro', trialEndsAt: null, enabled: true },
+      { id: 'biz-1', name: 'Caly Demo — Valentina Rossi', adminUser: 'valentina@caly.app', adminPassHash: hashPw('caly2026'), mustChange: false, plan: 'Pro', trialEndsAt: null, nextPaymentDate: addDaysISO(t, 9), lastPaidAt: addDaysISO(t, -21), enabled: true },
       { id: 'biz-2', name: 'Clínica Dental Sonric', adminUser: 'admin@sonric.pe', adminPassHash: hashPw('sonric123'), mustChange: false, plan: 'Prueba', trialEndsAt: addDaysISO(t, 12), enabled: true },
       { id: 'biz-3', name: 'Estudio Pilates Flow', adminUser: 'admin@flowpilates.pe', adminPassHash: hashPw('flow456'), mustChange: false, plan: 'Prueba', trialEndsAt: addDaysISO(t, -3), enabled: false },
     ],
@@ -597,6 +603,9 @@ function loadState(){
       if (parsed.booking.lastApptId === undefined) parsed.booking.lastApptId = null;
       if (!parsed.brand) parsed.brand = def.brand;
       parsed.config = Object.assign({}, def.config, parsed.config || {});
+      (parsed.businesses || []).forEach(b => {
+        if (b.plan === 'Pro' && !b.nextPaymentDate) { b.nextPaymentDate = addDaysISO(todayISO(), 9); b.lastPaidAt = addDaysISO(todayISO(), -21); }
+      });
       if (!parsed.account) parsed.account = def.account;
       if (parsed.account.phone === undefined) parsed.account.phone = '';
       if (!Array.isArray(parsed.staff) || !parsed.staff.length) parsed.staff = def.staff;
@@ -1484,7 +1493,34 @@ function toggleBusinessEnabled(id){
   showToast(biz.enabled ? `${biz.name}: cuenta activada` : `${biz.name}: cuenta desactivada`);
 }
 function trialExpired(biz){ return !!biz && biz.plan === 'Prueba' && !!biz.trialEndsAt && biz.trialEndsAt < todayISO(); }
-function bizAvailable(){ const b = currentBusiness(); return !!b && b.enabled && !trialExpired(b); }
+const PAY_GRACE_DAYS = 3;
+function payInfo(biz){
+  if (!biz || biz.plan !== 'Pro' || !biz.nextPaymentDate) return null;
+  const today = todayISO();
+  const stopOn = addDaysISO(biz.nextPaymentDate, PAY_GRACE_DAYS);
+  const daysLeft = Math.round((dateFromISO(stopOn) - dateFromISO(today)) / 86400000) + 1;
+  return { next: biz.nextPaymentDate, last: biz.lastPaidAt || null, overdue: today > biz.nextPaymentDate, suspended: today > stopOn, stopOn, daysLeft };
+}
+function paySuspended(biz){ const p = payInfo(biz); return !!p && p.suspended; }
+function registerPayment(id){
+  const biz = state.businesses.find(b => b.id === id);
+  if (!biz || biz.plan !== 'Pro') return;
+  const today = todayISO();
+  const base = biz.nextPaymentDate && biz.nextPaymentDate > today ? biz.nextPaymentDate : today;
+  biz.lastPaidAt = today;
+  biz.nextPaymentDate = addDaysISO(base, 30);
+  saveState();
+  render();
+  showToast(`${biz.name}: pago registrado, próximo pago el ${fmtDay(biz.nextPaymentDate)}`);
+}
+function setNextPayment(id, iso){
+  const biz = state.businesses.find(b => b.id === id);
+  if (!biz || !iso) return;
+  biz.nextPaymentDate = iso;
+  saveState();
+  render();
+}
+function bizAvailable(){ const b = currentBusiness(); return !!b && b.enabled && !trialExpired(b) && !paySuspended(b); }
 function trialDaysLeft(biz){
   if (!biz || !biz.trialEndsAt) return null;
   return Math.round((dateFromISO(biz.trialEndsAt) - dateFromISO(todayISO())) / 86400000);
@@ -1603,6 +1639,7 @@ function createBusinessAccount(){
     adminPassHash: hashPw(adminPass.trim()),
     mustChange: true,
     plan: 'Prueba',
+    nextPaymentDate: null, lastPaidAt: null,
     trialEndsAt: addDaysISO(todayISO(), 14),
     enabled: true,
   });
@@ -2087,6 +2124,7 @@ function toggleBusinessPlan(id){
   if (!biz) return;
   biz.plan = biz.plan === 'Pro' ? 'Prueba' : 'Pro';
   if (biz.plan === 'Prueba' && !biz.trialEndsAt) biz.trialEndsAt = addDaysISO(todayISO(), 14);
+  if (biz.plan === 'Pro') { biz.lastPaidAt = todayISO(); biz.nextPaymentDate = addDaysISO(todayISO(), 30); }
   saveState();
   render();
   const pend = biz.id === 'biz-1' && biz.plan === 'Pro' ? pendingServiceAppts().length : 0;
@@ -2656,6 +2694,15 @@ function renderAdminInicio(){
       </div>
     </div>` : '';
     })()}
+    ${(() => { const p = payInfo(currentBusiness()); return p && p.overdue ? `
+    <div class="alert-card" role="alert">
+      <span class="ic">${icon('alert', 22)}</span>
+      <div style="min-width:0;flex:1;">
+        <p class="card-title">Pago pendiente</p>
+        <p class="secondary" style="margin-top:2px;">Tu pago venció el ${fmtDay(p.next)}. Tu cuenta se detendrá en ${p.daysLeft} día${p.daysLeft === 1 ? '' : 's'} si no se regulariza.</p>
+        <button class="btn btn-sm btn-danger-solid" type="button" style="margin-top:12px;" onclick="state.adminTab='cuenta'; render(); window.scrollTo(0, 0)">Ver mi plan</button>
+      </div>
+    </div>` : ''; })()}
     ${pendingCount ? `
     <div class="alert-card" role="alert">
       <span class="ic">${icon('alert', 22)}</span>
@@ -3332,6 +3379,19 @@ function renderAdminMarca(){
     </div>`;
 }
 
+function renderPaymentBlock(biz){
+  const p = payInfo(biz);
+  if (!p) return '';
+  return `
+    <div class="pay-block">
+      <div class="row between" style="flex-wrap:nowrap;"><span class="label">Pago</span>${p.overdue ? chip('danger', 'Pago pendiente') : chip('success', 'Al día')}</div>
+      <div class="pay-rows">
+        <div><span>Último pago</span><b>${p.last ? fmtDay(p.last) : 'Sin registro'}</b></div>
+        <div><span>Próxima fecha de pago</span><b>${fmtDay(p.next)}</b></div>
+      </div>
+      ${p.overdue ? `<p class="pay-warn" role="alert">Tu pago venció el ${fmtDay(p.next)}. Si no se regulariza, tu cuenta se detendrá en ${p.daysLeft} día${p.daysLeft === 1 ? '' : 's'} (${fmtDay(p.stopOn)}). Escribe al equipo de Caly para regularizarlo.</p>` : ''}
+    </div>`;
+}
 function renderAdminCuenta(){
   const acc = state.account;
   const planFeatures = [
@@ -3362,6 +3422,7 @@ function renderAdminCuenta(){
       </div>
       ${(() => { const biz = currentBusiness(); const d = trialDaysLeft(biz); return !isProPlan() && d !== null ? `<p class="secondary" style="font-weight:600;color:var(--color-text);">${d > 0 ? `Tu prueba termina el ${fmtDay(biz.trialEndsAt)}. Te quedan ${d} día${d === 1 ? '' : 's'}.` : 'Tu prueba termina hoy.'}</p>` : ''; })()}
       <p class="secondary">${isProPlan() ? 'Incluye todo lo del periodo de prueba, más servicios con su propia duración, trabajadores asociados y la opción de mostrar los trabajadores al cliente. Los precios aún no están definidos.' : 'Todavía no definimos precios ni planes. Por ahora estás probando Caly sin costo; te avisaremos antes de que eso cambie.'}</p>
+      ${renderPaymentBlock(currentBusiness())}
       <ul class="checks">
         ${planFeatures.map(f => `<li><span class="check-dot">${icon('check', 14, 3.2)}</span><span class="ck-text">${f}</span></li>`).join('')}
         <li><span class="check-dot ${isProPlan() ? '' : 'soon'}">${icon('check', 14, 3.2)}</span><span class="ck-text">Servicios con duración propia y trabajadores asociados${isProPlan() ? '' : ' ' + chip('neutral', 'Plan Pro')}</span></li>
@@ -3513,6 +3574,17 @@ function renderAdmin(){
         </div>
       </div>`;
   }
+  if (paySuspended(myBiz)) {
+    return `
+      <div class="page w456">
+        <div style="text-align:center;margin-top:48px;">
+          <div class="success-icon" style="background:var(--color-danger-bg);color:var(--color-danger);">${icon('alert', 26)}</div>
+          <h1 class="title-1">Cuenta detenida por falta de pago</h1>
+          <p class="secondary" style="margin-top:8px;">Tu pago venció el ${fmtDay(myBiz.nextPaymentDate)}. Escribe al equipo de Caly para regularizarlo y reactivar tu cuenta. Tus datos se conservan.</p>
+          <button class="btn btn-soft" type="button" style="margin-top:24px;" onclick="adminLogout()">Cerrar sesión</button>
+        </div>
+      </div>`;
+  }
   if (trialExpired(myBiz)) {
     return `
       <div class="page w456">
@@ -3579,6 +3651,7 @@ function renderSuper(){
         ${state.businesses.map(biz => {
           const expired = trialExpired(biz);
           const left = trialDaysLeft(biz);
+          const pay = payInfo(biz);
           return `
           <div class="row-card">
             <div class="row-main">
@@ -3589,14 +3662,17 @@ function renderSuper(){
             <div class="row-side">
               ${chip(biz.plan === 'Pro' ? 'success' : 'neutral', escapeHtml(biz.plan))}
               ${biz.plan === 'Prueba' && biz.trialEndsAt ? chip(expired ? 'danger' : 'neutral', expired ? 'Prueba terminada' : `Prueba hasta ${fmtDay(biz.trialEndsAt)}${left !== null && left <= 3 ? ' · quedan ' + left : ''}`) : ''}
+              ${pay ? (pay.suspended ? chip('danger', 'Detenida por falta de pago') : pay.overdue ? chip('warning', `Pago pendiente · se detiene el ${fmtDay(pay.stopOn)}`) : chip('neutral', `Próximo pago ${fmtDay(pay.next)}`)) : ''}
               ${chip(biz.enabled ? 'success' : 'danger', biz.enabled ? 'Activa' : 'Desactivada')}
             </div>
             <div class="row-actions" style="flex-wrap:wrap;">
               <button class="btn btn-sm btn-soft" type="button" onclick="toggleBusinessPlan('${biz.id}')">${biz.plan === 'Pro' ? 'Pasar a Prueba' : 'Pasar a Pro'}</button>
               <button class="btn btn-sm btn-soft" type="button" onclick="toggleBusinessEnabled('${biz.id}')">${biz.enabled ? 'Desactivar' : 'Activar'}</button>
               ${biz.plan === 'Prueba' ? `<button class="btn btn-sm btn-soft" type="button" onclick="extendTrial('${biz.id}')">Extender prueba 14 días</button>` : ''}
+              ${pay ? `<button class="btn btn-sm btn-soft" type="button" onclick="registerPayment('${biz.id}')">Registrar pago</button>` : ''}
               <button class="btn btn-sm btn-soft" type="button" onclick="resetBusinessPassword('${biz.id}')">Restablecer contraseña</button>
             </div>
+            ${pay ? `<div class="field" style="margin-top:10px;"><label for="np-${biz.id}">Próxima fecha de pago</label><input id="np-${biz.id}" type="date" value="${pay.next}" onchange="setNextPayment('${biz.id}', this.value)"></div>` : ''}
           </div>`;}).join('')}
       </div>
       <p class="hint" style="margin-top:12px;">Los administradores no se registran solos: tú creas la cuenta con una contraseña temporal que deberán cambiar al ingresar.</p>
