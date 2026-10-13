@@ -605,7 +605,8 @@ function loadState(){
       if (!parsed.newBusiness) parsed.newBusiness = def.newBusiness;
       if (!Array.isArray(parsed.superAlerts)) parsed.superAlerts = [];
       if (parsed.adminTab === 'resumen') parsed.adminTab = 'inicio';
-      if (!['inicio', 'citas', 'clientes', 'horarios', 'marca', 'cuenta'].includes(parsed.adminTab)) parsed.adminTab = 'inicio';
+      if (parsed.adminTab === 'marca') parsed.adminTab = 'cuenta';
+      if (!['inicio', 'citas', 'clientes', 'horarios', 'cuenta'].includes(parsed.adminTab)) parsed.adminTab = 'inicio';
       parsed.confirmCancelId = null;
       parsed.confirmRescheduleId = null;
       parsed.newAppt = null;
@@ -3288,10 +3289,9 @@ function renderAdminHorarios(){
 
 function renderAdminMarca(){
   return `
-    ${adminHeader('Marca')}
-    <p class="secondary" style="margin-top:6px;">Personaliza el nombre, color y logo que ven tus clientes.</p>
-
-    <div class="card stack" style="margin-top:24px;">
+    <h2 class="title-2">Marca</h2>
+    <p class="secondary" style="margin:-8px 0 14px;">Nombre, color y logo que ven tus clientes.</p>
+    <div class="card stack">
       <div class="field">
         <label for="brand-name">Nombre del negocio</label>
         <input id="brand-name" value="${escapeHtml(state.brand.name)}">
@@ -3340,6 +3340,8 @@ function renderAdminCuenta(){
       <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="saveAccount()">Guardar perfil</button>
     </div>
 
+    ${renderAdminMarca()}
+
     <h2 class="title-2">Tu plan</h2>
     <div class="card stack">
       <div class="row between" style="flex-wrap:nowrap;">
@@ -3364,7 +3366,6 @@ const ADMIN_NAV = [
   { id: 'citas', label: 'Citas', icon: 'calendar' },
   { id: 'clientes', label: 'Clientes', icon: 'users' },
   { id: 'horarios', label: 'Horarios', icon: 'clock' },
-  { id: 'marca', label: 'Marca', icon: 'palette' },
   { id: 'cuenta', label: 'Cuenta', icon: 'user' },
 ];
 
@@ -3373,7 +3374,6 @@ function renderAdminContent(){
     case 'citas': return renderAdminCitas();
     case 'clientes': return renderAdminClientes();
     case 'horarios': return renderAdminHorarios();
-    case 'marca': return renderAdminMarca();
     case 'cuenta': return renderAdminCuenta();
     default: return renderAdminInicio();
   }
