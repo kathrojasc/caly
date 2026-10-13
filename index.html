@@ -3262,27 +3262,8 @@ function renderAdminCuenta(){
     <h2 class="title-2">Contraseña</h2>
     ${renderPasswordCard('admin')}
 
-    <h2 class="title-2">Copia de seguridad</h2>
-    <div class="card stack">
-      <p class="secondary">En este prototipo los datos viven solo en este navegador. Descarga una copia con tus citas, clientes y horarios.</p>
-      <button class="btn btn-soft btn-sm" type="button" style="align-self:flex-start;background:#fff;" onclick="exportBackup()">Descargar copia (.json)</button>
-    </div>
-
     <div style="display:flex;justify-content:center;margin-top:28px;"><button class="btn-text" type="button" onclick="adminLogout()">Cerrar sesión</button></div>`;
 }
-function exportBackup(){
-  const copy = JSON.parse(JSON.stringify(state));
-  Object.values(copy.patients || {}).forEach(p => { delete p.passHash; });
-  (copy.businesses || []).forEach(b => { delete b.adminPassHash; });
-  const blob = new Blob([JSON.stringify(copy, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'caly-copia-' + todayISO() + '.json';
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  showToast('Copia descargada');
-}
-
 const ADMIN_NAV = [
   { id: 'inicio', label: 'Inicio', icon: 'home' },
   { id: 'citas', label: 'Citas', icon: 'calendar' },
