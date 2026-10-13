@@ -1025,9 +1025,12 @@ function confirmBooking(){
     return;
   }
 
+  let before = null;
   if (rescheduleId) {
     const appt = state.appointments.find(a => a.id === rescheduleId);
     if (appt) {
+      before = { date: appt.date, start: appt.start, serviceName: appt.serviceName || null };
+      if (svcId && findService(svcId)) { appt.serviceId = svcId; appt.serviceName = findService(svcId).name; }
       appt.date = selectedDate;
       appt.start = selectedSlot.start;
       appt.end = selectedSlot.end;
@@ -1063,7 +1066,13 @@ function confirmBooking(){
   saveState();
   render();
   window.scrollTo(0, 0);
-  addActivity(rescheduleId ? 'Cita reagendada' : 'Nueva reserva', `${name} ${rescheduleId ? 'reagendó su cita para el' : 'reservó para el'} ${displayDateLong(selectedDate)} a las ${selectedSlot.start}.`, state.booking.lastApptId);
+  if (rescheduleId && before) {
+    const nowAppt = state.appointments.find(a => a.id === rescheduleId);
+    const svcChange = before.serviceName && nowAppt.serviceName && before.serviceName !== nowAppt.serviceName ? ` Servicio: ${before.serviceName} → ${nowAppt.serviceName}.` : '';
+    addActivity('Cita reagendada', `${name}: de ${cap(displayDateShort(before.date))} ${before.start} a ${cap(displayDateShort(selectedDate))} ${selectedSlot.start}.${svcChange}`, state.booking.lastApptId);
+  } else {
+    addActivity('Nueva reserva', `${name} reservó para el ${displayDateLong(selectedDate)} a las ${selectedSlot.start}.`, state.booking.lastApptId);
+  }
   saveState();
   showToast(rescheduleId ? 'Cita reagendada' : 'Cita confirmada');
 }
@@ -1148,6 +1157,7 @@ function startReschedule(id){
   if (!appt || appt.status !== 'CONFIRMED') return;
   if (state.view === 'paciente' && !clientCanChange(appt)) { showToast(`Ya no puedes reagendar en línea. Contacta al negocio.`); return; }
   state.booking.rescheduleId = id;
+  state.booking.serviceId = appt.serviceId && findService(appt.serviceId) ? appt.serviceId : state.booking.serviceId;
   state.booking.step = 'reservar';
   state.booking.selectedSlot = null;
   state.booking.selectedDate = appt.date >= todayISO() ? appt.date : todayISO();
@@ -1950,7 +1960,8 @@ function bookingServiceId(b){
   if (!isProPlan()) return null;
   if (b.rescheduleId) {
     const a = state.appointments.find(x => x.id === b.rescheduleId);
-    return a && a.serviceId && findService(a.serviceId) ? a.serviceId : null;
+    const own = a && a.serviceId && findService(a.serviceId) ? a.serviceId : null;
+    return !b.move && b.serviceId && findService(b.serviceId) ? b.serviceId : own;
   }
   return b.serviceId || null;
 }
@@ -2050,7 +2061,7 @@ function pickIdFor(b){
   return canClientPickStaff(b) && clientStaffOptions(b).some(m => m.id === b.staffId) ? b.staffId : null;
 }
 function ensureBookingService(b){
-  if (!isProPlan() || b.rescheduleId) return;
+  if (!isProPlan() || b.move) return;
   const act = activeServices();
   if (!act.some(v => v.id === b.serviceId)) b.serviceId = act.length ? act[0].id : null;
 }
@@ -2370,7 +2381,7 @@ function renderBookingScreen(b, cfg){
       </div>
       <h1 class="title-1" style="margin:20px 0;">${cfg.title}</h1>
       ${cfg.top || ''}
-      ${isProPlan() && !b.rescheduleId ? (activeServices().length ? `
+      ${isProPlan() && !b.move ? (activeServices().length ? `
         <div style="margin-bottom:20px;">
           <p class="label" style="margin-bottom:8px;">Servicio</p>
           <div class="pills" role="group" aria-label="Elegir servicio">
@@ -2394,7 +2405,7 @@ function renderBookingScreen(b, cfg){
               <span class="ic">${icon('clock', 22)}</span>
               <div>
                 <p class="card-title">No hay horarios disponibles por ahora</p>
-                <p class="secondary" style="margin-top:4px;">${(isProPlan() && !b.rescheduleId) || canClientPickStaff(b) ? 'Prueba con otro servicio o profesional, o vuelve a intentarlo más tarde.' : 'Vuelve a intentarlo más tarde.'}</p>
+                <p class="secondary" style="margin-top:4px;">${(isProPlan() && !b.move) || canClientPickStaff(b) ? 'Prueba con otro servicio o profesional, o vuelve a intentarlo más tarde.' : 'Vuelve a intentarlo más tarde.'}</p>
               </div>
             </div>` : `<h2 class="title-3">${dayText}</h2>`}
           ${noAvail ? '' : slots.length === 0
