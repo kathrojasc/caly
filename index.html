@@ -364,7 +364,9 @@ input[type=time]::-webkit-datetime-edit-fields-wrapper, input[type=date]::-webki
 .rule-chip.warn { background: var(--color-warning-bg); color: var(--color-warning); }
 .rule-chip button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--color-text-secondary); display: inline-flex; align-items: center; justify-content: center; }
 .checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
-.checks li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.checks li { display: flex; align-items: flex-start; gap: 12px; line-height: 22px; }
+.checks li > span:last-child, .checks li > .chip { flex: 0 1 auto; }
+.checks .ck-text { flex: 1; min-width: 0; }
 .check-dot { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; background: var(--color-success-bg); color: var(--color-success); display: inline-flex; align-items: center; justify-content: center; }
 .check-dot.soon { background: var(--color-chip-neutral); color: var(--color-chip-neutral-text); }
 .empty { font-size: 15px; color: var(--color-text-secondary); padding: 6px 2px; }
@@ -3361,8 +3363,8 @@ function renderAdminCuenta(){
       ${(() => { const biz = currentBusiness(); const d = trialDaysLeft(biz); return !isProPlan() && d !== null ? `<p class="secondary" style="font-weight:600;color:var(--color-text);">${d > 0 ? `Tu prueba termina el ${fmtDay(biz.trialEndsAt)}. Te quedan ${d} día${d === 1 ? '' : 's'}.` : 'Tu prueba termina hoy.'}</p>` : ''; })()}
       <p class="secondary">${isProPlan() ? 'Incluye todo lo del periodo de prueba, más servicios con su propia duración, trabajadores asociados y la opción de mostrar los trabajadores al cliente. Los precios aún no están definidos.' : 'Todavía no definimos precios ni planes. Por ahora estás probando Caly sin costo; te avisaremos antes de que eso cambie.'}</p>
       <ul class="checks">
-        ${planFeatures.map(f => `<li><span class="check-dot">${icon('check', 14, 3.2)}</span>${f}</li>`).join('')}
-        <li><span class="check-dot ${isProPlan() ? '' : 'soon'}">${icon('check', 14, 3.2)}</span>Servicios con duración propia y trabajadores asociados ${isProPlan() ? '' : chip('neutral', 'Plan Pro')}</li>
+        ${planFeatures.map(f => `<li><span class="check-dot">${icon('check', 14, 3.2)}</span><span class="ck-text">${f}</span></li>`).join('')}
+        <li><span class="check-dot ${isProPlan() ? '' : 'soon'}">${icon('check', 14, 3.2)}</span><span class="ck-text">Servicios con duración propia y trabajadores asociados${isProPlan() ? '' : ' ' + chip('neutral', 'Plan Pro')}</span></li>
       </ul>
     </div>
 
