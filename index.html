@@ -2043,6 +2043,15 @@ function clientStaffOptions(b){
   if (b.admin) return serviceStaff(bookingServiceId(b));
   return isProPlan() && state.allowClientStaffPick ? serviceStaff(bookingServiceId(b)) : [];
 }
+function pickerStaff(b){
+  const svc = bookingServiceId(b);
+  const sel = b.selectedSlot ? b.selectedSlot.start : null;
+  return clientStaffOptions(b).filter(m => {
+    if (m.id === b.staffId) return true;
+    const slots = getAvailableSlots(b.selectedDate, b.rescheduleId, m.id, svc, !!b.admin);
+    return sel ? slots.some(x => x.start === sel) : slots.length > 0;
+  });
+}
 function canClientPickStaff(b){ return clientStaffOptions(b).length > 1; }
 function pickService(id){
   const b = ab();
@@ -2466,7 +2475,7 @@ function renderBookingScreen(b, cfg){
           <p class="label" style="margin-bottom:8px;">Profesional</p>
           <div class="pills" role="group" aria-label="Elegir profesional">
             <button type="button" class="pill-opt" aria-pressed="${!pickIdFor(b)}" onclick="pickStaff(null)">Cualquiera disponible</button>
-            ${clientStaffOptions(b).map(m => `<button type="button" class="pill-opt" aria-pressed="${b.staffId === m.id}" onclick="pickStaff('${m.id}')">${escapeHtml(m.name)}</button>`).join('')}
+            ${pickerStaff(b).map(m => `<button type="button" class="pill-opt" aria-pressed="${b.staffId === m.id}" onclick="pickStaff('${m.id}')">${escapeHtml(m.name)}</button>`).join('')}
           </div>
         </div>` : ''}
 
