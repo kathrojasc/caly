@@ -547,6 +547,8 @@ function buildDefaultState(){
     newClosed: { from: '', to: '', note: '', allDay: true, startTime: '14:00', endTime: '19:00', repeat: 'none' },
     newOff: { staffId: '', from: '', to: '', note: '' },
     editingService: null,
+    dayEdit: null,
+    confirmRemoveStaff: null,
     editingStaff: null,
     clientQuery: '',
     clientView: null,
@@ -618,6 +620,8 @@ function loadState(){
       parsed.newOff = Object.assign({}, def.newOff, parsed.newOff || {});
       parsed.editingService = null;
       parsed.editingStaff = null;
+      parsed.dayEdit = null;
+      parsed.confirmRemoveStaff = null;
       parsed.clientView = null;
       parsed.clientErr = null;
       parsed.mergeConfirm = null;
@@ -1692,6 +1696,47 @@ function dayGroupLabel(days){
   const names = days.map(d => WEEKDAYS_LONG[d]);
   return names.length > 1 ? names.slice(0, -1).join(', ') + ' y ' + names[names.length - 1].toLowerCase() : names[0];
 }
+function groupHeader(scope, g){
+  const csv = g.days.join(',');
+  const de = state.dayEdit;
+  if (de && de.scope === scope && de.daysCsv === csv) {
+    return `<div class="stack" style="gap:10px;margin-bottom:6px;">
+      <p class="label">Elige los días con este horario</p>
+      ${dayPicks(de.days, d => `toggleDayEdit('${d}')`)}
+      <div class="row"><button class="btn btn-primary btn-sm" type="button" onclick="saveDayEdit()">Guardar días</button><button class="btn btn-soft btn-sm" type="button" style="background:#fff;" onclick="cancelDayEdit()">Cancelar</button></div>
+    </div>`;
+  }
+  return `<div class="row between" style="flex-wrap:nowrap;margin-bottom:6px;"><p class="label">${dayGroupLabel(g.days)}</p><button class="btn-text" type="button" style="min-height:32px;padding:0 4px;" onclick="startDayEdit('${scope}', '${csv}')">Cambiar días</button></div>`;
+}
+function startDayEdit(scope, csv){ state.dayEdit = { scope, daysCsv: csv, days: csv.split(',') }; render(); }
+function toggleDayEdit(d){ const de = state.dayEdit; if (!de) return; de.days = de.days.includes(d) ? de.days.filter(x => x !== d) : de.days.concat(d); render(); }
+function cancelDayEdit(){ state.dayEdit = null; render(); }
+function saveDayEdit(){
+  const de = state.dayEdit;
+  if (!de) return;
+  if (!de.days.length) return showToast('Marca al menos un día, o elimina el horario con la X');
+  const before = pendingAppts().length;
+  const member = de.scope === 'biz' ? null : state.staff.find(m => m.id === de.scope);
+  const sched = de.scope === 'biz' ? state.businessHours : (member && member.schedule);
+  if (!sched) { state.dayEdit = null; return render(); }
+  const oldDays = de.daysCsv.split(',');
+  const ranges = JSON.parse(JSON.stringify(sched[oldDays[0]] || []));
+  const skipped = [];
+  oldDays.filter(d => !de.days.includes(d)).forEach(d => { delete sched[d]; });
+  de.days.filter(d => !oldDays.includes(d)).forEach(d => {
+    const ok = ranges.filter(r => de.scope === 'biz' || insideRanges(state.businessHours[d] || [], r.start, r.end));
+    if (!ok.length) { skipped.push(WEEKDAYS_LONG[d]); return; }
+    const cur = sched[d] || [];
+    ok.forEach(r => { if (!cur.some(x => x.start === r.start && x.end === r.end)) cur.push({ start: r.start, end: r.end }); });
+    cur.sort((a, b) => a.start.localeCompare(b.start));
+    sched[d] = cur;
+  });
+  state.dayEdit = null;
+  saveState();
+  render();
+  showToast(skipped.length ? `Días actualizados. No se agregó en: ${skipped.join(', ')} (fuera del horario del negocio)` : 'Días actualizados');
+  setTimeout(() => warnNewPending(before), skipped.length ? 3200 : 1800);
+}
 function deleteBizRuleGroup(daysCsv, idx){
   const before = pendingAppts().length;
   daysCsv.split(',').forEach(d => {
@@ -1730,11 +1775,13 @@ function addBizRule(){
   const { days, start, end } = state.newBizRule;
   if (!days.length) return showToast('Marca al menos un día');
   if (start >= end) return showToast('La hora de inicio debe ser antes que la de fin');
+  let changed = 0;
   days.forEach(day => {
     state.businessHours[day] = state.businessHours[day] || [];
-    if (!state.businessHours[day].some(r => r.start === start && r.end === end)) state.businessHours[day].push({ start, end });
+    if (!state.businessHours[day].some(r => r.start === start && r.end === end)) { state.businessHours[day].push({ start, end }); changed++; }
     state.businessHours[day].sort((a, b) => a.start.localeCompare(b.start));
   });
+  if (!changed) return showToast('Ese horario ya estaba en esos días. Para cambiar los días de un horario, usa "Cambiar días".');
   saveState();
   render();
   showToast(days.length === 1 ? 'Horario agregado' : `Horario agregado a ${days.length} días`);
@@ -1837,14 +1884,15 @@ function addRule(){
   if (!days.length) return showToast('Marca al menos un día');
   if (start >= end) return showToast('La hora de inicio debe ser antes que la de fin');
   const skipped = [];
-  let added = 0;
+  let added = 0, changed = 0;
   days.forEach(day => {
     if (!insideRanges(state.businessHours[day] || [], start, end)) { skipped.push(WEEKDAYS_LONG[day]); return; }
     member.schedule[day] = member.schedule[day] || [];
-    if (!member.schedule[day].some(r => r.start === start && r.end === end)) member.schedule[day].push({ start, end });
+    if (!member.schedule[day].some(r => r.start === start && r.end === end)) { member.schedule[day].push({ start, end }); changed++; }
     member.schedule[day].sort((a, b) => a.start.localeCompare(b.start));
     added++;
   });
+  if (added && !changed) return showToast('Ese horario ya estaba en esos días. Para cambiar los días de un horario, usa "Cambiar días".');
   if (!added) return showToast(`Fuera del horario del negocio: ${skipped.join(', ')}. Ajusta el horario del negocio primero`);
   saveState();
   render();
@@ -1883,7 +1931,32 @@ function saveStaffName(id){
   render();
   showToast('Nombre actualizado');
 }
+function staffFutureAppts(id){ return state.appointments.filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && a.staffId === id && a.date >= todayISO()); }
+function askRemoveStaff(id){
+  if (state.staff.length <= 1) return showToast('Debe quedar al menos un trabajador configurado');
+  state.confirmRemoveStaff = id;
+  render();
+}
+function cancelRemoveStaff(){ state.confirmRemoveStaff = null; render(); }
+function renderRemoveStaffModal(){
+  const m = state.staff.find(x => x.id === state.confirmRemoveStaff);
+  if (!m) return '';
+  const n = staffFutureAppts(m.id).length;
+  const alone = state.services.filter(v => v.staffIds.length === 1 && v.staffIds[0] === m.id).map(v => v.name);
+  return `
+    <div class="modal-back" onclick="if (event.target === this) cancelRemoveStaff()">
+      <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="rm-title" aria-describedby="rm-desc">
+        <h2 class="title-3" id="rm-title">¿Eliminar a ${escapeHtml(m.name)}?</h2>
+        <p class="secondary" id="rm-desc" style="margin-top:8px;">${n ? `Tiene ${n} cita${n === 1 ? '' : 's'} por venir. Pasarán a <strong style="color:var(--color-text);">Pendientes</strong> y tendrás que reagendarlas con otro trabajador o cancelarlas.` : 'No tiene citas por venir.'}${alone.length ? ` Los servicios ${alone.map(escapeHtml).join(', ')} se quedarán sin trabajador asignado.` : ''} <strong style="color:var(--color-text);">Esta acción es irreversible.</strong> Si solo se ausenta un tiempo, usa Ausencias.</p>
+        <div class="stack" style="margin-top:20px;gap:10px;">
+          <button class="btn btn-danger-solid btn-block" type="button" onclick="removeStaffMember('${m.id}')">Sí, eliminar</button>
+          <button class="btn btn-soft btn-block" type="button" autofocus onclick="cancelRemoveStaff()">Volver</button>
+        </div>
+      </div>
+    </div>`;
+}
 function removeStaffMember(id){
+  state.confirmRemoveStaff = null;
   const before = pendingAppts().length;
   if (state.staff.length <= 1) {
     showToast('Debe quedar al menos un trabajador configurado');
@@ -3046,7 +3119,7 @@ function renderBusinessHoursSection(){
       <div class="stack" style="gap:12px;">
         ${groupSchedule(state.businessHours).map(g => `
           <div>
-            <p class="label" style="margin-bottom:6px;">${dayGroupLabel(g.days)}</p>
+            ${groupHeader('biz', g)}
             <div class="row">${g.ranges.map((r, idx) => `<span class="rule-chip">${r.start} – ${r.end}<button type="button" onclick="deleteBizRuleGroup('${g.days.join(',')}', ${idx})" aria-label="Eliminar horario ${r.start} a ${r.end}">${icon('close', 16, 2.4)}</button></span>`).join('')}</div>
           </div>`).join('') || `<p class="secondary">El negocio todavía no tiene horario: nadie podrá reservar.</p>`}
       </div>
@@ -3155,7 +3228,7 @@ function renderAdminHorarios(){
           </div>
           <div class="row" style="flex-wrap:nowrap;gap:0;">
             <button class="btn-text" type="button" onclick="startEditStaff('${member.id}')">Editar</button>
-            ${state.staff.length > 1 ? `<button class="btn-text danger" type="button" onclick="removeStaffMember('${member.id}')">Eliminar</button>` : ''}
+            ${state.staff.length > 1 ? `<button class="btn-text danger" type="button" onclick="askRemoveStaff('${member.id}')">Eliminar</button>` : ''}
           </div>
         </div>
         <div class="rule-form">
@@ -3178,7 +3251,7 @@ function renderAdminHorarios(){
           ${state.editingStaff === member.id ? `<div class="row"><button class="btn btn-primary btn-sm" type="button" onclick="saveStaffName('${member.id}')">Guardar nombre</button><button class="btn btn-soft btn-sm" type="button" style="background:#fff;" onclick="startEditStaff('${member.id}')">Cancelar</button></div>` : ''}
         ${groupSchedule(member.schedule).map(g => `
             <div>
-              <p class="label" style="margin-bottom:6px;">${dayGroupLabel(g.days)}</p>
+              ${groupHeader(member.id, g)}
               <div class="row">
                 ${g.ranges.map((r, idx) => { const ok = g.days.every(d => insideRanges(state.businessHours[d], r.start, r.end)); return `<span class="rule-chip${ok ? '' : ' warn'}" ${ok ? '' : 'title="Fuera del horario del negocio: no se ofrece a los clientes"'}>${r.start} – ${r.end}<button type="button" onclick="deleteRuleGroup('${member.id}', '${g.days.join(',')}', ${idx})" aria-label="Eliminar horario ${r.start} a ${r.end}">${icon('close', 16, 2.4)}</button></span>`; }).join('')}
               </div>
@@ -3434,7 +3507,7 @@ function renderAdmin(){
   }
   return `
     <div class="page w880 admin-page">${renderAdminContent()}</div>
-    ${renderRescheduleModal()}${renderCancelModal()}${renderClosureModal()}${renderNotifyModal()}${renderMergeModal()}
+    ${renderRescheduleModal()}${renderCancelModal()}${renderClosureModal()}${renderNotifyModal()}${renderMergeModal()}${renderRemoveStaffModal()}
     <nav class="tabbar" aria-label="Secciones">
       ${ADMIN_NAV.map(t => `
         <button class="tab" type="button" ${state.adminTab === t.id ? 'aria-current="page"' : ''} onclick="setAdminTab('${t.id}')">
