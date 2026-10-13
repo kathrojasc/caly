@@ -247,6 +247,9 @@ button.chip { cursor: pointer; }
 .pay-rows span { color: var(--color-text-secondary); }
 .pay-rows b { font-weight: 700; text-align: right; }
 .pay-warn { margin: 0; background: var(--color-danger-bg); color: var(--color-danger); border-radius: var(--radius-s); padding: 10px 12px; font-size: 14px; line-height: 20px; font-weight: 600; }
+.field label.req::after { content: ' *'; color: var(--color-danger); font-weight: 700; }
+.req-note { margin: 0; font-size: 13px; line-height: 18px; color: var(--color-text-secondary); }
+.req-note span { color: var(--color-danger); font-weight: 700; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
@@ -839,6 +842,30 @@ function showToast(msg){
   renderToast();
   clearTimeout(window.__toastTimer);
   window.__toastTimer = setTimeout(() => { state.toast = null; renderToast(); }, 2200);
+}
+const REQUIRED_RE = /^((login|reg|na|cd)-type|login-doc|auth-email|reg-(nombres|apellidos|doc|phone)|perfil-(nombres|apellidos|phone)|cd-(doc|nombres|apellidos|phone|from|st|et)|mg-dupe|sv-name-.+|ns-(name|min)|bh-(start|end)|cfg-(slot|buffer|notice|window|cancel)|new-staff-name|nr-(start|end)-.+|of-from-.+|brand-name|acc-(name|email)|na-(dni|nombres|apellidos|phone)|nb-(name|user|pass)|np-.+|manual-time|sa-.+)$/;
+function markRequired(){
+  const root = document.getElementById('view');
+  if (!root) return;
+  const noted = new Set();
+  root.querySelectorAll('input, select').forEach(inp => {
+    if (!inp.id || inp.type === 'hidden' || inp.disabled) return;
+    if (!(inp.type === 'password' || REQUIRED_RE.test(inp.id))) return;
+    const lab = root.querySelector(`label[for="${inp.id}"]`);
+    if (!lab || lab.classList.contains('sr-only')) return;
+    lab.classList.add('req');
+    inp.setAttribute('aria-required', 'true');
+    const box = lab.closest('.card, form') || lab.closest('.page');
+    if (!box || noted.has(box)) return;
+    noted.add(box);
+    const note = document.createElement('p');
+    note.className = 'req-note';
+    note.innerHTML = '<span aria-hidden="true">*</span> Obligatorio';
+    if (box.classList.contains('page')) {
+      const f = lab.closest('.field');
+      (f && f.parentElement ? f.parentElement : box).insertAdjacentElement('afterbegin', note);
+    } else box.insertAdjacentElement('afterbegin', note);
+  });
 }
 function renderToast(){
   document.getElementById('toast-root').innerHTML = state.toast
@@ -3725,6 +3752,7 @@ function render(){
   if (tempHtml) document.getElementById('view').insertAdjacentHTML('beforeend', tempHtml);
   const newSheet = document.querySelector('.sheet');
   if (newSheet && sheetEl) newSheet.scrollTop = sheetTop;
+  markRequired();
   renderToast();
 }
 
