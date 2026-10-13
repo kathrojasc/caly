@@ -222,6 +222,7 @@ button.chip { cursor: pointer; }
 .pill-opt[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); font-weight: 700; }
 .empty-card { display: flex; gap: 14px; align-items: flex-start; background: var(--color-surface); border-radius: var(--radius-m); padding: 18px; }
 .empty-card .ic { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
 .pw-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center; }
@@ -524,7 +525,10 @@ function buildDefaultState(){
     businessHours: { '1': [{ start: '09:00', end: '19:00' }], '2': [{ start: '09:00', end: '19:00' }], '3': [{ start: '09:00', end: '19:00' }], '4': [{ start: '09:00', end: '19:00' }], '5': [{ start: '09:00', end: '19:00' }] },
     closedDays: [],
     newBizRule: { days: ['1', '2', '3', '4', '5'], start: '09:00', end: '19:00' },
-    newClosed: { from: '', to: '', note: '' },
+    newClosed: { from: '', to: '', note: '', allDay: true, startTime: '14:00', endTime: '19:00', repeat: 'none' },
+    newOff: { staffId: '', from: '', to: '', note: '' },
+    editingService: null,
+    editingStaff: null,
     newStaffName: '',
     confirmCancelId: null,
     newAppt: null,
@@ -582,7 +586,10 @@ function loadState(){
       if (!Array.isArray(parsed.closedDays)) parsed.closedDays = [];
       if (!parsed.newBizRule || !Array.isArray(parsed.newBizRule.days)) parsed.newBizRule = def.newBizRule;
       if (!parsed.newRule || !Array.isArray(parsed.newRule.days)) parsed.newRule = def.newRule;
-      if (!parsed.newClosed) parsed.newClosed = def.newClosed;
+      parsed.newClosed = Object.assign({}, def.newClosed, parsed.newClosed || {});
+      parsed.newOff = Object.assign({}, def.newOff, parsed.newOff || {});
+      parsed.editingService = null;
+      parsed.editingStaff = null;
       if (!Array.isArray(parsed.services)) parsed.services = def.services;
       if (!parsed.newService) parsed.newService = def.newService;
       parsed.serviceAssign = {};
@@ -1691,34 +1698,84 @@ function deleteBizRule(day, idx){
   saveState();
   render();
 }
+function updateNewOff(field, value){ state.newOff[field] = value; }
+function offAffected(staffId, entry){
+  return state.appointments.filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && a.staffId === staffId && a.date >= todayISO() && a.date >= entry.from && a.date <= entry.to).length;
+}
+function addTimeOff(staffId){
+  const n = state.newOff;
+  const mine = n.staffId === staffId ? n : { from: '', to: '', note: '' };
+  if (!mine.from) return showToast('Elige desde qué fecha no atiende');
+  const to = mine.to || mine.from;
+  if (to < mine.from) return showToast('La fecha final no puede ser antes que la inicial');
+  if (to < todayISO()) return showToast('Elige fechas de hoy en adelante');
+  const entry = { id: 'of' + Date.now(), from: mine.from, to, note: (mine.note || '').trim() };
+  const aff = offAffected(staffId, entry);
+  if (aff) { state.pendingClosure = { kind: 'off', staffId, entry, aff }; render(); return; }
+  commitTimeOff(staffId, entry);
+}
+function commitTimeOff(staffId, entry){
+  const m = state.staff.find(x => x.id === staffId);
+  if (!m) return;
+  m.timeOff = (m.timeOff || []).concat(entry).sort((a, b) => a.from.localeCompare(b.from));
+  state.newOff = { staffId: '', from: '', to: '', note: '' };
+  state.pendingClosure = null;
+  saveState();
+  render();
+  const aff = offAffected(staffId, entry);
+  showToast(aff ? `Ausencia guardada. ${aff} cita${aff === 1 ? '' : 's'} en Pendientes` : 'Ausencia guardada');
+}
+function deleteTimeOff(staffId, id){
+  const m = state.staff.find(x => x.id === staffId);
+  if (!m) return;
+  m.timeOff = (m.timeOff || []).filter(o => o.id !== id);
+  saveState();
+  render();
+  showToast('Ausencia eliminada');
+}
 function updateNewClosed(field, value){ state.newClosed[field] = value; }
 function closedAffected(c){
   return state.appointments.filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && a.date >= todayISO() && closureAppliesOn(c, a.date)
     && (!c.startTime || (timeToMinutes(a.start) < timeToMinutes(c.endTime) && timeToMinutes(c.startTime) < timeToMinutes(a.end)))).length;
 }
+function closureLabel(c){
+  const wd = WEEKDAYS_LONG[dayOfWeek(c.from)];
+  const when = c.repeat === 'weekly'
+    ? `Cada ${wd.toLowerCase()}${c.to ? ` hasta el ${fmtDay(c.to)}` : ''} (desde el ${fmtDay(c.from)})`
+    : (c.from === (c.to || c.from) ? fmtDay(c.from) : `${fmtDay(c.from)} – ${fmtDay(c.to)}`);
+  return c.startTime ? `${when} · ${c.startTime}–${c.endTime}` : when;
+}
 function addClosedDay(){
   const n = state.newClosed;
   const from = n.from;
-  const to = n.to || n.from;
+  const weekly = n.repeat === 'weekly';
+  const to = weekly ? (n.to || '') : (n.to || n.from);
   if (!from) return showToast('Elige la fecha desde la que cierras');
-  if (to < from) return showToast('La fecha final no puede ser antes que la inicial');
-  if (to < todayISO()) return showToast('Elige fechas de hoy en adelante');
-  const entry = { id: 'cd' + Date.now(), from, to, note: (n.note || '').trim() };
+  if (from < todayISO() && !(weekly && to && to >= todayISO())) return showToast('Elige fechas de hoy en adelante');
+  if (to && to < from) return showToast('La fecha final no puede ser antes que la inicial');
+  if (!n.allDay && n.startTime >= n.endTime) return showToast('La hora de inicio debe ser antes que la de fin');
+  const entry = { id: 'cd' + Date.now(), from, to, note: (n.note || '').trim(), repeat: weekly ? 'weekly' : 'none' };
+  if (!n.allDay) { entry.startTime = n.startTime; entry.endTime = n.endTime; }
   const aff = closedAffected(entry);
-  if (aff) { state.pendingClosure = { entry, aff }; render(); return; }
+  if (aff) { state.pendingClosure = { kind: 'closure', entry, aff }; render(); return; }
   commitClosure(entry);
 }
 function commitClosure(entry){
   state.closedDays.push(entry);
   state.closedDays.sort((a, b) => a.from.localeCompare(b.from));
-  state.newClosed = { from: '', to: '', note: '' };
+  const keep = state.newClosed;
+  state.newClosed = { from: '', to: '', note: '', allDay: true, startTime: keep.startTime, endTime: keep.endTime, repeat: 'none' };
   state.pendingClosure = null;
   saveState();
   render();
   const aff = closedAffected(entry);
-  showToast(aff ? `Días cerrados. ${aff} cita${aff === 1 ? '' : 's'} en Pendientes` : 'Días cerrados');
+  showToast(aff ? `Cierre guardado. ${aff} cita${aff === 1 ? '' : 's'} en Pendientes` : 'Cierre guardado');
 }
-function confirmClosure(){ if (state.pendingClosure) commitClosure(state.pendingClosure.entry); }
+function confirmClosure(){
+  const pc = state.pendingClosure;
+  if (!pc) return;
+  if (pc.kind === 'off') commitTimeOff(pc.staffId, pc.entry); else commitClosure(pc.entry);
+}
 function cancelClosure(){ state.pendingClosure = null; render(); }
 function deleteClosedDay(id){
   state.closedDays = state.closedDays.filter(c => c.id !== id);
@@ -1765,6 +1822,19 @@ function addStaffMember(){
   saveState();
   render();
   showToast('Trabajador agregado');
+}
+function startEditStaff(id){ state.editingStaff = state.editingStaff === id ? null : id; render(); }
+function saveStaffName(id){
+  const name = ($('es-name').value || '').trim();
+  if (name.length < 2) return showToast('Ingresa el nombre del trabajador');
+  const m = state.staff.find(x => x.id === id);
+  if (!m) return;
+  m.name = name;
+  state.appointments.forEach(a => { if (a.staffId === id) a.staffName = name; });
+  state.editingStaff = null;
+  saveState();
+  render();
+  showToast('Nombre actualizado');
 }
 function removeStaffMember(id){
   const before = pendingAppts().length;
@@ -2576,21 +2646,41 @@ function renderAdminCitas(){
     ${list.length === 0 ? `<p class="secondary" style="margin-top:24px;">${f === 'pasadas' ? 'Todavía no hay citas en el historial.' : 'No hay citas para mostrar.'}</p>` : `<div class="rows" style="margin-top:20px;">${list.map(a => citaCard(a, now, f === 'pendientes' ? 'pend' : f === 'esperando' ? 'wait' : false)).join('')}</div>`}`;
 }
 
+function startEditService(id){ state.editingService = state.editingService === id ? null : id; render(); }
+function saveService(id){
+  const v = findService(id);
+  if (!v) return;
+  const name = ($('sv-name-' + id).value || '').trim();
+  const minutes = Number($('sv-min-' + id).value);
+  if (name.length < 2) return showToast('Ingresa el nombre del servicio');
+  if (!(minutes >= 5 && minutes <= 480)) return showToast('La duración debe estar entre 5 y 480 min');
+  v.name = name;
+  v.minutes = Math.round(minutes);
+  state.appointments.forEach(a => { if (a.serviceId === id) a.serviceName = name; });
+  state.editingService = null;
+  saveState();
+  render();
+  showToast('Servicio actualizado. Las citas ya agendadas conservan su duración');
+}
 function renderServicesEditor(){
   const nsv = state.newService;
   return `
     <div class="rows">
       ${state.services.length === 0 ? `<p class="secondary">Todavía no creaste ningún servicio.</p>` : state.services.map(v => {
         const noStaff = serviceStaff(v.id).length === 0;
+        const editing = state.editingService === v.id;
         return `
         <div class="card-line stack" style="gap:12px;">
           <div class="row between" style="flex-wrap:nowrap;">
-            <div style="min-width:0;"><p class="row-title">${escapeHtml(v.name)}</p><p class="secondary">${v.minutes} min</p></div>
-            <div class="row" style="flex-wrap:nowrap;">
+            ${editing
+              ? `<div class="grid-2" style="flex:1;"><div class="field"><label for="sv-name-${v.id}">Nombre</label><input id="sv-name-${v.id}" value="${escapeHtml(v.name)}"></div><div class="field"><label for="sv-min-${v.id}">Duración (min)</label><input id="sv-min-${v.id}" type="number" inputmode="numeric" value="${v.minutes}"></div></div>`
+              : `<div style="min-width:0;"><p class="row-title">${escapeHtml(v.name)}</p><p class="secondary">${v.minutes} min</p></div>`}
+            <div class="row" style="flex-wrap:nowrap;gap:0;">
               ${noStaff ? chip('warning', 'Sin trabajador') : ''}
-              <button class="btn-text danger" type="button" onclick="deleteService('${v.id}')">Eliminar</button>
+              ${editing ? '' : `<button class="btn-text" type="button" onclick="startEditService('${v.id}')">Editar</button><button class="btn-text danger" type="button" onclick="deleteService('${v.id}')">Eliminar</button>`}
             </div>
           </div>
+          ${editing ? `<div class="row"><button class="btn btn-primary btn-sm" type="button" onclick="saveService('${v.id}')">Guardar</button><button class="btn btn-soft btn-sm" type="button" onclick="startEditService('${v.id}')">Cancelar</button></div>` : ''}
           <div>
             <p class="label" style="margin-bottom:8px;">Trabajadores que lo prestan</p>
             <div class="pills">${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${v.staffIds.includes(m.id)}" onclick="toggleServiceStaff('${v.id}','${m.id}')">${escapeHtml(m.name)}</button>`).join('')}</div>
@@ -2692,14 +2782,31 @@ function renderBusinessHoursSection(){
       </div>
     </div>
 
-    <h2 class="title-2">Días cerrados</h2>
-    <p class="secondary" style="margin-bottom:14px;">Feriados, vacaciones o cualquier día en que no atiendes. No se podrá reservar en esas fechas.</p>
+    <h2 class="title-2">Cierres</h2>
+    <p class="secondary" style="margin-bottom:14px;">Feriados, vacaciones o un horario en que no atiendes. Pueden repetirse cada semana. No se podrá reservar en ese tiempo.</p>
     <div class="card stack">
       <div class="rule-form">
-        <div class="field"><label for="cd-from">Desde</label><input id="cd-from" type="date" min="${todayISO()}" value="${nc.from}" placeholder="Elegir fecha" onchange="updateNewClosed('from', this.value); render()"></div>
+        <div class="field"><label for="cd-from">${nc.repeat === 'weekly' ? 'Desde el' : 'Desde'}</label><input id="cd-from" type="date" min="${todayISO()}" value="${nc.from}" placeholder="Elegir fecha" onchange="updateNewClosed('from', this.value); render()"></div>
         <div class="field"><label for="cd-to">Hasta (opcional)</label><input id="cd-to" type="date" min="${todayISO()}" value="${nc.to}" placeholder="Elegir fecha" onchange="updateNewClosed('to', this.value); render()"></div>
-        <div class="field day"><label for="cd-note">Motivo (opcional)</label><input id="cd-note" placeholder="Ej: Feriado, vacaciones" value="${escapeHtml(nc.note)}" oninput="updateNewClosed('note', this.value)"></div>
-        <button class="btn btn-primary" type="button" onclick="addClosedDay()">Cerrar estos días</button>
+        <div class="field day">
+          <label for="cd-kind">Qué cierras</label>
+          <select id="cd-kind" onchange="updateNewClosed('allDay', this.value === 'all'); render()">
+            <option value="all" ${nc.allDay ? 'selected' : ''}>Todo el día</option>
+            <option value="part" ${nc.allDay ? '' : 'selected'}>Solo un horario</option>
+          </select>
+        </div>
+        ${nc.allDay ? '' : `
+        <div class="field"><label for="cd-st">Desde las</label><input id="cd-st" type="time" value="${nc.startTime}" onchange="updateNewClosed('startTime', this.value)"></div>
+        <div class="field"><label for="cd-et">Hasta las</label><input id="cd-et" type="time" value="${nc.endTime}" onchange="updateNewClosed('endTime', this.value)"></div>`}
+        <div class="field day">
+          <label for="cd-rep">Repetición</label>
+          <select id="cd-rep" onchange="updateNewClosed('repeat', this.value); render()">
+            <option value="none" ${nc.repeat === 'none' ? 'selected' : ''}>No se repite</option>
+            <option value="weekly" ${nc.repeat === 'weekly' ? 'selected' : ''}>Cada semana${nc.from ? ' (los ' + WEEKDAYS_LONG[dayOfWeek(nc.from)].toLowerCase() + ')' : ''}</option>
+          </select>
+        </div>
+        <div class="field day"><label for="cd-note">Motivo (opcional)</label><input id="cd-note" placeholder="Ej: Feriado, vacaciones, reunión" value="${escapeHtml(nc.note)}" oninput="updateNewClosed('note', this.value)"></div>
+        <button class="btn btn-primary" type="button" onclick="addClosedDay()">Guardar cierre</button>
       </div>
       ${state.closedDays.length ? `<div class="rows">${state.closedDays.map(c => {
         const aff = closedAffected(c);
@@ -2707,12 +2814,12 @@ function renderBusinessHoursSection(){
         <div class="card-line" style="padding:14px 16px;background:#fff;">
           <div class="row between" style="flex-wrap:nowrap;gap:10px;">
             <div style="min-width:0;">
-              <p class="row-title" style="font-size:16px;">${c.from === c.to ? fmtDay(c.from) : `${fmtDay(c.from)} – ${fmtDay(c.to)}`}</p>
+              <p class="row-title" style="font-size:16px;">${closureLabel(c)}</p>
               ${c.note ? `<p class="secondary">${escapeHtml(c.note)}</p>` : ''}
             </div>
             <button class="btn-text danger" type="button" onclick="deleteClosedDay('${c.id}')">Reabrir</button>
           </div>
-          ${aff ? `<div style="margin-top:8px;">${chip('warning', `${aff} cita${aff === 1 ? '' : 's'} en estas fechas`)}</div>` : ''}
+          ${aff ? `<div style="margin-top:8px;">${chip('warning', `${aff} cita${aff === 1 ? '' : 's'} afectada${aff === 1 ? '' : 's'}`)}</div>` : ''}
         </div>`;}).join('')}</div>` : ''}
     </div>`;
 }
@@ -2772,9 +2879,14 @@ function renderAdminHorarios(){
         <div class="row between" style="flex-wrap:nowrap;">
           <div class="row" style="flex-wrap:nowrap;gap:12px;min-width:0;">
             <span class="avatar" style="background:#fff;" aria-hidden="true">${escapeHtml(initials(member.name))}</span>
-            <p class="card-title" style="overflow-wrap:anywhere;">${escapeHtml(member.name)}</p>
+            ${state.editingStaff === member.id
+              ? `<div class="field" style="min-width:0;flex:1;"><label for="es-name" class="sr-only">Nombre</label><input id="es-name" value="${escapeHtml(member.name)}" aria-label="Nombre del trabajador"></div>`
+              : `<p class="card-title" style="overflow-wrap:anywhere;">${escapeHtml(member.name)}</p>`}
           </div>
-          ${state.staff.length > 1 ? `<button class="btn-text danger" type="button" onclick="removeStaffMember('${member.id}')">Eliminar</button>` : ''}
+          <div class="row" style="flex-wrap:nowrap;gap:0;">
+            <button class="btn-text" type="button" onclick="startEditStaff('${member.id}')">Editar</button>
+            ${state.staff.length > 1 ? `<button class="btn-text danger" type="button" onclick="removeStaffMember('${member.id}')">Eliminar</button>` : ''}
+          </div>
         </div>
         <div class="rule-form">
           <div class="field day">
@@ -2793,13 +2905,29 @@ function renderAdminHorarios(){
         </div>
 
         <div class="stack" style="gap:12px;">
-          ${groupSchedule(member.schedule).map(g => `
+          ${state.editingStaff === member.id ? `<div class="row"><button class="btn btn-primary btn-sm" type="button" onclick="saveStaffName('${member.id}')">Guardar nombre</button><button class="btn btn-soft btn-sm" type="button" style="background:#fff;" onclick="startEditStaff('${member.id}')">Cancelar</button></div>` : ''}
+        ${groupSchedule(member.schedule).map(g => `
             <div>
               <p class="label" style="margin-bottom:6px;">${dayGroupLabel(g.days)}</p>
               <div class="row">
                 ${g.ranges.map((r, idx) => { const ok = g.days.every(d => insideRanges(state.businessHours[d], r.start, r.end)); return `<span class="rule-chip${ok ? '' : ' warn'}" ${ok ? '' : 'title="Fuera del horario del negocio: no se ofrece a los clientes"'}>${r.start} – ${r.end}<button type="button" onclick="deleteRuleGroup('${member.id}', '${g.days.join(',')}', ${idx})" aria-label="Eliminar horario ${r.start} a ${r.end}">${icon('close', 16, 2.4)}</button></span>`; }).join('')}
               </div>
             </div>`).join('') || `<p class="secondary">Todavía no configuraste ningún horario para ${escapeHtml(member.name)}.</p>`}
+        </div>
+        <div>
+          <p class="label" style="margin-bottom:8px;">Ausencias (vacaciones, licencias)</p>
+          ${(member.timeOff || []).length ? `<div class="rows" style="margin-bottom:10px;">${member.timeOff.map(o => {
+            const aff = offAffected(member.id, o);
+            return `<div class="card-line" style="padding:12px 14px;background:#fff;">
+              <div class="row between" style="flex-wrap:nowrap;gap:10px;"><div style="min-width:0;"><p class="row-title" style="font-size:15px;">${o.from === o.to ? fmtDay(o.from) : `${fmtDay(o.from)} – ${fmtDay(o.to)}`}</p>${o.note ? `<p class="secondary">${escapeHtml(o.note)}</p>` : ''}</div><button class="btn-text danger" type="button" onclick="deleteTimeOff('${member.id}','${o.id}')">Quitar</button></div>
+              ${aff ? `<div style="margin-top:6px;">${chip('warning', `${aff} cita${aff === 1 ? '' : 's'} afectada${aff === 1 ? '' : 's'}`)}</div>` : ''}
+            </div>`; }).join('')}</div>` : ''}
+          <div class="rule-form">
+            <div class="field"><label for="of-from-${member.id}">Desde</label><input id="of-from-${member.id}" type="date" min="${todayISO()}" value="${state.newOff.staffId === member.id ? state.newOff.from : ''}" placeholder="Elegir fecha" onchange="updateNewOff('staffId','${member.id}'); updateNewOff('from', this.value); render()"></div>
+            <div class="field"><label for="of-to-${member.id}">Hasta (opcional)</label><input id="of-to-${member.id}" type="date" min="${todayISO()}" value="${state.newOff.staffId === member.id ? state.newOff.to : ''}" placeholder="Elegir fecha" onchange="updateNewOff('staffId','${member.id}'); updateNewOff('to', this.value); render()"></div>
+            <div class="field day"><label for="of-note-${member.id}">Motivo (opcional)</label><input id="of-note-${member.id}" placeholder="Ej: Vacaciones" value="${state.newOff.staffId === member.id ? escapeHtml(state.newOff.note) : ''}" oninput="updateNewOff('staffId','${member.id}'); updateNewOff('note', this.value)"></div>
+            <button class="btn btn-soft" type="button" style="background:#fff;" onclick="addTimeOff('${member.id}')">Agregar ausencia</button>
+          </div>
         </div>
       </div>`).join('')}`;
 }
@@ -2957,13 +3085,14 @@ function renderNewApptView(){
 function renderClosureModal(){
   const pc = state.pendingClosure;
   if (!pc) return '';
+  const who = pc.kind === 'off' ? ` de ${escapeHtml(firstWord((state.staff.find(m => m.id === pc.staffId) || {}).name || ''))}` : '';
   return `
     <div class="modal-back" onclick="if (event.target === this) cancelClosure()">
       <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="cl-title" aria-describedby="cl-desc">
-        <h2 class="title-3" id="cl-title">Hay ${pc.aff} cita${pc.aff === 1 ? '' : 's'} en esas fechas</h2>
-        <p class="secondary" id="cl-desc" style="margin-top:8px;">Si cierras esos días, <strong style="color:var(--color-text);">tendrás que cancelar o reagendar ${pc.aff === 1 ? 'esa cita' : 'esas citas'}</strong>. Aparecerán en la sección Pendientes de Citas.</p>
+        <h2 class="title-3" id="cl-title">Hay ${pc.aff} cita${pc.aff === 1 ? '' : 's'}${who} en ese tiempo</h2>
+        <p class="secondary" id="cl-desc" style="margin-top:8px;">Si lo guardas, <strong style="color:var(--color-text);">tendrás que cancelar o reagendar ${pc.aff === 1 ? 'esa cita' : 'esas citas'}</strong>. Aparecerán en la sección Pendientes de Citas.</p>
         <div class="stack" style="margin-top:20px;gap:10px;">
-          <button class="btn btn-danger-solid btn-block" type="button" onclick="confirmClosure()">Cerrar de todos modos</button>
+          <button class="btn btn-danger-solid btn-block" type="button" onclick="confirmClosure()">Guardar de todos modos</button>
           <button class="btn btn-soft btn-block" type="button" autofocus onclick="cancelClosure()">Volver</button>
         </div>
       </div>
