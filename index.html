@@ -510,7 +510,7 @@ function buildDefaultState(){
     includePast: false,
     citasFilter: 'proximas',
     brand: { name: 'Caly', color: '#0B0B0C', logo: null },
-    account: { name: 'Valentina Rossi', email: 'valentina@caly.app' },
+    account: { name: 'Valentina Rossi', email: 'valentina@caly.app', phone: '11-5555-0100' },
     config: { slotMinutes: 45, bufferMinutes: 0, minNoticeHours: 2, windowDays: 21, cancelNoticeHours: 12 },
     staff: [
       { id: 'staff-1', name: 'Valentina Rossi', schedule: defaultWeekSchedule() },
@@ -596,6 +596,7 @@ function loadState(){
       if (!parsed.brand) parsed.brand = def.brand;
       parsed.config = Object.assign({}, def.config, parsed.config || {});
       if (!parsed.account) parsed.account = def.account;
+      if (parsed.account.phone === undefined) parsed.account.phone = '';
       if (!Array.isArray(parsed.staff) || !parsed.staff.length) parsed.staff = def.staff;
       if (typeof parsed.roundRobinCursor !== 'number') parsed.roundRobinCursor = 0;
       if (typeof parsed.allowClientStaffPick !== 'boolean') parsed.allowClientStaffPick = false;
@@ -1622,6 +1623,11 @@ function saveBrand(){
   showToast('Marca actualizada');
 }
 
+function bizContactLink(){
+  const ph = (state.account.phone || '').trim();
+  const digits = cleanPhoneForWhatsapp(ph);
+  return digits ? `<a href="https://wa.me/${digits}" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">WhatsApp del negocio (${escapeHtml(ph)})</a>` : 'negocio';
+}
 function saveAccount(){
   const name = document.getElementById('acc-name').value.trim();
   const email = document.getElementById('acc-email').value.trim();
@@ -1629,8 +1635,11 @@ function saveAccount(){
     showToast('Revisa el nombre y el email');
     return;
   }
+  const phone = document.getElementById('acc-phone').value.trim();
+  if (phone && !isValidPhone(phone)) { showToast('Revisa el teléfono del negocio'); return; }
   state.account.name = name;
   state.account.email = email;
+  state.account.phone = phone;
   const biz = currentBusiness();
   if (biz) biz.adminUser = email;
   saveState();
@@ -2540,7 +2549,7 @@ function renderPerfil(b){
         <div class="field">
           <label for="perfil-doc">${DOC_TYPES[b.docType].long}</label>
           <input id="perfil-doc" value="${escapeHtml(b.dni)}" disabled style="color:var(--color-text-secondary);">
-          <span class="hint">Es tu identificación y no se puede cambiar.</span>
+          <span class="hint">Es tu identificación y no se puede cambiar aquí. Si hay un error en tu documento, escribe al ${bizContactLink()} para solicitar el cambio.</span>
         </div>
         <div class="field"><label for="perfil-nombres">Nombres</label><input id="perfil-nombres" autocomplete="given-name" value="${escapeHtml(b.nombres)}"></div>
         <div class="field"><label for="perfil-apellidos">Apellidos</label><input id="perfil-apellidos" autocomplete="family-name" value="${escapeHtml(b.apellidos)}"></div>
@@ -3337,6 +3346,7 @@ function renderAdminCuenta(){
     <div class="card stack">
       <div class="field"><label for="acc-name">Nombre</label><input id="acc-name" value="${escapeHtml(acc.name)}"></div>
       <div class="field"><label for="acc-email">Email de acceso</label><input id="acc-email" type="email" value="${escapeHtml(acc.email)}"></div>
+      <div class="field"><label for="acc-phone">WhatsApp del negocio</label><input id="acc-phone" type="tel" inputmode="tel" value="${escapeHtml(acc.phone || '')}"><span class="hint">Lo ven tus clientes cuando necesitan pedirte un cambio, como corregir su documento.</span></div>
       <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="saveAccount()">Guardar perfil</button>
     </div>
 
