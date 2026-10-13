@@ -2045,11 +2045,13 @@ function clientStaffOptions(b){
 }
 function pickerStaff(b){
   const svc = bookingServiceId(b);
-  const sel = b.selectedSlot ? b.selectedSlot.start : null;
+  const today = todayISO();
   return clientStaffOptions(b).filter(m => {
     if (m.id === b.staffId) return true;
-    const slots = getAvailableSlots(b.selectedDate, b.rescheduleId, m.id, svc, !!b.admin);
-    return sel ? slots.some(x => x.start === sel) : slots.length > 0;
+    for (let i = 0; i <= state.config.windowDays; i++) {
+      if (getAvailableSlots(addDaysISO(today, i), b.rescheduleId, m.id, svc, !!b.admin).length) return true;
+    }
+    return false;
   });
 }
 function canClientPickStaff(b){ return clientStaffOptions(b).length > 1; }
