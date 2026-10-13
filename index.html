@@ -1383,11 +1383,6 @@ function copyBookingLink(){
   } catch (e) {}
   showToast(url);
 }
-function shareBookingLinkWhatsApp(){
-  const msg = `Hola! Agenda tu cita con ${state.brand.name} cuando quieras desde aquí: https://${bookingLink()}`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
-}
-function viewAsClient(){ setView('paciente'); }
 function askReschedule(id){
   const a = state.appointments.find(x => x.id === id);
   if (!a) return;
@@ -2740,8 +2735,6 @@ function renderAdminInicio(){
       <div class="link-url tnum" aria-label="Enlace de reservas">${escapeHtml(bookingLink())}</div>
       <div class="link-actions">
         <button class="btn btn-inverse" type="button" onclick="copyBookingLink()">Copiar enlace</button>
-        <button class="btn btn-soft" type="button" onclick="shareBookingLinkWhatsApp()">${icon('chat', 18)} Enviar por WhatsApp</button>
-        <button class="btn-text" type="button" onclick="viewAsClient()">Ver como cliente</button>
       </div>
     </div>
 
