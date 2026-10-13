@@ -250,6 +250,45 @@ button.chip { cursor: pointer; }
 .field label.req::after { content: ' *'; color: var(--color-danger); font-weight: 700; }
 .req-note { margin: 0; font-size: 13px; line-height: 18px; color: var(--color-text-secondary); }
 .req-note span { color: var(--color-danger); font-weight: 700; }
+/* Calendario */
+.cal-nav { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.cal-title { flex: 1; text-align: center; font-size: 16px; font-weight: 700; min-width: 0; }
+.cal-staff { margin-top: 12px; }
+.cal-staff .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+.cal-wrap { margin-top: 14px; border: 1px solid var(--color-border); border-radius: var(--radius-m); overflow: hidden; background: var(--color-bg); }
+.cal-body { display: flex; position: relative; }
+.cal-hours { position: relative; width: 44px; flex-shrink: 0; }
+.cal-hour { position: absolute; left: 0; width: 100%; padding-left: 6px; font-size: 12px; line-height: 14px; color: var(--color-text-secondary); transform: translateY(-7px); background: var(--color-bg); font-variant-numeric: tabular-nums; }
+.cal-hour:first-child { transform: translateY(2px); }
+.cal-days { position: relative; flex: 1; min-width: 0; display: flex; border-left: 1px solid var(--color-border); }
+.cal-line { position: absolute; left: 0; right: 0; height: 1px; background: var(--color-border); pointer-events: none; }
+.cal-col { position: relative; flex: 1; min-width: 0; }
+.cal-days.week .cal-col + .cal-col { border-left: 1px solid var(--color-border); }
+.cal-off { position: absolute; left: 0; right: 0; background: rgba(0,0,0,.045); pointer-events: none; }
+.cal-closed { position: absolute; left: 0; right: 0; background: repeating-linear-gradient(135deg, rgba(201,74,74,.18) 0 6px, rgba(201,74,74,.06) 6px 12px); pointer-events: none; }
+.cal-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--color-danger); z-index: 3; }
+.cal-ev { position: absolute; border: 0; border-left: 4px solid; border-radius: 8px; padding: 3px 6px; text-align: left; overflow: hidden; display: flex; flex-direction: column; gap: 0; font-size: 12px; line-height: 15px; z-index: 2; }
+.cal-ev b { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-ev span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .75; }
+.cal-ev.pend { outline: 2px dashed var(--color-danger); outline-offset: -2px; }
+.cal-ev.wait { outline: 2px dashed #8e8e93; outline-offset: -2px; opacity: .85; }
+.cal-ev.sel { box-shadow: 0 0 0 2px var(--color-primary); z-index: 4; }
+.cal-days.week .cal-ev { padding: 2px 3px; border-left-width: 3px; border-radius: 6px; }
+.cal-weekhead { display: flex; border-bottom: 1px solid var(--color-border); }
+.cal-gutter { width: 44px; flex-shrink: 0; }
+.cal-weekhead button { flex: 1; min-width: 0; border: 0; background: transparent; padding: 6px 0; display: flex; flex-direction: column; align-items: center; font-size: 12px; color: var(--color-text-secondary); }
+.cal-weekhead button b { font-size: 16px; line-height: 22px; color: var(--color-text); width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+.cal-weekhead button.today b { background: var(--color-primary); color: var(--color-on-primary); }
+.cal-month { margin-top: 14px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal-mh { text-align: center; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); padding: 4px 0; }
+.cal-cell { border: 0; border-radius: var(--radius-s); background: var(--color-surface); min-height: 62px; padding: 6px 4px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; position: relative; }
+.cal-cell b { font-size: 15px; line-height: 20px; }
+.cal-cell.out { opacity: .4; }
+.cal-cell.today b { background: var(--color-primary); color: var(--color-on-primary); width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; }
+.cal-cell.closed { background: repeating-linear-gradient(135deg, rgba(201,74,74,.14) 0 6px, var(--color-surface) 6px 12px); }
+.cal-count { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); line-height: 14px; }
+.cal-dots { display: flex; gap: 3px; }
+.cal-dots i { width: 6px; height: 6px; border-radius: 50%; display: block; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
@@ -559,6 +598,10 @@ function buildDefaultState(){
     newOff: { staffId: '', from: '', to: '', note: '' },
     editingService: null,
     dayEdit: null,
+    calView: 'dia',
+    calDate: '',
+    calStaff: null,
+    calSel: null,
     confirmRemoveStaff: null,
     editingStaff: null,
     clientQuery: '',
@@ -637,6 +680,10 @@ function loadState(){
       parsed.editingService = null;
       parsed.editingStaff = null;
       parsed.dayEdit = null;
+      parsed.calSel = null;
+      if (!['dia', 'semana', 'mes'].includes(parsed.calView)) parsed.calView = 'dia';
+      if (typeof parsed.calDate !== 'string') parsed.calDate = '';
+      if (parsed.calStaff === undefined) parsed.calStaff = null;
       parsed.confirmRemoveStaff = null;
       parsed.clientView = null;
       parsed.clientErr = null;
@@ -2689,6 +2736,184 @@ function upcomingCard(a, light, todayIso){
     </div>`;
 }
 
+const STAFF_COLORS = [
+  { bg: '#DDF1E8', bd: '#2F8F6B' }, { bg: '#E0E7FA', bd: '#4A63C9' }, { bg: '#FBE8D2', bd: '#D07A22' },
+  { bg: '#F2DEF1', bd: '#A04A9C' }, { bg: '#F8DFDF', bd: '#C94A4A' }, { bg: '#E6E6EB', bd: '#6B6B78' },
+];
+function staffColor(staffId){
+  const i = state.staff.findIndex(m => m.id === staffId);
+  return STAFF_COLORS[i >= 0 ? i % STAFF_COLORS.length : STAFF_COLORS.length - 1];
+}
+function calSelectedDate(){ return state.calDate || todayISO(); }
+function setCalView(v){ state.calView = v; state.calSel = null; render(); }
+function setCalStaff(id){ state.calStaff = id; state.calSel = null; render(); }
+function calToday(){ state.calDate = todayISO(); state.calSel = null; render(); }
+function openCalDay(iso){ state.calDate = iso; state.calView = 'dia'; state.calSel = null; render(); }
+function selectCalAppt(id){ state.calSel = state.calSel === id ? null : id; render(); }
+function shiftCal(n){
+  const d = calSelectedDate();
+  if (state.calView === 'mes') {
+    const { y, m } = ymFromISO(d);
+    const t = new Date(y, m + n, 1);
+    state.calDate = isoFromYMD(t.getFullYear(), t.getMonth(), 1);
+  } else state.calDate = addDaysISO(d, state.calView === 'semana' ? 7 * n : n);
+  state.calSel = null;
+  render();
+}
+function calAppts(iso){
+  return state.appointments
+    .filter(a => a.date === iso && a.status === 'CONFIRMED' && (!state.calStaff || a.staffId === state.calStaff))
+    .sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
+}
+function calLayout(list){
+  const out = []; let cluster = []; let clusterEnd = -1;
+  const flush = () => {
+    if (!cluster.length) return;
+    const lanes = [];
+    cluster.forEach(a => {
+      let lane = lanes.findIndex(end => end <= timeToMinutes(a.start));
+      if (lane < 0) { lane = lanes.length; lanes.push(0); }
+      lanes[lane] = timeToMinutes(a.end);
+      a._lane = lane;
+    });
+    cluster.forEach(a => out.push({ a, lane: a._lane, lanes: lanes.length }));
+    cluster = [];
+  };
+  list.forEach(a => {
+    if (cluster.length && timeToMinutes(a.start) >= clusterEnd) { flush(); clusterEnd = -1; }
+    cluster.push(a);
+    clusterEnd = Math.max(clusterEnd, timeToMinutes(a.end));
+  });
+  flush();
+  return out;
+}
+function calRange(days){
+  let lo = 24 * 60, hi = 0;
+  days.forEach(iso => {
+    (state.businessHours[String(dayOfWeek(iso))] || []).forEach(r => { lo = Math.min(lo, timeToMinutes(r.start)); hi = Math.max(hi, timeToMinutes(r.end)); });
+    calAppts(iso).forEach(a => { lo = Math.min(lo, timeToMinutes(a.start)); hi = Math.max(hi, timeToMinutes(a.end)); });
+  });
+  if (hi <= lo) { lo = 8 * 60; hi = 18 * 60; }
+  return { startH: Math.floor(lo / 60), endH: Math.ceil(hi / 60) };
+}
+function calEventState(a){
+  if (apptPendingReason(a)) return ' pend';
+  if (a.rescheduleRequested) return ' wait';
+  return '';
+}
+function calColumn(iso, startH, endH, hpx, compact){
+  const dow = String(dayOfWeek(iso));
+  const total = (endH - startH) * 60;
+  const px = m => ((m - startH * 60) / 60) * hpx;
+  const biz = state.businessHours[dow] || [];
+  let off = '';
+  let cur = startH * 60;
+  biz.forEach(r => {
+    const a = timeToMinutes(r.start), b = timeToMinutes(r.end);
+    if (a > cur) off += `<div class="cal-off" style="top:${px(cur)}px;height:${px(a) - px(cur)}px"></div>`;
+    cur = Math.max(cur, b);
+  });
+  if (cur < endH * 60) off += `<div class="cal-off" style="top:${px(cur)}px;height:${px(endH * 60) - px(cur)}px"></div>`;
+  const closed = state.closedDays.filter(c => closureAppliesOn(c, iso)).map(c => {
+    const a = c.startTime ? timeToMinutes(c.startTime) : startH * 60, b = c.startTime ? timeToMinutes(c.endTime) : endH * 60;
+    return `<div class="cal-closed" style="top:${px(Math.max(a, startH * 60))}px;height:${px(Math.min(b, endH * 60)) - px(Math.max(a, startH * 60))}px"></div>`;
+  }).join('');
+  const evs = calLayout(calAppts(iso)).map(({ a, lane, lanes }) => {
+    const c = staffColor(a.staffId);
+    const top = px(timeToMinutes(a.start)), h = Math.max(22, px(timeToMinutes(a.end)) - top - 2);
+    const first = firstWord(a.name);
+    const label = compact ? `<b>${a.start.replace(/^0/, '')}</b><span>${escapeHtml(first)}</span>` : `<b>${a.start} · ${escapeHtml(a.name)}</b>${h > 40 && a.serviceName ? `<span>${escapeHtml(a.serviceName)}</span>` : ''}`;
+    return `<button type="button" class="cal-ev${calEventState(a)}${state.calSel === a.id ? ' sel' : ''}" style="top:${top}px;height:${h}px;left:calc(${(lane / lanes) * 100}% + 1px);width:calc(${100 / lanes}% - 3px);background:${c.bg};border-left-color:${c.bd};color:#1c1c1e;" onclick="selectCalAppt('${a.id}')" aria-label="${a.start}, ${escapeHtml(a.name)}${a.serviceName ? ', ' + escapeHtml(a.serviceName) : ''}${a.staffName ? ', ' + escapeHtml(a.staffName) : ''}">${label}</button>`;
+  }).join('');
+  const now = new Date();
+  const nowLine = iso === todayISO() && now.getHours() * 60 + now.getMinutes() > startH * 60 && now.getHours() * 60 + now.getMinutes() < endH * 60
+    ? `<div class="cal-now" style="top:${px(now.getHours() * 60 + now.getMinutes())}px"></div>` : '';
+  return `<div class="cal-col" style="height:${(total / 60) * hpx}px">${off}${closed}${evs}${nowLine}</div>`;
+}
+function calHourLabels(startH, endH, hpx){
+  let h = '';
+  for (let i = startH; i < endH; i++) h += `<div class="cal-hour" style="top:${(i - startH) * hpx}px">${pad2(i)}:00</div>`;
+  return `<div class="cal-hours" style="height:${(endH - startH) * hpx}px">${h}</div>`;
+}
+function calGridLines(startH, endH, hpx){
+  let h = '';
+  for (let i = startH; i < endH; i++) h += `<div class="cal-line" style="top:${(i - startH) * hpx}px"></div>`;
+  return h;
+}
+function renderCalendar(){
+  const todayIso = todayISO();
+  const sel = calSelectedDate();
+  const view = state.calView;
+  let title = '', body = '';
+  if (view === 'dia') {
+    title = sel === todayIso ? 'Hoy · ' + longDate(sel) : longDate(sel);
+    const { startH, endH } = calRange([sel]);
+    const hpx = 60;
+    const n = calAppts(sel).length;
+    body = `
+      <div class="cal-wrap"><div class="cal-body">
+        ${calHourLabels(startH, endH, hpx)}
+        <div class="cal-days" style="height:${(endH - startH) * hpx}px">${calGridLines(startH, endH, hpx)}${calColumn(sel, startH, endH, hpx, false)}</div>
+      </div></div>
+      ${n ? '' : `<p class="secondary" style="margin-top:12px;">No hay citas este día.</p>`}
+      <button class="btn btn-soft btn-sm" type="button" style="margin-top:12px;" onclick="openNewAppt('${sel}')" ${sel < todayIso ? 'disabled' : ''}>${icon('plus', 18, 2.6)} Agendar en este día</button>`;
+  } else if (view === 'semana') {
+    const ws = weekStart(sel);
+    const days = [0, 1, 2, 3, 4, 5, 6].map(i => addDaysISO(ws, i));
+    title = `${dayNum(days[0])} ${monthAbbr(days[0]).toLowerCase()} – ${dayNum(days[6])} ${monthAbbr(days[6]).toLowerCase()}`;
+    const { startH, endH } = calRange(days);
+    const hpx = 48;
+    const letters = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+    body = `
+      <div class="cal-wrap">
+        <div class="cal-weekhead"><span class="cal-gutter"></span>${days.map((iso, i) => `<button type="button" class="${iso === todayIso ? 'today' : ''}" onclick="openCalDay('${iso}')" aria-label="Ver ${longDate(iso)}"><span>${letters[i]}</span><b>${dayNum(iso)}</b></button>`).join('')}</div>
+        <div class="cal-body">
+          ${calHourLabels(startH, endH, hpx)}
+          <div class="cal-days week" style="height:${(endH - startH) * hpx}px">${calGridLines(startH, endH, hpx)}${days.map(iso => calColumn(iso, startH, endH, hpx, true)).join('')}</div>
+        </div>
+      </div>`;
+  } else {
+    const { y, m } = ymFromISO(sel);
+    title = `${cap(MONTHS[m])} ${y}`;
+    const first = isoFromYMD(y, m, 1);
+    const gridStart = weekStart(first);
+    const cells = [];
+    for (let i = 0; i < 42; i++) cells.push(addDaysISO(gridStart, i));
+    while (cells.length > 35 && ymFromISO(cells[35]).m !== m) cells.length = 35;
+    body = `
+      <div class="cal-month">
+        ${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(l => `<span class="cal-mh">${l}</span>`).join('')}
+        ${cells.map(iso => {
+          const list = calAppts(iso);
+          const inMonth = ymFromISO(iso).m === m;
+          const dots = [...new Set(list.map(a => a.staffId))].slice(0, 4).map(id => `<i style="background:${staffColor(id).bd}"></i>`).join('');
+          const closed = isClosedDay(iso);
+          return `<button type="button" class="cal-cell${inMonth ? '' : ' out'}${iso === todayIso ? ' today' : ''}${closed ? ' closed' : ''}" onclick="openCalDay('${iso}')" aria-label="${longDate(iso)}${list.length ? ', ' + list.length + ' cita' + (list.length === 1 ? '' : 's') : ''}"><b>${dayNum(iso)}</b>${list.length ? `<span class="cal-count">${list.length}</span><span class="cal-dots">${dots}</span>` : ''}</button>`;
+        }).join('')}
+      </div>`;
+  }
+  const selAppt = state.calSel ? state.appointments.find(a => a.id === state.calSel) : null;
+  const staffPills = state.staff.length > 1 ? `
+    <div class="pills cal-staff" role="group" aria-label="Filtrar por trabajador">
+      <button type="button" class="pill-opt" aria-pressed="${!state.calStaff}" onclick="setCalStaff(null)">Todos</button>
+      ${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${state.calStaff === m.id}" onclick="setCalStaff('${m.id}')"><i class="dot" style="background:${staffColor(m.id).bd}"></i>${escapeHtml(firstWord(m.name))}</button>`).join('')}
+    </div>` : '';
+  return `
+    <div class="seg" role="group" aria-label="Vista del calendario">
+      <button type="button" aria-pressed="${view === 'dia'}" onclick="setCalView('dia')">Día</button>
+      <button type="button" aria-pressed="${view === 'semana'}" onclick="setCalView('semana')">Semana</button>
+      <button type="button" aria-pressed="${view === 'mes'}" onclick="setCalView('mes')">Mes</button>
+    </div>
+    <div class="cal-nav">
+      <button class="icon-btn" type="button" onclick="shiftCal(-1)" aria-label="Anterior">${icon('left', 20, 2.4)}</button>
+      <span class="cal-title" aria-live="polite">${escapeHtml(title)}</span>
+      <button class="icon-btn" type="button" onclick="shiftCal(1)" aria-label="Siguiente">${icon('right', 20, 2.4)}</button>
+      <button class="btn btn-soft btn-sm" type="button" onclick="calToday()">Hoy</button>
+    </div>
+    ${staffPills}
+    ${body}
+    ${selAppt ? `<div style="margin-top:16px;">${citaCard(selAppt, todayIso, apptPendingReason(selAppt) ? 'pend' : (selAppt.rescheduleRequested ? 'wait' : false))}<button class="btn-text" type="button" style="margin-top:8px;" onclick="state.calSel=null; render()">Cerrar detalle</button></div>` : ''}`;
+}
 function renderAdminInicio(){
   const todayIso = todayISO();
   const next7Iso = addDaysISO(todayIso, 7);
@@ -2739,6 +2964,9 @@ function renderAdminInicio(){
       </div>
     </div>` : ''}
 
+    <h2 class="title-2">Calendario</h2>
+    ${renderCalendar()}
+
     ${state.activity.length ? `
     <div class="news">
       <div class="row between" style="flex-wrap:nowrap;">
@@ -2774,11 +3002,7 @@ function renderAdminInicio(){
       <div class="stat"><span class="ic">${icon('clock', 22)}</span><div><div class="n">${next7Count}</div><div class="l">Próximos 7 días</div></div></div>
       <div class="stat ${pendingPayCount > 0 ? 'warn' : ''}"><span class="ic" style="${pendingPayCount > 0 ? 'color:var(--color-warning)' : ''}">${icon('info', 22)}</span><div><div class="n">${pendingPayCount}</div><div class="l">Pagos pendientes</div></div></div>
     </div>
-
-    <h2 class="title-2">Próximos</h2>
-    ${nextAppt ? `
-      ${upcomingCard(nextAppt, false, todayIso)}
-      ${restUpcoming.length ? `<div class="rows" style="margin-top:12px;">${restUpcoming.map(a => upcomingCard(a, true, todayIso)).join('')}</div>` : ''}` : `<p class="secondary">No tienes citas próximas.</p>`}`;
+  `;
 }
 
 function citaCard(a, now, mode){
@@ -3003,40 +3227,6 @@ function citaMatches(a, q){
 function setCitasQuery(v){ state.citasQuery = v; state.citasLimit = 15; render(); }
 function setCitasFilter(f){ state.citasFilter = f; state.citasLimit = 15; render(); }
 function weekStart(iso){ const dow = dateFromISO(iso).getDay(); return addDaysISO(iso, dow === 0 ? -6 : 1 - dow); }
-function pickAgendaDay(iso){ state.agendaDate = iso; render(); }
-function shiftAgendaWeek(n){ state.agendaDate = addDaysISO(state.agendaDate || todayISO(), 7 * n); render(); }
-function renderAgenda(now){
-  const sel = state.agendaDate || now;
-  const ws = weekStart(sel);
-  const days = [0, 1, 2, 3, 4, 5, 6].map(i => addDaysISO(ws, i));
-  const letters = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-  const dow = String(dayOfWeek(sel));
-  const biz = state.businessHours[dow] || [];
-  const closures = state.closedDays.filter(c => closureAppliesOn(c, sel));
-  const fullClosed = closures.filter(c => !c.startTime);
-  const dayAppts = state.appointments.filter(a => a.date === sel && a.status !== 'CANCELLED').sort((a, b) => a.start.localeCompare(b.start));
-  const countOn = iso => state.appointments.filter(a => a.date === iso && a.status !== 'CANCELLED').length;
-  const range = `${dayNum(ws)} ${monthAbbr(ws).toLowerCase()} – ${dayNum(days[6])} ${monthAbbr(days[6]).toLowerCase()}`;
-  return `
-    <div class="agenda-head">
-      <button class="icon-btn" type="button" onclick="shiftAgendaWeek(-1)" aria-label="Semana anterior">${icon('left', 20, 2.4)}</button>
-      <span class="agenda-range">${range}</span>
-      <button class="icon-btn" type="button" onclick="shiftAgendaWeek(1)" aria-label="Semana siguiente">${icon('right', 20, 2.4)}</button>
-    </div>
-    <div class="week-strip" role="group" aria-label="Días de la semana">
-      ${days.map((iso, i) => {
-        const n = countOn(iso);
-        return `<button type="button" class="week-day${iso === sel ? ' sel' : ''}${iso === now ? ' today' : ''}" aria-pressed="${iso === sel}" aria-label="${longDate(iso)}${n ? `, ${n} cita${n === 1 ? '' : 's'}` : ''}" onclick="pickAgendaDay('${iso}')"><span>${letters[i]}</span><b>${dayNum(iso)}</b><i class="${n ? 'on' : ''}">${n || ''}</i></button>`;
-      }).join('')}
-    </div>
-    <h2 class="title-3" style="margin-top:22px;">${longDate(sel)}</h2>
-    <div class="row" style="margin-top:8px;">
-      ${fullClosed.length ? chip('danger', `Cerrado${fullClosed[0].note ? ': ' + escapeHtml(fullClosed[0].note) : ''}`) : (biz.length ? chip('neutral', `Atención ${biz.map(r => r.start + '–' + r.end).join(', ')}`) : chip('neutral', 'Sin atención ese día'))}
-      ${closures.filter(c => c.startTime).map(c => chip('warning', `Cierre ${c.startTime}–${c.endTime}`)).join('')}
-    </div>
-    <button class="btn btn-soft btn-sm" type="button" style="margin-top:12px;" onclick="openNewAppt('${sel}')" ${sel < now ? 'disabled' : ''}>${icon('plus', 18, 2.6)} Agendar en este día</button>
-    ${dayAppts.length === 0 ? `<p class="secondary" style="margin-top:18px;">No hay citas este día.</p>` : `<div class="rows" style="margin-top:16px;">${dayAppts.map(a => citaCard(a, now, apptPendingReason(a) ? 'pend' : (a.rescheduleRequested ? 'wait' : false))).join('')}</div>`}`;
-}
 function renderAdminCitas(){
   const now = todayISO();
   const pendList = pendingAppts();
@@ -3056,15 +3246,10 @@ function renderAdminCitas(){
   const q = state.citasQuery || '';
   const listQ = list.filter(a => citaMatches(a, q));
   const shown = listQ.slice(0, state.citasLimit);
-  const view = state.citasView || 'lista';
   return `
     ${adminHeader('Citas')}
     <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:20px;" onclick="openNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
-    <div class="seg" role="group" aria-label="Vista de citas" style="margin-top:16px;">
-      <button type="button" aria-pressed="${view === 'lista'}" onclick="state.citasView='lista'; render()">Lista</button>
-      <button type="button" aria-pressed="${view === 'agenda'}" onclick="state.citasView='agenda'; render()">Agenda</button>
-    </div>
-    ${view === 'agenda' ? `<div style="margin-top:18px;">${renderAgenda(now)}</div>` : `
+    ${`
     <div style="margin-top:12px;">
       <div class="seg seg-scroll" role="group" aria-label="Filtro de citas">
         ${pendList.length ? `<button type="button" aria-pressed="${f === 'pendientes'}" onclick="setCitasFilter('pendientes')">Pendientes<span class="badge">${pendList.length}</span></button>` : ''}
