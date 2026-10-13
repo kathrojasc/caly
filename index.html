@@ -847,7 +847,6 @@ const REQUIRED_RE = /^((login|reg|na|cd)-type|login-doc|auth-email|reg-(nombres|
 function markRequired(){
   const root = document.getElementById('view');
   if (!root) return;
-  const noted = new Set();
   root.querySelectorAll('input, select').forEach(inp => {
     if (!inp.id || inp.type === 'hidden' || inp.disabled) return;
     if (!(inp.type === 'password' || REQUIRED_RE.test(inp.id))) return;
@@ -855,16 +854,6 @@ function markRequired(){
     if (!lab || lab.classList.contains('sr-only')) return;
     lab.classList.add('req');
     inp.setAttribute('aria-required', 'true');
-    const box = lab.closest('.card, form') || lab.closest('.page');
-    if (!box || noted.has(box)) return;
-    noted.add(box);
-    const note = document.createElement('p');
-    note.className = 'req-note';
-    note.innerHTML = '<span aria-hidden="true">*</span> Obligatorio';
-    if (box.classList.contains('page')) {
-      const f = lab.closest('.field');
-      (f && f.parentElement ? f.parentElement : box).insertAdjacentElement('afterbegin', note);
-    } else box.insertAdjacentElement('afterbegin', note);
   });
 }
 function renderToast(){
