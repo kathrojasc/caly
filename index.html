@@ -3109,7 +3109,7 @@ function renderAdminHorarios(){
     <h2 class="title-2" style="margin-top:28px;">Configuración de citas</h2>
     <div class="card stack">
       <div class="grid-2">
-        <div class="field"><label for="cfg-slot">Duración de la cita (min)</label><input id="cfg-slot" type="number" inputmode="numeric" value="${cfg.slotMinutes}"></div>
+        ${isProPlan() && activeServices().length ? `<input id="cfg-slot" type="hidden" value="${cfg.slotMinutes}"><p class="secondary">La duración de cada cita la define su servicio (ver Servicios arriba).</p>` : `<div class="field"><label for="cfg-slot">Duración de la cita (min)</label><input id="cfg-slot" type="number" inputmode="numeric" value="${cfg.slotMinutes}"></div>`}
         <div class="field"><label for="cfg-buffer">Descanso entre citas (min)</label><input id="cfg-buffer" type="number" inputmode="numeric" value="${cfg.bufferMinutes}"></div>
         <div class="field"><label for="cfg-notice">Anticipación mínima (horas)</label><input id="cfg-notice" type="number" inputmode="numeric" value="${cfg.minNoticeHours}"></div>
         <div class="field"><label for="cfg-window">Reservas hasta (días a futuro)</label><input id="cfg-window" type="number" inputmode="numeric" value="${cfg.windowDays}"></div>
