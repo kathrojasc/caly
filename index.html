@@ -1093,14 +1093,24 @@ function confirmBooking(){
   saveState();
   showToast(rescheduleId ? 'Cita reagendada' : 'Cita confirmada');
 }
+function clientDataIssue(b){
+  if (!b.admin || b.move) return null;
+  return !isValidDni(b.dni, b.docType) ? docErrorText(b.docType)
+    : (b.nombres || '').trim().length < 2 ? 'Ingresa los nombres del cliente.'
+    : (b.apellidos || '').trim().length < 2 ? 'Ingresa los apellidos del cliente.'
+    : !isValidPhone(b.phone) ? 'Ingresa un teléfono válido del cliente.' : null;
+}
+function syncNewApptValidity(){
+  const n = state.newAppt;
+  if (!n) return;
+  const ok = !clientDataIssue(n);
+  if (n._ok !== ok) { n._ok = ok; if (n.selectedSlot) render(); }
+}
 function goToResumen(){
   const b = ab();
   if (!b.selectedSlot) return;
   if (b.admin && !b.move) {
-    const bad = !isValidDni(b.dni, b.docType) ? docErrorText(b.docType)
-      : (b.nombres || '').trim().length < 2 ? 'Ingresa los nombres del cliente.'
-      : (b.apellidos || '').trim().length < 2 ? 'Ingresa los apellidos del cliente.'
-      : !isValidPhone(b.phone) ? 'Ingresa un teléfono válido del cliente.' : null;
+    const bad = clientDataIssue(b);
     if (bad) { b.formError = bad; render(); window.scrollTo(0, 0); return; }
     b.formError = null;
     b.name = fullName(b.nombres, b.apellidos);
@@ -1298,7 +1308,7 @@ function confirmMove(){
   showToast('Cita movida');
 }
 function closeNewAppt(){ state.newAppt = null; render(); window.scrollTo(0, 0); }
-function updateNewAppt(field, value){ state.newAppt[field] = value; }
+function updateNewAppt(field, value){ state.newAppt[field] = value; state.newAppt.formError = null; syncNewApptValidity(); }
 function setNewApptDocType(type){
   const n = state.newAppt;
   n.docType = type;
@@ -1323,6 +1333,7 @@ function lookupNewApptDni(value){
     n.nombres = ''; n.apellidos = ''; n.phone = '';
     render();
   }
+  syncNewApptValidity();
 }
 function createAdminAppointment(){
   const n = state.newAppt;
@@ -2556,7 +2567,11 @@ function renderBookingScreen(b, cfg){
       </div>
     </div>
     ${noAvail ? `
-      <div class="dock off"><span class="d-off">Sin horarios por ahora</span></div>` : b.selectedSlot ? `
+      <div class="dock off"><span class="d-off">Sin horarios por ahora</span></div>` : b.selectedSlot && clientDataIssue(b) ? `
+      <div class="dock off">
+        <span class="d-off">Completa los datos del cliente</span>
+        <button class="btn" type="button" disabled>${cfg.continueLabel}</button>
+      </div>` : b.selectedSlot ? `
       <div class="dock on">
         <div class="d-main"><span class="d-day">${dayText}</span><span class="d-time">${b.selectedSlot.start}</span></div>
         <button class="btn btn-inverse" type="button" onclick="goToResumen()">${cfg.continueLabel}</button>
