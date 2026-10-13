@@ -222,6 +222,14 @@ button.chip { cursor: pointer; }
 .pill-opt[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); font-weight: 700; }
 .empty-card { display: flex; gap: 14px; align-items: flex-start; background: var(--color-surface); border-radius: var(--radius-m); padding: 18px; }
 .empty-card .ic { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 56px !important; }
+.pw-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center; }
+.pw-toggle.on { color: var(--color-text); background: var(--color-surface-active); }
+.notice { background: var(--color-surface); border-radius: var(--radius-s); padding: 14px 16px; font-size: 14px; line-height: 20px; color: var(--color-text-secondary); }
+.notice.warn { background: var(--color-warning-bg); color: var(--color-warning-strong); font-weight: 600; }
+.notice.demo code { background: #fff; }
+.temp-pw { margin-top: 16px; padding: 16px; border-radius: var(--radius-s); background: var(--color-surface); text-align: center; font-size: 26px; font-weight: 700; letter-spacing: 3px; user-select: all; }
 .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; margin-top: 14px; }
 .slot { height: 52px; border: 0; border-radius: var(--radius-s); background: var(--color-surface); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .slot[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); font-weight: 700; }
@@ -363,7 +371,7 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
 <div id="toast-root"></div>
 
 <script>
-const STORAGE_KEY = 'caly_proto_state_v9';
+const STORAGE_KEY = 'caly_proto_state_v10';
 const WEEKDAYS_SHORT = ['dom','lun','mar','mié','jué','vie','sáb'];
 const WEEKDAYS_LONG = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -390,8 +398,42 @@ function combineDateTime(iso, time){
 function displayDateShort(iso){ const dt = dateFromISO(iso); return `${WEEKDAYS_SHORT[dt.getDay()]} ${dt.getDate()}`; }
 function displayDateLong(iso){ const dt = dateFromISO(iso); return `${WEEKDAYS_LONG[dt.getDay()]} ${dt.getDate()} de ${MONTHS[dt.getMonth()]}`; }
 function overlaps(aS, aE, bS, bE){ return timeToMinutes(aS) < timeToMinutes(bE) && timeToMinutes(bS) < timeToMinutes(aE); }
-function normalizeDni(raw){ return (raw || '').replace(/\D/g, ''); }
-function isValidDni(raw){ const d = normalizeDni(raw); return d.length >= 6 && d.length <= 10; }
+const $ = id => document.getElementById(id);
+const DOC_TYPES = {
+  DNI: { label: 'DNI', long: 'DNI', hint: '8 dígitos', re: /^\d{8}$/ },
+  CE: { label: 'CE', long: 'Carné de extranjería', hint: '9 a 12 letras o números', re: /^[A-Z0-9]{9,12}$/ },
+  PAS: { label: 'Pasaporte', long: 'Pasaporte', hint: '6 a 12 letras o números', re: /^[A-Z0-9]{6,12}$/ },
+};
+function normalizeDni(raw, type){
+  const t = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return (type || 'DNI') === 'DNI' ? t.replace(/\D/g, '') : t;
+}
+function isValidDni(raw, type){
+  type = DOC_TYPES[type] ? type : 'DNI';
+  return DOC_TYPES[type].re.test(normalizeDni(raw, type));
+}
+function docLabel(type){ return (DOC_TYPES[type] || DOC_TYPES.DNI).label; }
+function docErrorText(type){ const d = DOC_TYPES[type] || DOC_TYPES.DNI; return `Ingresa un ${d.long} válido (${d.hint}).`; }
+function docOptions(sel){ return Object.keys(DOC_TYPES).map(k => `<option value="${k}" ${sel === k ? 'selected' : ''}>${DOC_TYPES[k].long}</option>`).join(''); }
+function digitsOnly(s){ return String(s || '').replace(/\D/g, ''); }
+function isValidPhone(s){ const d = digitsOnly(s); return d.length >= 7 && d.length <= 15; }
+function fullName(n, a){ return `${(n || '').trim()} ${(a || '').trim()}`.trim(); }
+function firstWord(s){ return String(s || '').trim().split(/\s+/)[0] || ''; }
+function displayName(b){ return b.name || fullName(b.nombres, b.apellidos); }
+function genTempPassword(){ const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 8; i++) s += c[Math.floor(Math.random() * c.length)]; return s; }
+// Hash simple de demostración (sin servidor). Una versión real debe usar hashing seguro en el servidor.
+function hashPw(str){
+  const s = 'caly|' + String(str);
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
+}
 function escapeHtml(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function defaultWeekSchedule(){
@@ -408,6 +450,14 @@ function nextDayWhere(startIso, dows){
   let iso = startIso;
   for (let i = 0; i < 14; i++) { if (dows.includes(dayOfWeek(iso))) return iso; iso = addDaysISO(iso, 1); }
   return startIso;
+}
+function newBookingObj(){
+  const t = todayISO();
+  return {
+    step: 'login', docType: 'DNI', dni: '', name: '', nombres: '', apellidos: '', phone: '',
+    selectedDate: t, selectedSlot: null, error: null, calendarMonth: ymFromISO(t), rescheduleId: null, lastApptId: null,
+    login: { type: 'DNI', doc: '' }, reg: { nombres: '', apellidos: '', type: 'DNI', doc: '', phone: '' }, historyOpen: false,
+  };
 }
 function buildDefaultState(){
   const t = todayISO();
@@ -426,9 +476,19 @@ function buildDefaultState(){
     roundRobinCursor: 0,
     allowClientStaffPick: true,
     patients: {
-      '30111222': { name: 'Marina Ibáñez', phone: '11-4455-6677' },
-      '28999888': { name: 'Julián Ortiz', phone: '11-2233-4455' },
+      '30111222': { docType: 'DNI', nombres: 'Marina', apellidos: 'Ibáñez', name: 'Marina Ibáñez', phone: '11-4455-6677', passHash: hashPw('marina123'), mustChange: false, createdBy: 'self' },
+      '28999888': { docType: 'DNI', nombres: 'Julián', apellidos: 'Ortiz', name: 'Julián Ortiz', phone: '11-2233-4455', passHash: hashPw('julian123'), mustChange: false, createdBy: 'self' },
+      '27555444': { docType: 'DNI', nombres: 'Facundo', apellidos: 'López', name: 'Facundo López', phone: '11-9988-7766', passHash: null, mustChange: false, createdBy: 'admin' },
     },
+    session: { client: null, admin: false, super: false },
+    superAccount: { name: 'Soporte Caly', email: 'super@caly.app', passHash: hashPw('super2026'), mustChange: false },
+    authFails: {},
+    authError: null,
+    authDraft: '',
+    activity: [],
+    pwError: null,
+    showForgot: false,
+    tempReveal: null,
     appointments: [
       { id: 'a1', dni: '30111222', name: 'Marina Ibáñez', phone: '11-4455-6677', date: nextDayWhere(addDaysISO(t,1), [1,2,3,4,5]), start: '09:00', end: '09:45', status: 'CONFIRMED', paid: false, staffId: 'staff-1', staffName: 'Valentina Rossi', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
       { id: 'a2', dni: '28999888', name: 'Julián Ortiz', phone: '11-2233-4455', date: nextDayWhere(addDaysISO(t,1), [1,3]), start: '15:00', end: '15:45', status: 'CONFIRMED', paid: true, staffId: 'staff-2', staffName: 'Camila Torres', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
@@ -436,7 +496,7 @@ function buildDefaultState(){
       { id: 'a4', dni: '30111222', name: 'Marina Ibáñez', phone: '11-4455-6677', date: addDaysISO(t,-1), start: '11:00', end: '11:45', status: 'CONFIRMED', paid: true, staffId: 'staff-1', staffName: 'Valentina Rossi', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
       { id: 'a5', dni: '28999888', name: 'Julián Ortiz', phone: '11-2233-4455', date: nextDayWhere(t, [1,3]), start: '16:30', end: '17:15', status: 'CONFIRMED', paid: false, staffId: 'staff-2', staffName: 'Camila Torres', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
     ],
-    booking: { step: 'dni', dni: '', name: '', phone: '', selectedDate: t, selectedSlot: null, error: null, calendarMonth: ymFromISO(t), rescheduleId: null, lastApptId: null },
+    booking: newBookingObj(),
     newRule: { staffId: 'staff-1', days: ['1', '2', '3', '4', '5'], start: '09:00', end: '13:00' },
     businessHours: { '1': [{ start: '09:00', end: '19:00' }], '2': [{ start: '09:00', end: '19:00' }], '3': [{ start: '09:00', end: '19:00' }], '4': [{ start: '09:00', end: '19:00' }], '5': [{ start: '09:00', end: '19:00' }] },
     closedDays: [],
@@ -455,12 +515,11 @@ function buildDefaultState(){
     serviceAssign: {},
     toast: null,
     businesses: [
-      { id: 'biz-1', name: 'Caly Demo — Valentina Rossi', adminUser: 'valentina@caly.app', adminPass: 'caly2026', plan: 'Pro', enabled: true },
-      { id: 'biz-2', name: 'Clínica Dental Sonric', adminUser: 'admin@sonric.pe', adminPass: 'sonric123', plan: 'Prueba', enabled: true },
-      { id: 'biz-3', name: 'Estudio Pilates Flow', adminUser: 'admin@flowpilates.pe', adminPass: 'flow456', plan: 'Prueba', enabled: false },
+      { id: 'biz-1', name: 'Caly Demo — Valentina Rossi', adminUser: 'valentina@caly.app', adminPassHash: hashPw('caly2026'), mustChange: false, plan: 'Pro', trialEndsAt: null, enabled: true },
+      { id: 'biz-2', name: 'Clínica Dental Sonric', adminUser: 'admin@sonric.pe', adminPassHash: hashPw('sonric123'), mustChange: false, plan: 'Prueba', trialEndsAt: addDaysISO(t, 12), enabled: true },
+      { id: 'biz-3', name: 'Estudio Pilates Flow', adminUser: 'admin@flowpilates.pe', adminPassHash: hashPw('flow456'), mustChange: false, plan: 'Prueba', trialEndsAt: addDaysISO(t, -3), enabled: false },
     ],
     newBusiness: { name: '', adminUser: '', adminPass: '' },
-    visiblePasswords: {},
     superAlerts: [],
   };
 }
@@ -471,7 +530,9 @@ function loadState(){
     if (raw) {
       const parsed = JSON.parse(raw);
       const def = buildDefaultState();
-      parsed.booking = parsed.booking || def.booking;
+      parsed.booking = Object.assign(newBookingObj(), parsed.booking || {});
+      if (!parsed.booking.login) parsed.booking.login = { type: 'DNI', doc: '' };
+      if (!parsed.booking.reg) parsed.booking.reg = { nombres: '', apellidos: '', type: 'DNI', doc: '', phone: '' };
       if (!parsed.booking.calendarMonth) parsed.booking.calendarMonth = ymFromISO(todayISO());
       if (parsed.booking.rescheduleId === undefined) parsed.booking.rescheduleId = null;
       if (parsed.booking.lastApptId === undefined) parsed.booking.lastApptId = null;
@@ -484,7 +545,6 @@ function loadState(){
       if (typeof parsed.newStaffName !== 'string') parsed.newStaffName = '';
       if (!Array.isArray(parsed.businesses) || !parsed.businesses.length) parsed.businesses = def.businesses;
       if (!parsed.newBusiness) parsed.newBusiness = def.newBusiness;
-      if (!parsed.visiblePasswords) parsed.visiblePasswords = {};
       if (!Array.isArray(parsed.superAlerts)) parsed.superAlerts = [];
       if (parsed.adminTab === 'resumen') parsed.adminTab = 'inicio';
       if (!['inicio', 'citas', 'horarios', 'marca', 'cuenta'].includes(parsed.adminTab)) parsed.adminTab = 'inicio';
@@ -502,6 +562,16 @@ function loadState(){
       if (!parsed.newService) parsed.newService = def.newService;
       parsed.serviceAssign = {};
       parsed.toast = null;
+      if (!parsed.session) parsed.session = def.session;
+      if (!parsed.superAccount) parsed.superAccount = def.superAccount;
+      if (!parsed.patients) parsed.patients = def.patients;
+      if (!Array.isArray(parsed.activity)) parsed.activity = [];
+      parsed.authDraft = '';
+      parsed.authFails = {};
+      parsed.authError = null;
+      parsed.pwError = null;
+      parsed.showForgot = false;
+      parsed.tempReveal = null;
       return parsed;
     }
   } catch (e) {}
@@ -559,6 +629,10 @@ function apptPendingReason(a){
 }
 function pendingAppts(){
   return state.appointments.filter(a => apptPendingReason(a)).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+}
+function addActivity(title, text, apptId){
+  state.activity.unshift({ id: 'ac' + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), title, text, apptId: apptId || null, read: false });
+  if (state.activity.length > 60) state.activity.length = 60;
 }
 function warnNewPending(before){
   const n = pendingAppts().length - before;
@@ -666,9 +740,22 @@ function renderToast(){
     : '';
 }
 
+function loadClientIntoBooking(doc){
+  const p = state.patients[doc];
+  state.booking = Object.assign(newBookingObj(), {
+    step: p.mustChange ? 'perfil' : 'panel', docType: p.docType || 'DNI', dni: doc, name: p.name,
+    nombres: p.nombres || firstWord(p.name), apellidos: p.apellidos || '', phone: p.phone || '',
+  });
+}
 function setView(v){
   state.view = v;
-  if (v === 'paciente') state.booking = { step: 'dni', dni: '', name: '', phone: '', selectedDate: todayISO(), selectedSlot: null, error: null, calendarMonth: ymFromISO(todayISO()), rescheduleId: null, lastApptId: null };
+  state.authError = null;
+  state.pwError = null;
+  state.showForgot = false;
+  if (v === 'paciente') {
+    if (state.session.client && state.patients[state.session.client]) loadClientIntoBooking(state.session.client);
+    else { state.session.client = null; state.booking = newBookingObj(); }
+  }
   saveState();
   render();
 }
@@ -688,69 +775,112 @@ function resetDemo(){
   setTimeout(() => { state.confirmingReset = false; }, 4000);
 }
 
-function dniLookupSubmit(){
-  const dni = document.getElementById('dni-input').value;
-  if (!isValidDni(dni)) {
-    state.booking.error = 'Ingresa un DNI válido (solo números, 6 a 10 dígitos).';
-    render();
-    return;
-  }
-  const clean = normalizeDni(dni);
-  state.booking.dni = clean;
-  state.booking.error = null;
-  const existing = state.patients[clean];
-  if (existing) {
-    state.booking.name = existing.name;
-    state.booking.phone = existing.phone || '';
-    state.booking.step = 'panel';
-  } else {
-    state.booking.step = 'datos';
-  }
+/* ---------- Autenticación (demo sin servidor) ---------- */
+function authLocked(key){ const f = state.authFails[key]; return f && f.until && f.until > Date.now() ? Math.ceil((f.until - Date.now()) / 1000) : 0; }
+function authFail(key){
+  const f = state.authFails[key] = state.authFails[key] || { n: 0, until: 0 };
+  f.n++;
+  if (f.n >= 5) { f.until = Date.now() + 60000; f.n = 0; }
+}
+function authOk(key){ delete state.authFails[key]; }
+function togglePw(id, btn){
+  const el = $(id);
+  const show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  btn.setAttribute('aria-label', show ? 'Ocultar contraseña' : 'Mostrar contraseña');
+  btn.classList.toggle('on', show);
+}
+function toggleForgot(){ state.showForgot = !state.showForgot; render(); }
+function setLogin(field, value){ state.booking.login[field] = value; }
+function setReg(field, value){ state.booking.reg[field] = value; }
+function goToRegistro(){ state.booking.error = null; state.booking.step = 'registro'; state.showForgot = false; render(); window.scrollTo(0, 0); }
+function goToLogin(){ state.booking.error = null; state.booking.step = 'login'; render(); window.scrollTo(0, 0); }
+
+function clientLogin(){
+  const b = state.booking;
+  const type = $('login-type').value;
+  const rawDoc = $('login-doc').value;
+  const doc = normalizeDni(rawDoc, type);
+  const pw = $('login-pw').value;
+  b.login = { type, doc: rawDoc };
+  const key = 'c:' + doc;
+  const fail = msg => { b.error = msg; render(); };
+  const wait = authLocked(key);
+  if (wait) return fail(`Demasiados intentos. Espera ${wait} segundos e inténtalo de nuevo.`);
+  if (!isValidDni(doc, type)) return fail(docErrorText(type));
+  if (!pw) return fail('Ingresa tu contraseña.');
+  const p = state.patients[doc];
+  if (p && !p.passHash) return fail('Este documento fue registrado por el negocio. Toca "Crear cuenta" para activar tu cuenta.');
+  if (!p || p.docType !== type || p.passHash !== hashPw(pw)) { authFail(key); return fail('Documento o contraseña incorrectos.'); }
+  authOk(key);
+  state.session.client = doc;
+  saveState();
+  loadClientIntoBooking(doc);
   render();
+  window.scrollTo(0, 0);
+}
+function syncClientAppointments(doc, p){
+  state.appointments.forEach(a => { if (a.dni === doc) { a.name = p.name; a.phone = p.phone; } });
+}
+function clientRegister(){
+  const b = state.booking;
+  const r = b.reg;
+  const pw = $('reg-pw').value;
+  const pw2 = $('reg-pw2').value;
+  const doc = normalizeDni(r.doc, r.type);
+  const fail = msg => { b.error = msg; render(); };
+  if ((r.nombres || '').trim().length < 2) return fail('Ingresa tus nombres.');
+  if ((r.apellidos || '').trim().length < 2) return fail('Ingresa tus apellidos.');
+  if (!isValidDni(doc, r.type)) return fail(docErrorText(r.type));
+  if (!isValidPhone(r.phone)) return fail('Ingresa un teléfono válido.');
+  if (pw.length < 6) return fail('La contraseña debe tener al menos 6 caracteres.');
+  if (pw !== pw2) return fail('Las contraseñas no coinciden.');
+  const existing = state.patients[doc];
+  if (existing && existing.passHash) return fail('Ya existe una cuenta con este documento. Ingresa con tu contraseña.');
+  if (existing && existing.phone && digitsOnly(existing.phone) !== digitsOnly(r.phone)) {
+    return fail('Este documento ya fue registrado por el negocio con otro teléfono. Usa el mismo teléfono que le diste al negocio, o pídele que lo actualice.');
+  }
+  const p = {
+    docType: r.type, nombres: r.nombres.trim(), apellidos: r.apellidos.trim(), name: fullName(r.nombres, r.apellidos),
+    phone: r.phone.trim(), passHash: hashPw(pw), mustChange: false, createdBy: existing ? existing.createdBy : 'self',
+  };
+  state.patients[doc] = p;
+  syncClientAppointments(doc, p);
+  addActivity('Cuenta nueva', `${p.name} creó su cuenta.`, null);
+  state.session.client = doc;
+  saveState();
+  loadClientIntoBooking(doc);
+  render();
+  window.scrollTo(0, 0);
+  showToast('Cuenta creada');
 }
 function goToPerfil(){
   state.booking.error = null;
+  state.pwError = null;
   state.booking.step = 'perfil';
   render();
   window.scrollTo(0, 0);
 }
 function saveProfile(){
   const b = state.booking;
-  const name = document.getElementById('perfil-name').value.trim();
-  const phone = document.getElementById('perfil-phone').value.trim();
-  if (name.length < 2) {
-    b.error = 'Ingresa tu nombre completo.';
-    render();
-    return;
-  }
-  b.name = name;
-  b.phone = phone;
-  b.error = null;
-  state.patients[b.dni] = { name, phone };
-  // El admin ve los cambios al instante: se actualizan todas las citas de este cliente.
-  state.appointments.forEach(a => { if (a.dni === b.dni) { a.name = name; a.phone = phone; } });
-  b.step = 'panel';
+  const p = state.patients[b.dni];
+  const nombres = $('perfil-nombres').value.trim();
+  const apellidos = $('perfil-apellidos').value.trim();
+  const phone = $('perfil-phone').value.trim();
+  const fail = msg => { b.error = msg; b.nombres = nombres; b.apellidos = apellidos; b.phone = phone; render(); };
+  if (nombres.length < 2) return fail('Ingresa tus nombres.');
+  if (apellidos.length < 2) return fail('Ingresa tus apellidos.');
+  if (!isValidPhone(phone)) return fail('Ingresa un teléfono válido.');
+  Object.assign(p, { nombres, apellidos, name: fullName(nombres, apellidos), phone });
+  Object.assign(b, { nombres, apellidos, name: p.name, phone, error: null });
+  syncClientAppointments(b.dni, p);   // el admin ve los cambios al instante
+  addActivity('Datos actualizados', `${p.name} actualizó sus datos.`, null);
+  if (!p.mustChange) b.step = 'panel';
   saveState();
   render();
   window.scrollTo(0, 0);
   showToast('Datos actualizados');
 }
-function datosSubmit(){
-  const name = document.getElementById('datos-name').value.trim();
-  const phone = document.getElementById('datos-phone').value.trim();
-  if (name.length < 2) {
-    state.booking.error = 'Ingresa tu nombre completo.';
-    render();
-    return;
-  }
-  state.booking.name = name;
-  state.booking.phone = phone;
-  state.booking.error = null;
-  state.booking.step = 'reservar';
-  render();
-}
-function backToDni(){ state.booking.step = 'dni'; render(); }
-
 function ab(){ return state.view === 'admin' && state.newAppt ? state.newAppt : state.booking; }
 function pickDay(iso){
   ab().selectedDate = iso;
@@ -805,8 +935,6 @@ function confirmBooking(){
     return;
   }
 
-  state.patients[dni] = { name, phone };
-
   if (rescheduleId) {
     const appt = state.appointments.find(a => a.id === rescheduleId);
     if (appt) {
@@ -848,9 +976,13 @@ function goToResumen(){
   const b = ab();
   if (!b.selectedSlot) return;
   if (b.admin) {
-    if (!isValidDni(b.dni)) { b.formError = 'Ingresa un DNI válido (solo números, 6 a 10 dígitos).'; render(); window.scrollTo(0, 0); return; }
-    if ((b.name || '').trim().length < 2) { b.formError = 'Ingresa el nombre completo del cliente.'; render(); window.scrollTo(0, 0); return; }
+    const bad = !isValidDni(b.dni, b.docType) ? docErrorText(b.docType)
+      : (b.nombres || '').trim().length < 2 ? 'Ingresa los nombres del cliente.'
+      : (b.apellidos || '').trim().length < 2 ? 'Ingresa los apellidos del cliente.'
+      : !isValidPhone(b.phone) ? 'Ingresa un teléfono válido del cliente.' : null;
+    if (bad) { b.formError = bad; render(); window.scrollTo(0, 0); return; }
     b.formError = null;
+    b.name = fullName(b.nombres, b.apellidos);
   }
   b.step = 'resumen';
   render();
@@ -859,15 +991,21 @@ function closeResumen(){
   ab().step = 'reservar';
   render();
 }
-function newBooking(){
-  state.booking = { step: 'dni', dni: '', name: '', phone: '', selectedDate: todayISO(), selectedSlot: null, error: null, calendarMonth: ymFromISO(todayISO()), rescheduleId: null, lastApptId: null };
+function clientLogout(){
+  state.session.client = null;
+  state.booking = newBookingObj();
+  state.authError = null;
+  saveState();
   render();
+  window.scrollTo(0, 0);
 }
 function toggleHistory(){
   state.booking.historyOpen = !state.booking.historyOpen;
   render();
 }
 function goToPanel(){
+  const p = state.patients[state.booking.dni];
+  if (p && p.mustChange) { showToast('Primero crea una contraseña nueva'); return; }
   state.booking.step = 'panel';
   state.booking.historyOpen = false;
   state.booking.rescheduleId = null;
@@ -924,7 +1062,7 @@ function openNewAppt(){
   const act = activeServices();
   const today = todayISO();
   state.newAppt = {
-    admin: true, step: 'reservar', dni: '', name: '', phone: '', known: false, error: null, formError: null,
+    admin: true, step: 'reservar', docType: 'DNI', dni: '', nombres: '', apellidos: '', name: '', phone: '', known: false, error: null, formError: null,
     selectedDate: today, calendarMonth: ymFromISO(today), selectedSlot: null, rescheduleId: null,
     serviceId: isProPlan() && act.length ? act[0].id : null, staffId: null,
   };
@@ -933,18 +1071,28 @@ function openNewAppt(){
 }
 function closeNewAppt(){ state.newAppt = null; render(); window.scrollTo(0, 0); }
 function updateNewAppt(field, value){ state.newAppt[field] = value; }
+function setNewApptDocType(type){
+  const n = state.newAppt;
+  n.docType = type;
+  n.dni = normalizeDni(n.dni, type);
+  n.known = false;
+  render();
+}
 function lookupNewApptDni(value){
   const n = state.newAppt;
-  n.dni = normalizeDni(value);
+  n.dni = normalizeDni(value, n.docType);
   const existing = state.patients[n.dni];
   const wasKnown = n.known;
   n.known = !!existing;
   n.formError = null;
   if (existing) {
-    n.name = existing.name; n.phone = existing.phone || '';
+    n.docType = existing.docType || n.docType;
+    n.nombres = existing.nombres || firstWord(existing.name);
+    n.apellidos = existing.apellidos || '';
+    n.phone = existing.phone || '';
     render();
   } else if (wasKnown) {
-    n.name = ''; n.phone = '';
+    n.nombres = ''; n.apellidos = ''; n.phone = '';
     render();
   }
 }
@@ -960,9 +1108,14 @@ function createAdminAppointment(){
   }
   const assigned = assignStaffRoundRobin(n.selectedDate, n.selectedSlot.start, n.selectedSlot.end, null, pickId, svcId);
   if (!assigned) return fail('Ese horario se acaba de ocupar. Elige otro.');
-  const name = n.name.trim();
+  const name = fullName(n.nombres, n.apellidos);
   const phone = (n.phone || '').trim();
-  state.patients[n.dni] = { name, phone };
+  const prev = state.patients[n.dni];
+  state.patients[n.dni] = {
+    docType: n.docType, nombres: n.nombres.trim(), apellidos: n.apellidos.trim(), name, phone,
+    passHash: prev ? prev.passHash : null, mustChange: prev ? prev.mustChange : false, createdBy: prev ? prev.createdBy : 'admin',
+  };
+  syncClientAppointments(n.dni, state.patients[n.dni]);
   state.appointments.push({
     id: 'a' + Date.now(),
     dni: n.dni, name, phone,
@@ -1091,10 +1244,110 @@ function toggleBusinessEnabled(id){
   render();
   showToast(biz.enabled ? `${biz.name}: cuenta activada` : `${biz.name}: cuenta desactivada`);
 }
-function togglePasswordVisible(id){
-  state.visiblePasswords[id] = !state.visiblePasswords[id];
+function trialExpired(biz){ return !!biz && biz.plan === 'Prueba' && !!biz.trialEndsAt && biz.trialEndsAt < todayISO(); }
+function bizAvailable(){ const b = currentBusiness(); return !!b && b.enabled && !trialExpired(b); }
+function trialDaysLeft(biz){
+  if (!biz || !biz.trialEndsAt) return null;
+  return Math.round((dateFromISO(biz.trialEndsAt) - dateFromISO(todayISO())) / 86400000);
+}
+function extendTrial(id){
+  const biz = state.businesses.find(b => b.id === id);
+  if (!biz) return;
+  const base = biz.trialEndsAt && biz.trialEndsAt > todayISO() ? biz.trialEndsAt : todayISO();
+  biz.trialEndsAt = addDaysISO(base, 14);
+  saveState();
+  render();
+  showToast(`${biz.name}: prueba extendida hasta el ${fmtDay(biz.trialEndsAt)}`);
+}
+function resetBusinessPassword(id){
+  const biz = state.businesses.find(b => b.id === id);
+  if (!biz) return;
+  const temp = genTempPassword();
+  biz.adminPassHash = hashPw(temp);
+  biz.mustChange = true;
+  state.tempReveal = { who: `${biz.name} (${biz.adminUser})`, pw: temp };
+  saveState();
   render();
 }
+function resetClientPassword(doc){
+  const p = state.patients[doc];
+  if (!p) return;
+  const temp = genTempPassword();
+  p.passHash = hashPw(temp);
+  p.mustChange = true;
+  state.tempReveal = { who: `${p.name} (${docLabel(p.docType)} ${doc})`, pw: temp };
+  saveState();
+  render();
+}
+function closeTempReveal(){ state.tempReveal = null; render(); }
+function copyTempPassword(){
+  const pw = state.tempReveal && state.tempReveal.pw;
+  if (!pw) return;
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(pw).then(() => showToast('Contraseña copiada'), () => showToast(pw)); return; } } catch (e) {}
+  showToast(pw);
+}
+function pwTarget(role){ return role === 'client' ? state.patients[state.session.client] : role === 'admin' ? currentBusiness() : state.superAccount; }
+function changePasswordFor(role){
+  const t = pwTarget(role);
+  if (!t) return;
+  const key = role === 'admin' ? 'adminPassHash' : 'passHash';
+  const cur = $('pw-cur-' + role).value;
+  const nw = $('pw-new-' + role).value;
+  const cf = $('pw-conf-' + role).value;
+  const fail = msg => { state.pwError = { role, msg }; render(); };
+  if (!cur) return fail(t.mustChange ? 'Ingresa la contraseña temporal.' : 'Ingresa tu contraseña actual.');
+  if (t[key] !== hashPw(cur)) return fail('La contraseña actual no es correcta.');
+  if (nw.length < 6) return fail('La nueva contraseña debe tener al menos 6 caracteres.');
+  if (nw === cur) return fail('La nueva contraseña debe ser distinta de la actual.');
+  if (nw !== cf) return fail('Las contraseñas no coinciden.');
+  t[key] = hashPw(nw);
+  t.mustChange = false;
+  state.pwError = null;
+  if (role === 'client') state.booking.step = 'perfil';
+  saveState();
+  render();
+  showToast('Contraseña actualizada');
+}
+function adminLogin(){
+  const email = $('auth-email').value.trim();
+  const pw = $('auth-pw').value;
+  state.authDraft = email;
+  const biz = currentBusiness();
+  const key = 'a:' + email.toLowerCase();
+  const fail = msg => { state.authError = { role: 'admin', msg }; render(); };
+  const wait = authLocked(key);
+  if (wait) return fail(`Demasiados intentos. Espera ${wait} segundos e inténtalo de nuevo.`);
+  if (!email || !pw) return fail('Ingresa tu correo y contraseña.');
+  if (!biz || biz.adminUser.toLowerCase() !== email.toLowerCase() || biz.adminPassHash !== hashPw(pw)) { authFail(key); return fail('Correo o contraseña incorrectos.'); }
+  authOk(key);
+  state.session.admin = true;
+  state.authError = null;
+  state.authDraft = '';
+  saveState();
+  render();
+  window.scrollTo(0, 0);
+}
+function superLogin(){
+  const email = $('auth-email').value.trim();
+  const pw = $('auth-pw').value;
+  state.authDraft = email;
+  const acc = state.superAccount;
+  const key = 's:' + email.toLowerCase();
+  const fail = msg => { state.authError = { role: 'super', msg }; render(); };
+  const wait = authLocked(key);
+  if (wait) return fail(`Demasiados intentos. Espera ${wait} segundos e inténtalo de nuevo.`);
+  if (!email || !pw) return fail('Ingresa tu correo y contraseña.');
+  if (acc.email.toLowerCase() !== email.toLowerCase() || acc.passHash !== hashPw(pw)) { authFail(key); return fail('Correo o contraseña incorrectos.'); }
+  authOk(key);
+  state.session.super = true;
+  state.authError = null;
+  state.authDraft = '';
+  saveState();
+  render();
+  window.scrollTo(0, 0);
+}
+function adminLogout(){ state.session.admin = false; state.adminTab = 'inicio'; state.newAppt = null; state.pwError = null; saveState(); render(); window.scrollTo(0, 0); }
+function superLogout(){ state.session.super = false; state.pwError = null; saveState(); render(); window.scrollTo(0, 0); }
 function updateNewBusiness(field, value){ state.newBusiness[field] = value; }
 function createBusinessAccount(){
   const { name, adminUser, adminPass } = state.newBusiness;
@@ -1102,12 +1355,16 @@ function createBusinessAccount(){
     showToast('Completa negocio, usuario y contraseña');
     return;
   }
+  if (!/^\S+@\S+\.\S+$/.test(adminUser.trim())) return showToast('El usuario debe ser un correo válido');
+  if (adminPass.trim().length < 6) return showToast('La contraseña temporal debe tener al menos 6 caracteres');
   state.businesses.push({
     id: 'biz' + Date.now(),
     name: name.trim(),
     adminUser: adminUser.trim(),
-    adminPass: adminPass.trim(),
+    adminPassHash: hashPw(adminPass.trim()),
+    mustChange: true,
     plan: 'Prueba',
+    trialEndsAt: addDaysISO(todayISO(), 14),
     enabled: true,
   });
   state.newBusiness = { name: '', adminUser: '', adminPass: '' };
@@ -1138,24 +1395,11 @@ function saveAccount(){
   }
   state.account.name = name;
   state.account.email = email;
+  const biz = currentBusiness();
+  if (biz) biz.adminUser = email;
   saveState();
   render();
   showToast('Perfil actualizado');
-}
-
-function changePassword(){
-  const pass = document.getElementById('acc-pass-new').value;
-  const confirm = document.getElementById('acc-pass-confirm').value;
-  if (pass.length < 6) {
-    showToast('La contraseña debe tener al menos 6 caracteres');
-    return;
-  }
-  if (pass !== confirm) {
-    showToast('Las contraseñas no coinciden');
-    return;
-  }
-  render();
-  showToast('Contraseña actualizada');
 }
 
 function handleLogoUpload(event){
@@ -1449,6 +1693,7 @@ function toggleBusinessPlan(id){
   const biz = state.businesses.find(b => b.id === id);
   if (!biz) return;
   biz.plan = biz.plan === 'Pro' ? 'Prueba' : 'Pro';
+  if (biz.plan === 'Prueba' && !biz.trialEndsAt) biz.trialEndsAt = addDaysISO(todayISO(), 14);
   saveState();
   render();
   const pend = biz.id === 'biz-1' && biz.plan === 'Pro' ? pendingServiceAppts().length : 0;
@@ -1562,6 +1807,132 @@ function renderCalendarPicker(b, noAvail){
 }
 
 /* ---------- Paciente ---------- */
+function pwInput(id, label, autocomplete){
+  return `<div class="field"><label for="${id}">${label}</label><div class="pw-wrap"><input id="${id}" type="password" autocomplete="${autocomplete || 'current-password'}"><button class="pw-toggle" type="button" onclick="togglePw('${id}', this)" aria-label="Mostrar contraseña">${icon('eye', 20)}</button></div></div>`;
+}
+function renderAuth(role){
+  const b = state.booking;
+  const err = role === 'client' ? b.error : (state.authError && state.authError.role === role ? state.authError.msg : null);
+  const copy = {
+    client: { t: 'Reserva tu cita', sub: 'Ingresa con tu documento y contraseña.', demo: 'Demo: DNI <code>30111222</code> · contraseña <code>marina123</code>', forgot: 'Pídele al negocio que restablezca tu contraseña. Te entregará una contraseña temporal para ingresar.' },
+    admin: { t: 'Panel del negocio', sub: 'Ingresa con tu correo y contraseña.', demo: 'Demo: <code>valentina@caly.app</code> · contraseña <code>caly2026</code>', forgot: 'Escribe al equipo de Caly para que restablezcan tu contraseña. Te entregarán una temporal.' },
+    super: { t: 'Superadministrador', sub: 'Panel interno de Caly. Ingresa con tu correo y contraseña.', demo: 'Demo: <code>super@caly.app</code> · contraseña <code>super2026</code>', forgot: 'Pide a otra persona del equipo de Caly que restablezca tu contraseña.' },
+  }[role];
+  const submit = role === 'client' ? 'clientLogin()' : role === 'admin' ? 'adminLogin()' : 'superLogin()';
+  const fields = role === 'client' ? `
+      <div class="field">
+        <label for="login-type">Tipo de documento</label>
+        <select id="login-type" onchange="setLogin('type', this.value); render()">${docOptions(b.login.type)}</select>
+      </div>
+      <div class="field">
+        <label for="login-doc">Número de documento</label>
+        <input id="login-doc" inputmode="${b.login.type === 'DNI' ? 'numeric' : 'text'}" autocomplete="username" value="${escapeHtml(b.login.doc)}" oninput="setLogin('doc', this.value)" ${err ? 'aria-invalid="true"' : ''}>
+      </div>` : `
+      <div class="field">
+        <label for="auth-email">Correo electrónico</label>
+        <input id="auth-email" type="email" autocomplete="username" value="${escapeHtml(state.authDraft || '')}" ${err ? 'aria-invalid="true"' : ''}>
+      </div>`;
+  const pwId = role === 'client' ? 'login-pw' : 'auth-pw';
+  return `
+    <div class="page w456">
+      <div class="hdr" style="margin-top:8px;">${brandBlock()}</div>
+      <h1 class="title-1" style="margin-top:32px;">${copy.t}</h1>
+      <p class="secondary" style="margin-top:6px;">${copy.sub}</p>
+      <form class="stack" style="margin-top:24px;" onsubmit="event.preventDefault(); ${submit}">
+        ${fields}
+        ${pwInput(pwId, 'Contraseña')}
+        ${err ? `<p class="error-text" role="alert">${escapeHtml(err)}</p>` : ''}
+        <button class="btn btn-primary btn-block" type="submit">Ingresar</button>
+        ${role === 'client' ? `<button class="btn btn-soft btn-block" type="button" onclick="goToRegistro()">Crear cuenta</button>` : ''}
+        <button class="btn-text" type="button" style="align-self:center;" onclick="toggleForgot()" aria-expanded="${state.showForgot}">¿Olvidaste tu contraseña?</button>
+        ${state.showForgot ? `<div class="notice">${copy.forgot}</div>` : ''}
+      </form>
+      <div class="notice demo" style="margin-top:18px;">${copy.demo}</div>
+    </div>`;
+}
+function renderRegistro(){
+  const b = state.booking;
+  const r = b.reg;
+  const err = b.error;
+  return `
+    <div class="page w456">
+      <div style="display:flex;align-items:center;min-height:48px;">
+        <button class="icon-btn" type="button" onclick="goToLogin()" aria-label="Volver a ingresar">${icon('left', 22, 2.4)}</button>
+      </div>
+      <h1 class="title-1" style="margin:20px 0 4px;">Crea tu cuenta</h1>
+      <p class="secondary">Completa tus datos una sola vez. Después reservas con tu documento y contraseña.</p>
+      <form class="stack" style="margin-top:24px;gap:16px;" onsubmit="event.preventDefault(); clientRegister()">
+        <div class="field"><label for="reg-nombres">Nombres</label><input id="reg-nombres" autocomplete="given-name" value="${escapeHtml(r.nombres)}" oninput="setReg('nombres', this.value)"></div>
+        <div class="field"><label for="reg-apellidos">Apellidos</label><input id="reg-apellidos" autocomplete="family-name" value="${escapeHtml(r.apellidos)}" oninput="setReg('apellidos', this.value)"></div>
+        <div class="field">
+          <label for="reg-type">Tipo de documento</label>
+          <select id="reg-type" onchange="setReg('type', this.value); render()">${docOptions(r.type)}</select>
+        </div>
+        <div class="field">
+          <label for="reg-doc">Número de documento</label>
+          <input id="reg-doc" inputmode="${r.type === 'DNI' ? 'numeric' : 'text'}" value="${escapeHtml(r.doc)}" oninput="setReg('doc', this.value)">
+          <span class="hint">${DOC_TYPES[r.type].hint}</span>
+        </div>
+        <div class="field"><label for="reg-phone">Teléfono</label><input id="reg-phone" type="tel" inputmode="tel" autocomplete="tel" value="${escapeHtml(r.phone)}" oninput="setReg('phone', this.value)"></div>
+        ${pwInput('reg-pw', 'Contraseña', 'new-password')}
+        ${pwInput('reg-pw2', 'Confirmar contraseña', 'new-password')}
+        <span class="hint" style="margin-top:-8px;">Mínimo 6 caracteres.</span>
+        ${err ? `<p class="error-text" role="alert">${escapeHtml(err)}</p>` : ''}
+        <button class="btn btn-primary btn-block" type="submit">Crear cuenta</button>
+      </form>
+    </div>`;
+}
+function renderPasswordCard(role){
+  const t = pwTarget(role);
+  const err = state.pwError && state.pwError.role === role ? state.pwError.msg : null;
+  return `
+    ${t.mustChange ? `<div class="notice warn" style="margin-bottom:14px;">Debes crear una contraseña nueva antes de continuar. Usa la contraseña temporal como contraseña actual.</div>` : ''}
+    <form class="card stack" onsubmit="event.preventDefault(); changePasswordFor('${role}')">
+      ${pwInput('pw-cur-' + role, t.mustChange ? 'Contraseña temporal' : 'Contraseña actual')}
+      ${pwInput('pw-new-' + role, 'Nueva contraseña', 'new-password')}
+      ${pwInput('pw-conf-' + role, 'Confirmar nueva contraseña', 'new-password')}
+      ${err ? `<p class="error-text" role="alert">${escapeHtml(err)}</p>` : ''}
+      <button class="btn btn-primary" type="submit" style="align-self:flex-start;">Actualizar contraseña</button>
+    </form>`;
+}
+function renderForcedPassword(role){
+  const logout = role === 'admin' ? 'adminLogout()' : 'superLogout()';
+  return `
+    <div class="page w456">
+      <div class="hdr" style="margin-top:8px;">${brandBlock()}</div>
+      <h1 class="title-1" style="margin-top:32px;">Crea tu nueva contraseña</h1>
+      <p class="secondary" style="margin:6px 0 20px;">Por seguridad, cambia la contraseña temporal antes de entrar.</p>
+      ${renderPasswordCard(role)}
+      <div style="display:flex;justify-content:center;margin-top:20px;"><button class="btn-text" type="button" onclick="${logout}">Cerrar sesión</button></div>
+    </div>`;
+}
+function renderTempModal(){
+  const t = state.tempReveal;
+  if (!t) return '';
+  return `
+    <div class="modal-back" onclick="if (event.target === this) closeTempReveal()">
+      <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="tp-title" aria-describedby="tp-desc">
+        <h2 class="title-3" id="tp-title">Contraseña temporal</h2>
+        <p class="secondary" id="tp-desc" style="margin-top:8px;">Entrégala a ${escapeHtml(t.who)}. <strong style="color:var(--color-text);">Solo se muestra ahora</strong>, y deberá cambiarla al ingresar.</p>
+        <div class="temp-pw tnum" aria-label="Contraseña temporal">${escapeHtml(t.pw)}</div>
+        <div class="stack" style="margin-top:16px;gap:10px;">
+          <button class="btn btn-primary btn-block" type="button" onclick="copyTempPassword()">Copiar contraseña</button>
+          <button class="btn btn-soft btn-block" type="button" autofocus onclick="closeTempReveal()">Listo</button>
+        </div>
+      </div>
+    </div>`;
+}
+function renderUnavailable(title, text){
+  return `
+    <div class="page w456">
+      <div class="hdr" style="margin-top:8px;">${brandBlock()}</div>
+      <div style="text-align:center;margin-top:48px;">
+        <div class="success-icon" style="background:var(--color-surface);color:var(--color-text-secondary);">${icon('clock', 26)}</div>
+        <h1 class="title-1">${title}</h1>
+        <p class="secondary" style="margin-top:8px;">${text}</p>
+      </div>
+    </div>`;
+}
 function patientHeader(name){
   return `<div class="hdr">${brandBlock()}<button class="avatar" type="button" style="border:0;" onclick="goToPerfil()" aria-label="Mis datos">${escapeHtml(initials(name))}</button></div>`;
 }
@@ -1616,8 +1987,8 @@ function renderPacientePanel(b){
   return `
     <div class="page w560">
       ${patientHeader(b.name)}
-      <h1 class="title-1" style="margin-top:24px;">Hola, ${escapeHtml(b.name.split(' ')[0])}</h1>
-      <p class="secondary" style="margin-top:4px;"><span class="tnum">DNI ${b.dni}</span> · <button class="btn-text" type="button" style="min-height:32px;padding:0;font-size:15px;color:var(--color-text-secondary);" onclick="goToPerfil()">Editar mis datos</button></p>
+      <h1 class="title-1" style="margin-top:24px;">Hola, ${escapeHtml(firstWord(b.nombres || b.name))}</h1>
+      <p class="secondary" style="margin-top:4px;"><span class="tnum">${docLabel(b.docType)} ${b.dni}</span> · <button class="btn-text" type="button" style="min-height:32px;padding:0;font-size:15px;color:var(--color-text-secondary);" onclick="goToPerfil()">Editar mis datos</button></p>
 
       <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:24px;" onclick="goToReservar()">Reservar</button>
 
@@ -1644,7 +2015,7 @@ function renderPacientePanel(b){
       </div>
 
       <div style="display:flex;justify-content:center;margin-top:28px;">
-        <button class="btn-text" type="button" onclick="newBooking()">¿No eres tú? Usa otro DNI</button>
+        <button class="btn-text" type="button" onclick="clientLogout()">Cerrar sesión</button>
       </div>
     </div>
     ${renderCancelModal()}`;
@@ -1663,8 +2034,8 @@ function renderResumen(b, cfg){
           <p style="margin:6px 0 0;text-align:center;font-size:18px;line-height:24px;color:var(--dark-text-secondary);"><span class="tnum">${b.selectedSlot.start}</span> · ${dur} min</p>
         </div>
         <div class="glass">
-          <div class="g-row"><span>Cliente</span><span>${escapeHtml(b.name)}</span></div>
-          <div class="g-row"><span>DNI</span><span class="tnum">${b.dni}</span></div>
+          <div class="g-row"><span>Cliente</span><span>${escapeHtml(displayName(b))}</span></div>
+          <div class="g-row"><span>${docLabel(b.docType)}</span><span class="tnum">${escapeHtml(b.dni)}</span></div>
           ${bookingServiceId(b) ? `<div class="g-row"><span>Servicio</span><span>${escapeHtml(findService(bookingServiceId(b)).name)}</span></div>` : ''}
           ${canClientPickStaff(b) ? `<div class="g-row"><span>Profesional</span><span>${pickIdFor(b) ? escapeHtml((state.staff.find(m => m.id === pickIdFor(b)) || {}).name || '') : 'Cualquiera disponible'}</span></div>` : ''}
           ${b.rescheduleId ? `<div class="g-row"><span>Tipo</span><span>Reagendado</span></div>` : ''}
@@ -1743,76 +2114,41 @@ function renderBookingScreen(b, cfg){
   return b.step === 'resumen' && b.selectedSlot ? page + renderResumen(b, cfg) : page;
 }
 
+function renderPerfil(b){
+  const p = state.patients[b.dni];
+  const forced = !!(p && p.mustChange);
+  return `
+    <div class="page w456">
+      <div style="display:flex;align-items:center;min-height:48px;">
+        ${forced ? '' : `<button class="icon-btn" type="button" onclick="goToPanel()" aria-label="Volver a mis citas">${icon('left', 22, 2.4)}</button>`}
+      </div>
+      <h1 class="title-1" style="margin:20px 0 4px;">${forced ? 'Crea tu nueva contraseña' : 'Mis datos'}</h1>
+      <p class="secondary">${forced ? 'Por seguridad, cambia la contraseña temporal para continuar.' : 'Si cambias tus datos, el negocio los verá actualizados al instante.'}</p>
+      ${forced ? `<div style="margin-top:20px;">${renderPasswordCard('client')}</div>` : `
+      <form class="stack" style="margin-top:24px;gap:18px;" onsubmit="event.preventDefault(); saveProfile()">
+        <div class="field">
+          <label for="perfil-doc">${DOC_TYPES[b.docType].long}</label>
+          <input id="perfil-doc" value="${escapeHtml(b.dni)}" disabled style="color:var(--color-text-secondary);">
+          <span class="hint">Es tu identificación y no se puede cambiar.</span>
+        </div>
+        <div class="field"><label for="perfil-nombres">Nombres</label><input id="perfil-nombres" autocomplete="given-name" value="${escapeHtml(b.nombres)}"></div>
+        <div class="field"><label for="perfil-apellidos">Apellidos</label><input id="perfil-apellidos" autocomplete="family-name" value="${escapeHtml(b.apellidos)}"></div>
+        <div class="field"><label for="perfil-phone">Teléfono</label><input id="perfil-phone" type="tel" inputmode="tel" autocomplete="tel" value="${escapeHtml(b.phone || '')}"></div>
+        ${b.error ? `<p class="error-text" role="alert">${escapeHtml(b.error)}</p>` : ''}
+        <button class="btn btn-primary btn-block" type="submit">Guardar cambios</button>
+      </form>
+      <h2 class="title-2">Contraseña</h2>
+      ${renderPasswordCard('client')}`}
+      <div style="display:flex;justify-content:center;margin-top:28px;"><button class="btn-text" type="button" onclick="clientLogout()">Cerrar sesión</button></div>
+    </div>`;
+}
 function renderPaciente(){
   const b = state.booking;
 
-  if (b.step === 'dni') {
-    return `
-      <div class="page w456">
-        <div class="hdr" style="margin-top:8px;">${brandBlock()}</div>
-        <h1 class="title-1" style="margin-top:32px;">Reserva tu cita</h1>
-        <p class="secondary" style="margin-top:6px;">Ingresa tu DNI para identificarte.</p>
-        <div class="stack" style="margin-top:24px;">
-          <div class="field">
-            <label for="dni-input">DNI</label>
-            <input id="dni-input" inputmode="numeric" placeholder="Ej: 30123456" autofocus ${b.error ? 'aria-invalid="true"' : ''}>
-            ${b.error ? `<span class="error-text">${escapeHtml(b.error)}</span>` : `<span class="hint">Solo números, de 6 a 10 dígitos.</span>`}
-          </div>
-          <button class="btn btn-primary btn-block" type="button" onclick="dniLookupSubmit()">Continuar</button>
-          <p class="hint">¿Quieres ver a un cliente ya registrado? Prueba con <code>30111222</code> o <code>28999888</code>.</p>
-        </div>
-      </div>`;
-  }
-
-  if (b.step === 'datos') {
-    return `
-      <div class="page w456">
-        <div class="hdr" style="margin-top:8px;">${brandBlock()}</div>
-        <h1 class="title-1" style="margin-top:32px;">Reserva tu cita</h1>
-        <p class="secondary" style="margin-top:6px;">No te encontramos, completa tus datos.</p>
-        <div class="stack" style="margin-top:24px;">
-          <div class="field">
-            <label for="datos-name">Nombre completo</label>
-            <input id="datos-name" autofocus ${b.error ? 'aria-invalid="true"' : ''}>
-            ${b.error ? `<span class="error-text">${escapeHtml(b.error)}</span>` : ''}
-          </div>
-          <div class="field">
-            <label for="datos-phone">Teléfono (opcional)</label>
-            <input id="datos-phone" inputmode="tel">
-          </div>
-          <button class="btn btn-primary btn-block" type="button" onclick="datosSubmit()">Continuar a reservar</button>
-          <button class="btn-text" type="button" onclick="backToDni()">Volver</button>
-        </div>
-      </div>`;
-  }
-
-  if (b.step === 'perfil') {
-    return `
-      <div class="page w456">
-        <div style="display:flex;align-items:center;min-height:48px;">
-          <button class="icon-btn" type="button" onclick="goToPanel()" aria-label="Volver a mis citas">${icon('left', 22, 2.4)}</button>
-        </div>
-        <h1 class="title-1" style="margin:20px 0 4px;">Mis datos</h1>
-        <p class="secondary">Si cambias tus datos, el negocio los verá actualizados al instante.</p>
-        <div class="stack" style="margin-top:24px;gap:18px;">
-          <div class="field">
-            <label for="perfil-dni">DNI</label>
-            <input id="perfil-dni" value="${escapeHtml(b.dni)}" disabled style="color:var(--color-text-secondary);">
-            <span class="hint">El DNI es tu identificación y no se puede cambiar.</span>
-          </div>
-          <div class="field">
-            <label for="perfil-name">Nombre completo</label>
-            <input id="perfil-name" value="${escapeHtml(b.name)}" ${b.error ? 'aria-invalid="true"' : ''}>
-            ${b.error ? `<span class="error-text">${escapeHtml(b.error)}</span>` : ''}
-          </div>
-          <div class="field">
-            <label for="perfil-phone">Teléfono (opcional)</label>
-            <input id="perfil-phone" inputmode="tel" value="${escapeHtml(b.phone || '')}">
-          </div>
-          <button class="btn btn-primary btn-block" type="button" onclick="saveProfile()">Guardar cambios</button>
-        </div>
-      </div>`;
-  }
+  if (!bizAvailable()) return renderUnavailable('Este negocio no está disponible por ahora', 'Vuelve a intentarlo más tarde o contacta directamente al negocio.');
+  if (b.step === 'login') return renderAuth('client');
+  if (b.step === 'registro') return renderRegistro();
+  if (b.step === 'perfil') return renderPerfil(b);
   if (b.step === 'panel') return renderPacientePanel(b);
 
   return renderBookingScreen(b, {
@@ -2271,6 +2607,7 @@ function renderAdminCuenta(){
         <p class="card-title">${isProPlan() ? 'Plan Pro' : 'Periodo de prueba'}</p>
         ${chip(isProPlan() ? 'success' : 'neutral', isProPlan() ? 'Activo' : 'Prueba')}
       </div>
+      ${(() => { const biz = currentBusiness(); const d = trialDaysLeft(biz); return !isProPlan() && d !== null ? `<p class="secondary" style="font-weight:600;color:var(--color-text);">${d > 0 ? `Tu prueba termina el ${fmtDay(biz.trialEndsAt)}. Te quedan ${d} día${d === 1 ? '' : 's'}.` : 'Tu prueba termina hoy.'}</p>` : ''; })()}
       <p class="secondary">${isProPlan() ? 'Incluye todo lo del periodo de prueba, más servicios con su propia duración, trabajadores asociados y la opción de mostrar los trabajadores al cliente. Los precios aún no están definidos.' : 'Todavía no definimos precios ni planes. Por ahora estás probando Caly sin costo; te avisaremos antes de que eso cambie.'}</p>
       <ul class="checks">
         ${planFeatures.map(f => `<li><span class="check-dot">${icon('check', 14, 3.2)}</span>${f}</li>`).join('')}
@@ -2278,14 +2615,10 @@ function renderAdminCuenta(){
       </ul>
     </div>
 
-    <h2 class="title-2">Seguridad</h2>
-    <div class="card stack">
-      <div class="grid-2">
-        <div class="field"><label for="acc-pass-new">Nueva contraseña</label><input id="acc-pass-new" type="password" placeholder="••••••••"></div>
-        <div class="field"><label for="acc-pass-confirm">Confirmar contraseña</label><input id="acc-pass-confirm" type="password" placeholder="••••••••"></div>
-      </div>
-      <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="changePassword()">Actualizar contraseña</button>
-    </div>`;
+    <h2 class="title-2">Contraseña</h2>
+    ${renderPasswordCard('admin')}
+
+    <div style="display:flex;justify-content:center;margin-top:28px;"><button class="btn-text" type="button" onclick="adminLogout()">Cerrar sesión</button></div>`;
 }
 
 const ADMIN_NAV = [
@@ -2328,21 +2661,20 @@ function renderNewApptView(){
       <div class="stack" style="gap:16px;margin-bottom:24px;">
         <p class="label">Datos del cliente</p>
         <div class="field">
-          <label for="na-dni">DNI</label>
-          <input id="na-dni" inputmode="numeric" placeholder="Ej: 30123456" value="${escapeHtml(n.dni)}" oninput="lookupNewApptDni(this.value)">
+          <label for="na-type">Tipo de documento</label>
+          <select id="na-type" onchange="setNewApptDocType(this.value)">${docOptions(n.docType)}</select>
+        </div>
+        <div class="field">
+          <label for="na-dni">Número de documento</label>
+          <input id="na-dni" inputmode="${n.docType === 'DNI' ? 'numeric' : 'text'}" value="${escapeHtml(n.dni)}" oninput="lookupNewApptDni(this.value)">
           ${n.known
             ? `<span class="hint" style="color:var(--color-success);font-weight:600;">Cliente existente: datos completados.</span>`
-            : `<span class="hint">Solo números, de 6 a 10 dígitos. Si es un cliente nuevo, completa sus datos.</span>`}
+            : `<span class="hint">${DOC_TYPES[n.docType].hint}. Si es un cliente nuevo, completa sus datos.</span>`}
         </div>
-        <div class="field">
-          <label for="na-name">Nombre completo</label>
-          <input id="na-name" value="${escapeHtml(n.name)}" oninput="updateNewAppt('name', this.value)">
-        </div>
-        <div class="field">
-          <label for="na-phone">Teléfono (opcional)</label>
-          <input id="na-phone" inputmode="tel" value="${escapeHtml(n.phone)}" oninput="updateNewAppt('phone', this.value)">
-        </div>
-        ${n.formError ? `<p class="error-text">${escapeHtml(n.formError)}</p>` : ''}
+        <div class="field"><label for="na-nombres">Nombres</label><input id="na-nombres" value="${escapeHtml(n.nombres)}" oninput="updateNewAppt('nombres', this.value)"></div>
+        <div class="field"><label for="na-apellidos">Apellidos</label><input id="na-apellidos" value="${escapeHtml(n.apellidos)}" oninput="updateNewAppt('apellidos', this.value)"></div>
+        <div class="field"><label for="na-phone">Teléfono</label><input id="na-phone" type="tel" inputmode="tel" value="${escapeHtml(n.phone)}" oninput="updateNewAppt('phone', this.value)"></div>
+        ${n.formError ? `<p class="error-text" role="alert">${escapeHtml(n.formError)}</p>` : ''}
       </div>`;
   return renderBookingScreen(n, {
     backFn: 'closeNewAppt()', backLabel: 'Volver a Citas', title: 'Nueva cita', top,
@@ -2397,15 +2729,28 @@ function renderCancelModal(){
 }
 
 function renderAdmin(){
-  const myBiz = state.businesses.find(b => b.id === 'biz-1');
+  const myBiz = currentBusiness();
+  if (!state.session.admin) return renderAuth('admin');
+  if (myBiz && myBiz.mustChange) return renderForcedPassword('admin');
   if (myBiz && !myBiz.enabled) {
     return `
       <div class="page w456">
         <div style="text-align:center;margin-top:48px;">
           <div class="success-icon" style="background:var(--color-danger-bg);color:var(--color-danger);">${icon('alert', 26)}</div>
           <h1 class="title-1">Cuenta desactivada</h1>
-          <p class="secondary" style="margin-top:8px;">El superadministrador desactivó temporalmente esta cuenta. Contacta a Caly para reactivarla.</p>
-          <button class="btn btn-primary" type="button" style="margin-top:24px;" onclick="setView('super')">Ir a Superadmin</button>
+          <p class="secondary" style="margin-top:8px;">Caly desactivó temporalmente esta cuenta. Contacta al equipo de Caly para reactivarla.</p>
+          <button class="btn btn-soft" type="button" style="margin-top:24px;" onclick="adminLogout()">Cerrar sesión</button>
+        </div>
+      </div>`;
+  }
+  if (trialExpired(myBiz)) {
+    return `
+      <div class="page w456">
+        <div style="text-align:center;margin-top:48px;">
+          <div class="success-icon" style="background:var(--color-warning-bg);color:var(--color-warning);">${icon('clock', 26)}</div>
+          <h1 class="title-1">Terminó tu periodo de prueba</h1>
+          <p class="secondary" style="margin-top:8px;">Contacta al equipo de Caly para continuar usando la plataforma. Tus datos se conservan.</p>
+          <button class="btn btn-soft" type="button" style="margin-top:24px;" onclick="adminLogout()">Cerrar sesión</button>
         </div>
       </div>`;
   }
@@ -2426,6 +2771,8 @@ function renderAdmin(){
 
 /* ---------- Superadmin ---------- */
 function renderSuper(){
+  if (!state.session.super) return renderAuth('super');
+  if (state.superAccount.mustChange) return renderForcedPassword('super');
   const pending = state.superAlerts.filter(a => a.status === 'pending');
   const resolved = state.superAlerts.filter(a => a.status === 'resolved');
   const nb = state.newBusiness;
@@ -2439,7 +2786,7 @@ function renderSuper(){
         </div>
         ${brandMark(44)}
       </div>
-      <p class="secondary" style="margin-top:6px;">Gestiona las cuentas de negocios/administradores y revisa alertas de la plataforma.</p>
+      <p class="secondary" style="margin-top:6px;">Gestiona las cuentas de negocios y revisa alertas de la plataforma.</p>
 
       <h2 class="title-2">Alertas de la plataforma</h2>
       <div class="card stack">
@@ -2459,34 +2806,45 @@ function renderSuper(){
 
       <h2 class="title-2">Cuentas de negocios</h2>
       <div class="rows">
-        ${state.businesses.map(biz => `
+        ${state.businesses.map(biz => {
+          const expired = trialExpired(biz);
+          const left = trialDaysLeft(biz);
+          return `
           <div class="row-card">
             <div class="row-main">
               <div class="row-title">${escapeHtml(biz.name)}</div>
               <div class="secondary" style="overflow-wrap:anywhere;">${escapeHtml(biz.adminUser)}</div>
-              <div class="secondary pw">${state.visiblePasswords[biz.id] ? escapeHtml(biz.adminPass) : '••••••••'}
-                <button class="icon-btn" type="button" style="background:transparent;" onclick="togglePasswordVisible('${biz.id}')" aria-label="Mostrar u ocultar contraseña">${icon('eye', 18)}</button>
-              </div>
+              ${biz.mustChange ? `<div style="margin-top:6px;">${chip('warning', 'Contraseña temporal sin cambiar')}</div>` : ''}
             </div>
             <div class="row-side">
               ${chip(biz.plan === 'Pro' ? 'success' : 'neutral', escapeHtml(biz.plan))}
+              ${biz.plan === 'Prueba' && biz.trialEndsAt ? chip(expired ? 'danger' : 'neutral', expired ? 'Prueba terminada' : `Prueba hasta ${fmtDay(biz.trialEndsAt)}${left !== null && left <= 3 ? ' · quedan ' + left : ''}`) : ''}
               ${chip(biz.enabled ? 'success' : 'danger', biz.enabled ? 'Activa' : 'Desactivada')}
+            </div>
+            <div class="row-actions" style="flex-wrap:wrap;">
               <button class="btn btn-sm btn-soft" type="button" onclick="toggleBusinessPlan('${biz.id}')">${biz.plan === 'Pro' ? 'Pasar a Prueba' : 'Pasar a Pro'}</button>
               <button class="btn btn-sm btn-soft" type="button" onclick="toggleBusinessEnabled('${biz.id}')">${biz.enabled ? 'Desactivar' : 'Activar'}</button>
+              ${biz.plan === 'Prueba' ? `<button class="btn btn-sm btn-soft" type="button" onclick="extendTrial('${biz.id}')">Extender prueba 14 días</button>` : ''}
+              <button class="btn btn-sm btn-soft" type="button" onclick="resetBusinessPassword('${biz.id}')">Restablecer contraseña</button>
             </div>
-          </div>`).join('')}
+          </div>`;}).join('')}
       </div>
-      <p class="hint" style="margin-top:12px;">Las cuentas de administrador no tienen registro propio: tú creas el usuario y la contraseña de cada negocio aquí mismo.</p>
+      <p class="hint" style="margin-top:12px;">Los administradores no se registran solos: tú creas la cuenta con una contraseña temporal que deberán cambiar al ingresar.</p>
 
       <h2 class="title-2">Crear cuenta de negocio</h2>
       <div class="card stack">
         <div class="grid-2">
           <div class="field"><label for="nb-name">Nombre del negocio</label><input id="nb-name" value="${escapeHtml(nb.name)}" oninput="updateNewBusiness('name', this.value)"></div>
-          <div class="field"><label for="nb-user">Usuario admin (email)</label><input id="nb-user" value="${escapeHtml(nb.adminUser)}" oninput="updateNewBusiness('adminUser', this.value)"></div>
+          <div class="field"><label for="nb-user">Usuario admin (email)</label><input id="nb-user" type="email" value="${escapeHtml(nb.adminUser)}" oninput="updateNewBusiness('adminUser', this.value)"></div>
           <div class="field"><label for="nb-pass">Contraseña temporal</label><input id="nb-pass" value="${escapeHtml(nb.adminPass)}" oninput="updateNewBusiness('adminPass', this.value)"></div>
         </div>
         <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="createBusinessAccount()">Crear cuenta</button>
       </div>
+
+      <h2 class="title-2">Mi contraseña</h2>
+      ${renderPasswordCard('super')}
+
+      <div style="display:flex;justify-content:center;margin-top:28px;"><button class="btn-text" type="button" onclick="superLogout()">Cerrar sesión</button></div>
     </div>`;
 }
 
@@ -2503,6 +2861,8 @@ function render(){
     state.view === 'paciente' ? renderPaciente() :
     state.view === 'super' ? renderSuper() :
     renderAdmin();
+  const tempHtml = renderTempModal();
+  if (tempHtml) document.getElementById('view').insertAdjacentHTML('beforeend', tempHtml);
   const newSheet = document.querySelector('.sheet');
   if (newSheet && sheetEl) newSheet.scrollTop = sheetTop;
   renderToast();
