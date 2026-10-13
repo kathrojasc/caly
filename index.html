@@ -250,10 +250,22 @@ button.chip { cursor: pointer; }
 .tab[aria-current="page"] { background: var(--color-surface-active); color: var(--color-text); font-weight: 700; }
 
 /* Métricas */
+.notice-card { margin-top: 16px; background: var(--color-surface); border-radius: var(--radius-l); padding: 18px; display: flex; gap: 14px; align-items: flex-start; }
+.notice-card .ic { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.news { margin-top: 16px; border: 1px solid var(--color-border); border-radius: var(--radius-l); padding: 18px; }
+.news-list { margin-top: 8px; }
+.news-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; }
+.news-row + .news-row { border-top: 1px solid var(--color-border); }
+.news-dot { flex-shrink: 0; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: transparent; }
+.news-row.unread .news-dot { background: var(--color-primary); }
+.badge-inline { display: inline-flex; min-width: 22px; height: 22px; padding: 0 7px; border-radius: var(--radius-pill); background: var(--color-primary); color: var(--color-on-primary); font-size: 12px; font-weight: 700; align-items: center; justify-content: center; vertical-align: middle; margin-left: 6px; }
+.tab { position: relative; }
+.tab-dot { position: absolute; top: 10px; right: calc(50% - 20px); width: 10px; height: 10px; border-radius: 50%; background: var(--color-danger); box-shadow: 0 0 0 2px #fff; }
 .alert-card { margin-top: 16px; background: var(--color-danger-bg); border-radius: var(--radius-l); padding: 18px; display: flex; gap: 14px; align-items: flex-start; }
 .alert-card .ic { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: var(--color-danger); display: inline-flex; align-items: center; justify-content: center; }
 @media (max-width: 440px) { .seg button { padding: 0 11px; font-size: 13.5px; } }
 .seg-scroll { max-width: 100%; overflow-x: auto; }
+.seg .badge.neutral { background: var(--color-text-secondary); }
 .seg .badge { margin-left: 6px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--color-danger); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
 .link-card { margin-top: 16px; background: var(--color-surface); border-radius: var(--radius-l); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .link-card .ic { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
@@ -282,8 +294,19 @@ button.chip { cursor: pointer; }
 .hero.light .hero-actions button { background: var(--color-surface); color: var(--color-text); }
 .hero.light .chip-hero.cancel { background: var(--color-danger-bg); color: var(--color-danger); }
 .hero.light .hero-actions button.danger { background: var(--color-danger-bg); color: var(--color-danger); }
+.hero-note { font-size: 14px; line-height: 20px; border-radius: var(--radius-s); padding: 12px 14px; background: rgba(255,255,255,0.14); }
+.hero-note.alert { background: rgba(255,208,138,0.22); color: #FFD9A0; font-weight: 600; }
+.hero.light .hero-note { background: var(--color-surface); color: var(--color-text-secondary); }
+.hero.light .hero-note.alert { background: var(--color-warning-bg); color: var(--color-warning-strong); }
+.hero-actions button.emph { background: var(--color-on-primary); color: var(--color-primary); }
+.hero.light .hero-actions button.emph { background: var(--color-primary); color: var(--color-on-primary); }
+.hero-actions button:disabled { opacity: .45; }
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .hero-actions.c2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .hero:not(.light) .hero-actions button.danger { background: rgba(224,70,58,0.30); color: #FFB8B1; }
+.hero-actions.c5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hero-actions.c5 > button:first-child { grid-column: 1 / -1; }
+@media (min-width: 640px) { .hero-actions.c5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } .hero-actions.c5 > button:first-child { grid-column: auto; } }
 .hero-actions.c1 { grid-template-columns: 1fr; }
 .hero-actions.c4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (min-width: 640px) { .hero-actions.c4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
@@ -468,7 +491,7 @@ function buildDefaultState(){
     citasFilter: 'proximas',
     brand: { name: 'Caly', color: '#0B0B0C', logo: null },
     account: { name: 'Valentina Rossi', email: 'valentina@caly.app' },
-    config: { slotMinutes: 45, bufferMinutes: 0, minNoticeHours: 2, windowDays: 21 },
+    config: { slotMinutes: 45, bufferMinutes: 0, minNoticeHours: 2, windowDays: 21, cancelNoticeHours: 12 },
     staff: [
       { id: 'staff-1', name: 'Valentina Rossi', schedule: defaultWeekSchedule() },
       { id: 'staff-2', name: 'Camila Torres', schedule: { '1': [{ start: '14:00', end: '19:00' }], '3': [{ start: '14:00', end: '19:00' }], '5': [{ start: '09:00', end: '13:00' }] } },
@@ -506,8 +529,8 @@ function buildDefaultState(){
     confirmCancelId: null,
     newAppt: null,
     pendingClosure: null,
-    notifyCancelId: null,
-    services: [
+    notify: null,
+        services: [
       { id: 'svc-1', name: 'Kinesiología', minutes: 45, staffIds: ['staff-1', 'staff-2'] },
       { id: 'svc-2', name: 'Evaluación inicial', minutes: 60, staffIds: ['staff-1'] },
     ],
@@ -537,6 +560,7 @@ function loadState(){
       if (parsed.booking.rescheduleId === undefined) parsed.booking.rescheduleId = null;
       if (parsed.booking.lastApptId === undefined) parsed.booking.lastApptId = null;
       if (!parsed.brand) parsed.brand = def.brand;
+      parsed.config = Object.assign({}, def.config, parsed.config || {});
       if (!parsed.account) parsed.account = def.account;
       if (!Array.isArray(parsed.staff) || !parsed.staff.length) parsed.staff = def.staff;
       if (typeof parsed.roundRobinCursor !== 'number') parsed.roundRobinCursor = 0;
@@ -552,7 +576,8 @@ function loadState(){
       parsed.confirmRescheduleId = null;
       parsed.newAppt = null;
       parsed.pendingClosure = null;
-      parsed.notifyCancelId = null;
+      parsed.notify = null;
+      delete parsed.notifyCancelId;
       if (!parsed.businessHours) parsed.businessHours = def.businessHours;
       if (!Array.isArray(parsed.closedDays)) parsed.closedDays = [];
       if (!parsed.newBizRule || !Array.isArray(parsed.newBizRule.days)) parsed.newBizRule = def.newBizRule;
@@ -619,12 +644,14 @@ function refreshBrandUI(){
 
 function apptPendingReason(a){
   if (a.status !== 'CONFIRMED' || a.rescheduleRequested || a.date < todayISO()) return null;
-  if (isClosedDay(a.date)) return 'Día cerrado';
+  if (closureBlocks(a.date, a.start, a.end)) return isClosedDay(a.date) ? 'Día cerrado' : 'Cierre en ese horario';
+  if (a.manual) return null;   // el admin la fijó a mano, fuera de la grilla
   const dow = String(dayOfWeek(a.date));
   if (!insideRanges(state.businessHours[dow], a.start, a.end)) return 'Fuera del horario del negocio';
   const m = state.staff.find(x => x.id === a.staffId);
   if (!m) return 'Trabajador ya no disponible';
-  if (!insideRanges(m.schedule && m.schedule[dow], a.start, a.end)) return `Fuera del horario de ${m.name.split(' ')[0]}`;
+  if (staffOffBlocks(m, a.date)) return `${firstWord(m.name)} no atiende ese día`;
+  if (!insideRanges(m.schedule && m.schedule[dow], a.start, a.end)) return `Fuera del horario de ${firstWord(m.name)}`;
   return null;
 }
 function pendingAppts(){
@@ -634,46 +661,64 @@ function addActivity(title, text, apptId){
   state.activity.unshift({ id: 'ac' + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), title, text, apptId: apptId || null, read: false });
   if (state.activity.length > 60) state.activity.length = 60;
 }
+function unreadCount(){ return state.activity.filter(x => !x.read).length; }
+function markActivityRead(){ state.activity.forEach(x => { x.read = true; }); saveState(); render(); }
+function timeAgo(ts){
+  const m = Math.floor((Date.now() - ts) / 60000);
+  if (m < 1) return 'ahora';
+  if (m < 60) return `hace ${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.floor(h / 24);
+  return `hace ${d} día${d === 1 ? '' : 's'}`;
+}
 function warnNewPending(before){
   const n = pendingAppts().length - before;
   if (n > 0) showToast(`${n} cita${n === 1 ? '' : 's'} pasaron a Pendientes`);
 }
-function isClosedDay(iso){ return state.closedDays.some(c => iso >= c.from && iso <= c.to); }
+function closureAppliesOn(c, iso){
+  if (c.repeat === 'weekly') return iso >= c.from && (!c.to || iso <= c.to) && dayOfWeek(iso) === dayOfWeek(c.from);
+  return iso >= c.from && iso <= (c.to || c.from);
+}
+function closureBlocks(iso, start, end){
+  return state.closedDays.some(c => closureAppliesOn(c, iso) && (!c.startTime || (timeToMinutes(start) < timeToMinutes(c.endTime) && timeToMinutes(c.startTime) < timeToMinutes(end))));
+}
+function isClosedDay(iso){ return state.closedDays.some(c => closureAppliesOn(c, iso) && !c.startTime); }
+function staffOffBlocks(member, iso){ return (member.timeOff || []).some(o => iso >= o.from && iso <= (o.to || o.from)); }
 function insideRanges(ranges, start, end){
   return (ranges || []).some(r => timeToMinutes(r.start) <= timeToMinutes(start) && timeToMinutes(end) <= timeToMinutes(r.end));
 }
-function getStaffRawSlots(staffMember, iso, minutes){
+function getStaffRawSlots(staffMember, iso, minutes, ignoreNotice){
   const dur = minutes || state.config.slotMinutes;
-  if (isClosedDay(iso)) return [];
-  const bizRanges = state.businessHours[String(dayOfWeek(iso))] || [];
-  if (!bizRanges.length) return [];
   const dow = String(dayOfWeek(iso));
+  const bizRanges = state.businessHours[dow] || [];
+  if (!bizRanges.length) return [];
   const rules = (staffMember.schedule && staffMember.schedule[dow]) || [];
   if (!rules.length) return [];
+  if (staffOffBlocks(staffMember, iso)) return [];
+  if (!ignoreNotice && iso > addDaysISO(todayISO(), state.config.windowDays)) return [];
 
-  const maxDateISO = addDaysISO(todayISO(), state.config.windowDays);
-  if (iso > maxDateISO) return [];
-
-  const step = dur + state.config.bufferMinutes;
+  const buf = state.config.bufferMinutes;
+  const step = dur + buf;
   const now = new Date();
-  const minNoticeAt = new Date(now.getTime() + state.config.minNoticeHours * 3600000);
+  const minAt = ignoreNotice ? now : new Date(now.getTime() + state.config.minNoticeHours * 3600000);
+  const busy = state.appointments.filter(a => a.date === iso && a.status === 'CONFIRMED' && a.staffId === staffMember.id);
 
+  const seen = new Set();
   let candidates = [];
+  const push = st => { if (!seen.has(st)) { seen.add(st); candidates.push({ start: minutesToTime(st), end: minutesToTime(st + dur) }); } };
   rules.forEach(r => {
-    let cursor = timeToMinutes(r.start);
-    const end = timeToMinutes(r.end);
-    while (cursor + dur <= end) {
-      candidates.push({ start: minutesToTime(cursor), end: minutesToTime(cursor + dur) });
-      cursor += step;
-    }
+    const rs = timeToMinutes(r.start), re = timeToMinutes(r.end);
+    for (let c = rs; c + dur <= re; c += step) push(c);
+    // Aprovecha mejor la agenda: también ofrece el horario justo después de cada cita ya reservada.
+    busy.forEach(a => { const c = timeToMinutes(a.end) + buf; if (c >= rs && c + dur <= re) push(c); });
   });
 
-  candidates = candidates.filter(s => insideRanges(bizRanges, s.start, s.end));
-  candidates = candidates.filter(s => combineDateTime(iso, s.start) >= minNoticeAt);
-
-  const busy = state.appointments.filter(a => a.date === iso && a.status === 'CONFIRMED' && a.staffId === staffMember.id);
-  candidates = candidates.filter(s => !busy.some(a => overlaps(s.start, s.end, a.start, a.end)));
-
+  candidates = candidates.filter(c => insideRanges(bizRanges, c.start, c.end)
+    && !closureBlocks(iso, c.start, c.end)
+    && combineDateTime(iso, c.start) >= minAt
+    && !busy.some(a => overlaps(c.start, c.end, a.start, a.end)));
+  candidates.sort((a, b) => a.start.localeCompare(b.start));
   return candidates;
 }
 
@@ -687,7 +732,7 @@ function serviceStaff(id){
 }
 function activeServices(){ return state.services.filter(v => serviceStaff(v.id).length > 0); }
 
-function getAvailableSlots(iso, excludeApptId, staffId, serviceId){
+function getAvailableSlots(iso, excludeApptId, staffId, serviceId, ignoreNotice){
   const minutes = serviceMinutes(serviceId);
   const originalAppointments = state.appointments;
   if (excludeApptId) state.appointments = state.appointments.filter(a => a.id !== excludeApptId);
@@ -695,7 +740,7 @@ function getAvailableSlots(iso, excludeApptId, staffId, serviceId){
     const seen = new Set();
     const result = [];
     serviceStaff(serviceId).filter(m => !staffId || m.id === staffId).forEach(member => {
-      getStaffRawSlots(member, iso, minutes).forEach(s => {
+      getStaffRawSlots(member, iso, minutes, ignoreNotice).forEach(s => {
         if (!seen.has(s.start)) { seen.add(s.start); result.push(s); }
       });
     });
@@ -706,12 +751,12 @@ function getAvailableSlots(iso, excludeApptId, staffId, serviceId){
   }
 }
 
-function getStaffAvailableForSlot(iso, start, end, excludeApptId, serviceId){
+function getStaffAvailableForSlot(iso, start, end, excludeApptId, serviceId, ignoreNotice){
   const minutes = timeToMinutes(end) - timeToMinutes(start);
   const originalAppointments = state.appointments;
   if (excludeApptId) state.appointments = state.appointments.filter(a => a.id !== excludeApptId);
   try {
-    return serviceStaff(serviceId).filter(member => getStaffRawSlots(member, iso, minutes).some(s => s.start === start && s.end === end));
+    return serviceStaff(serviceId).filter(member => getStaffRawSlots(member, iso, minutes, ignoreNotice).some(s => s.start === start && s.end === end));
   } finally {
     state.appointments = originalAppointments;
   }
@@ -719,8 +764,8 @@ function getStaffAvailableForSlot(iso, start, end, excludeApptId, serviceId){
 
 // Asignación round-robin: entre el personal disponible para ese turno, elige el siguiente
 // en la rotación (no siempre el primero), para repartir las citas de forma pareja.
-function assignStaffRoundRobin(iso, start, end, excludeApptId, staffId, serviceId){
-  const available = getStaffAvailableForSlot(iso, start, end, excludeApptId, serviceId);
+function assignStaffRoundRobin(iso, start, end, excludeApptId, staffId, serviceId, ignoreNotice){
+  const available = getStaffAvailableForSlot(iso, start, end, excludeApptId, serviceId, ignoreNotice);
   if (!available.length) return null;
   if (staffId) return available.find(m => m.id === staffId) || null;
   const chosen = available[state.roundRobinCursor % available.length];
@@ -905,6 +950,7 @@ function navCalendar(delta){
   render();
 }
 function pickSlot(start, end){
+  ab().manualTime = '';
   ab().selectedSlot = { start, end };
   render();
 }
@@ -944,6 +990,9 @@ function confirmBooking(){
       appt.staffId = assigned.id;
       appt.staffName = assigned.name;
       appt.rescheduleRequested = false;
+      appt.rescheduleRequestedAt = null;
+      appt.movedByAdmin = null;
+      appt.manual = false;
       state.booking.lastApptId = appt.id;
     }
   } else {
@@ -970,12 +1019,14 @@ function confirmBooking(){
   saveState();
   render();
   window.scrollTo(0, 0);
+  addActivity(rescheduleId ? 'Cita reagendada' : 'Nueva reserva', `${name} ${rescheduleId ? 'reagendó su cita para el' : 'reservó para el'} ${displayDateLong(selectedDate)} a las ${selectedSlot.start}.`, state.booking.lastApptId);
+  saveState();
   showToast(rescheduleId ? 'Cita reagendada' : 'Cita confirmada');
 }
 function goToResumen(){
   const b = ab();
   if (!b.selectedSlot) return;
-  if (b.admin) {
+  if (b.admin && !b.move) {
     const bad = !isValidDni(b.dni, b.docType) ? docErrorText(b.docType)
       : (b.nombres || '').trim().length < 2 ? 'Ingresa los nombres del cliente.'
       : (b.apellidos || '').trim().length < 2 ? 'Ingresa los apellidos del cliente.'
@@ -1019,9 +1070,39 @@ function goToReservar(){
   state.booking.rescheduleId = null;
   render();
 }
+function hoursUntil(a){ return (combineDateTime(a.date, a.start) - new Date()) / 3600000; }
+function clientCanChange(a){
+  return !!apptPendingReason(a) || !!a.rescheduleRequested || state.config.cancelNoticeHours <= 0 || hoursUntil(a) >= state.config.cancelNoticeHours;
+}
+function waitingAppts(){
+  const today = todayISO();
+  return state.appointments.filter(a => a.status === 'CONFIRMED' && a.rescheduleRequested && a.date >= today).sort((a, b) => (a.rescheduleRequestedAt || 0) - (b.rescheduleRequestedAt || 0));
+}
+function daysWaiting(a){ return a.rescheduleRequestedAt ? Math.floor((Date.now() - a.rescheduleRequestedAt) / 86400000) : 0; }
+function toggleNoShow(id){
+  const a = state.appointments.find(x => x.id === id);
+  if (!a) return;
+  a.attendance = a.attendance === 'no_show' ? null : 'no_show';
+  saveState();
+  render();
+  showToast(a.attendance === 'no_show' ? 'Marcado como no asistió' : 'Asistencia registrada');
+}
+function resendReschedule(id){
+  const a = state.appointments.find(x => x.id === id);
+  if (!a) return;
+  const digits = cleanPhoneForWhatsapp(a.phone);
+  if (!digits) return showToast('Este cliente no tiene teléfono registrado');
+  const msg = `Hola ${firstWord(a.name)}! Te recordamos que necesitamos reagendar tu cita del ${displayDateLong(a.date)} a las ${a.start}. Elige un nuevo horario aquí: https://${bookingLink()}`;
+  window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+  a.rescheduleRequestedAt = Date.now();
+  saveState();
+  render();
+  showToast('Recordatorio enviado por WhatsApp');
+}
 function startReschedule(id){
   const appt = state.appointments.find(a => a.id === id);
   if (!appt || appt.status !== 'CONFIRMED') return;
+  if (state.view === 'paciente' && !clientCanChange(appt)) { showToast(`Ya no puedes reagendar en línea. Contacta al negocio.`); return; }
   state.booking.rescheduleId = id;
   state.booking.step = 'reservar';
   state.booking.selectedSlot = null;
@@ -1056,6 +1137,7 @@ function sendReminder(id){
   const msg = `Hola! Recuerda que ${dateLabel} tienes una reserva. Te esperamos.`;
   window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
+function goEsperando(){ state.adminTab = 'citas'; state.citasFilter = 'esperando'; render(); window.scrollTo(0, 0); }
 function goPendientes(){ state.adminTab = 'citas'; state.citasFilter = 'pendientes'; render(); window.scrollTo(0, 0); }
 function goNewAppt(){ state.adminTab = 'citas'; openNewAppt(); }
 function openNewAppt(){
@@ -1068,6 +1150,81 @@ function openNewAppt(){
   };
   render();
   window.scrollTo(0, 0);
+}
+function staffConflict(staffId, date, start, end, excludeId){
+  return state.appointments.find(a => a.id !== excludeId && a.status === 'CONFIRMED' && a.staffId === staffId && a.date === date && overlaps(start, end, a.start, a.end)) || null;
+}
+function manualWarnings(date, start, end, staff){
+  const w = [];
+  const dow = String(dayOfWeek(date));
+  if (closureBlocks(date, start, end)) w.push('Es un día u hora cerrados');
+  if (!insideRanges(state.businessHours[dow], start, end)) w.push('Fuera del horario del negocio');
+  if (staff) {
+    if (staffOffBlocks(staff, date)) w.push(`${firstWord(staff.name)} no atiende ese día`);
+    else if (!insideRanges(staff.schedule && staff.schedule[dow], start, end)) w.push(`Fuera del horario de ${firstWord(staff.name)}`);
+  }
+  return w;
+}
+function toggleManual(){ const b = ab(); b.manualOpen = !b.manualOpen; b.manualError = null; render(); }
+function setManualTime(){
+  const b = ab();
+  const v = $('manual-time').value;
+  if (!v) { b.manualError = 'Elige una hora.'; render(); return; }
+  const appt = b.move ? state.appointments.find(a => a.id === b.moveId) : null;
+  const dur = appt ? durationMin(appt) : serviceMinutes(bookingServiceId(b));
+  const end = timeToMinutes(v) + dur;
+  if (end >= 24 * 60) { b.manualError = 'La cita no puede terminar después de medianoche.'; render(); return; }
+  b.manualTime = v;
+  b.manualError = null;
+  b.selectedSlot = { start: v, end: minutesToTime(end), manual: true };
+  render();
+}
+function openMove(id){
+  const a = state.appointments.find(x => x.id === id);
+  if (!a) return;
+  const p = state.patients[a.dni] || {};
+  const today = todayISO();
+  const d = a.date >= today ? a.date : today;
+  state.adminTab = 'citas';
+  state.newAppt = {
+    admin: true, move: true, moveId: id, rescheduleId: id, step: 'reservar', docType: p.docType || 'DNI', dni: a.dni,
+    nombres: p.nombres || firstWord(a.name), apellidos: p.apellidos || '', name: a.name, phone: a.phone || '', known: true, error: null, formError: null,
+    selectedDate: d, calendarMonth: ymFromISO(d), selectedSlot: null, serviceId: a.serviceId || null, staffId: a.staffId || null, manualOpen: false, manualTime: '',
+  };
+  render();
+  window.scrollTo(0, 0);
+}
+function confirmMove(){
+  const n = state.newAppt;
+  if (!n || !n.moveId || !n.selectedSlot) return;
+  const a = state.appointments.find(x => x.id === n.moveId);
+  if (!a) { closeNewAppt(); return; }
+  const svcId = bookingServiceId(n);
+  const pickId = pickIdFor(n);
+  const sl = n.selectedSlot;
+  const fail = msg => { n.error = msg; n.selectedSlot = null; n.step = 'reservar'; render(); };
+  let staff = null;
+  if (sl.manual) {
+    staff = (pickId && state.staff.find(m => m.id === pickId)) || state.staff.find(m => m.id === a.staffId) || serviceStaff(svcId)[0] || null;
+    if (!staff) return fail('No hay trabajadores disponibles.');
+    const c = staffConflict(staff.id, n.selectedDate, sl.start, sl.end, a.id);
+    if (c) return fail(`Choca con otra cita de ${firstWord(staff.name)} (${c.start}–${c.end}).`);
+  } else {
+    if (!getAvailableSlots(n.selectedDate, a.id, pickId, svcId, true).some(x => x.start === sl.start)) return fail('Ese horario se acaba de ocupar. Elige otro.');
+    staff = assignStaffRoundRobin(n.selectedDate, sl.start, sl.end, a.id, pickId, svcId, true);
+    if (!staff) return fail('Ese horario se acaba de ocupar. Elige otro.');
+  }
+  const before = { date: a.date, start: a.start };
+  Object.assign(a, {
+    date: n.selectedDate, start: sl.start, end: sl.end, staffId: staff.id, staffName: staff.name,
+    rescheduleRequested: false, rescheduleRequestedAt: null, manual: !!sl.manual, movedByAdmin: { from: before, at: Date.now() },
+  });
+  state.newAppt = null;
+  state.notify = cleanPhoneForWhatsapp(a.phone) ? { type: 'move', id: a.id } : null;
+  saveState();
+  render();
+  window.scrollTo(0, 0);
+  showToast('Cita movida');
 }
 function closeNewAppt(){ state.newAppt = null; render(); window.scrollTo(0, 0); }
 function updateNewAppt(field, value){ state.newAppt[field] = value; }
@@ -1103,11 +1260,19 @@ function createAdminAppointment(){
   const pickId = pickIdFor(n);
   const fail = msg => { n.error = msg; n.selectedSlot = null; n.step = 'reservar'; render(); };
   if (isProPlan() && !svcId) return fail('Elige un servicio.');
-  if (!getAvailableSlots(n.selectedDate, null, pickId, svcId).some(sl => sl.start === n.selectedSlot.start)) {
+  if (!n.selectedSlot.manual && !getAvailableSlots(n.selectedDate, null, pickId, svcId, true).some(sl => sl.start === n.selectedSlot.start)) {
     return fail('Ese horario se acaba de ocupar. Elige otro.');
   }
-  const assigned = assignStaffRoundRobin(n.selectedDate, n.selectedSlot.start, n.selectedSlot.end, null, pickId, svcId);
-  if (!assigned) return fail('Ese horario se acaba de ocupar. Elige otro.');
+  let assigned = null;
+  if (n.selectedSlot.manual) {
+    const pool = (pickId ? serviceStaff(svcId).filter(m => m.id === pickId) : serviceStaff(svcId))
+      .filter(m => !staffConflict(m.id, n.selectedDate, n.selectedSlot.start, n.selectedSlot.end, null));
+    assigned = pool.find(m => manualWarnings(n.selectedDate, n.selectedSlot.start, n.selectedSlot.end, m).length === 0) || pool[0] || null;
+    if (!assigned) return fail('Choca con otra cita. Elige otra hora.');
+  } else {
+    assigned = assignStaffRoundRobin(n.selectedDate, n.selectedSlot.start, n.selectedSlot.end, null, pickId, svcId, true);
+    if (!assigned) return fail('Ese horario se acaba de ocupar. Elige otro.');
+  }
   const name = fullName(n.nombres, n.apellidos);
   const phone = (n.phone || '').trim();
   const prev = state.patients[n.dni];
@@ -1123,7 +1288,7 @@ function createAdminAppointment(){
     status: 'CONFIRMED', paid: false,
     staffId: assigned.id, staffName: assigned.name,
     rescheduleRequested: false,
-    serviceId: svcId, serviceName: svcId ? findService(svcId).name : null,
+    serviceId: svcId, serviceName: svcId ? findService(svcId).name : null, manual: !!n.selectedSlot.manual,
   });
   state.newAppt = null;
   saveState();
@@ -1174,35 +1339,47 @@ function requestReschedule(id){
   const msg = `Hola! por motivos de fuerza mayor, nos gustaría reagendar nuestra sesión contigo. Te enviamos un nuevo enlace para que puedas visitarnos pronto.`;
   window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
   a.rescheduleRequested = true;
+  a.rescheduleRequestedAt = Date.now();
   state.confirmRescheduleId = null;
   saveState();
   render();
-  showToast('Solicitud de reagenda enviada por WhatsApp');
+  showToast('Solicitud enviada. La cita pasó a Esperando reagendar');
 }
-function askCancel(id){ state.confirmCancelId = id; render(); }
+function askCancel(id){
+  const a = state.appointments.find(x => x.id === id);
+  if (a && state.view === 'paciente' && !clientCanChange(a)) { showToast('Ya no puedes cancelar en línea. Contacta al negocio.'); return; }
+  state.confirmCancelId = id;
+  render();
+}
 function dismissCancel(){ state.confirmCancelId = null; render(); }
 function doCancel(id){
   const appt = state.appointments.find(a => a.id === id);
   if (!appt) return;
   const wasPending = state.view === 'admin' && !!apptPendingReason(appt);
   appt.status = 'CANCELLED';
+  appt.cancelledBy = state.view === 'paciente' ? 'client' : 'admin';
+  if (state.view === 'paciente') addActivity('Cita cancelada', `${appt.name} canceló su cita del ${displayDateLong(appt.date)} a las ${appt.start}.`, appt.id);
   state.confirmCancelId = null;
-  if (wasPending && cleanPhoneForWhatsapp(appt.phone)) state.notifyCancelId = appt.id;
+  if (wasPending && cleanPhoneForWhatsapp(appt.phone)) state.notify = { type: 'cancel', id: appt.id };
   saveState();
   render();
   showToast('Cita cancelada');
 }
-function sendCancelNotice(id){
-  const a = state.appointments.find(x => x.id === id);
-  state.notifyCancelId = null;
+function sendNotice(){
+  const nt = state.notify;
+  state.notify = null;
+  const a = nt && state.appointments.find(x => x.id === nt.id);
   if (a) {
     const digits = cleanPhoneForWhatsapp(a.phone);
-    const msg = `Hola ${a.name.split(' ')[0]}! Lamentamos avisarte que, por motivos de fuerza mayor, debimos cancelar tu cita del ${displayDateLong(a.date)} a las ${a.start}. Puedes agendar una nueva cuando quieras desde aquí: https://${bookingLink()}`;
+    const first = firstWord(a.name);
+    const msg = nt.type === 'move'
+      ? `Hola ${first}! Tu cita pasó al ${displayDateLong(a.date)} a las ${a.start}. Si no te acomoda, puedes cambiarla desde aquí: https://${bookingLink()}`
+      : `Hola ${first}! Lamentamos avisarte que, por motivos de fuerza mayor, debimos cancelar tu cita del ${displayDateLong(a.date)} a las ${a.start}. Puedes agendar una nueva cuando quieras desde aquí: https://${bookingLink()}`;
     if (digits) window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
   }
   render();
 }
-function skipCancelNotice(){ state.notifyCancelId = null; render(); }
+function skipNotice(){ state.notify = null; render(); }
 
 // --- Superadministrador: alertas y cuentas de negocio ---
 function reportDoubleBookingAlert(iso, slot, clientName){
@@ -1435,6 +1612,7 @@ function saveConfig(){
   state.config.bufferMinutes = Math.max(0, read('cfg-buffer'));
   state.config.minNoticeHours = Math.max(0, read('cfg-notice'));
   state.config.windowDays = Math.max(1, read('cfg-window'));
+  state.config.cancelNoticeHours = Math.max(0, read('cfg-cancel'));
   saveState();
   render();
   showToast('Configuración guardada');
@@ -1515,7 +1693,8 @@ function deleteBizRule(day, idx){
 }
 function updateNewClosed(field, value){ state.newClosed[field] = value; }
 function closedAffected(c){
-  return state.appointments.filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && a.date >= c.from && a.date <= c.to && a.date >= todayISO()).length;
+  return state.appointments.filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && a.date >= todayISO() && closureAppliesOn(c, a.date)
+    && (!c.startTime || (timeToMinutes(a.start) < timeToMinutes(c.endTime) && timeToMinutes(c.startTime) < timeToMinutes(a.end)))).length;
 }
 function addClosedDay(){
   const n = state.newClosed;
@@ -1785,7 +1964,7 @@ function renderCalendarPicker(b, noAvail){
     const iso = isoFromYMD(cal.y, cal.m, d);
     const isPast = iso < todayIso;
     const isTooFar = iso > maxIso;
-    const count = !isPast && !isTooFar ? getAvailableSlots(iso, b.rescheduleId, pickIdFor(b), bookingServiceId(b)).length : 0;
+    const count = !isPast && !isTooFar ? getAvailableSlots(iso, b.rescheduleId, pickIdFor(b), bookingServiceId(b), !!b.admin).length : 0;
     const disabled = isPast || isTooFar || count === 0;
     const selected = !noAvail && iso === b.selectedDate;
     const cls = `cal-day${selected ? ' selected' : ''}${iso === todayIso ? ' today' : ''}`;
@@ -1957,17 +2136,25 @@ function renderPatientRow(a, isPast){
 function patientCard(a, light){
   const todayIso = todayISO();
   const when = a.date === todayIso ? 'Hoy' : cap(displayDateShort(a.date));
+  const reason = apptPendingReason(a);
+  const mustAct = !!reason || !!a.rescheduleRequested;
+  const can = clientCanChange(a);
+  let note = '';
+  if (mustAct) note = a.rescheduleRequested ? 'El negocio te pidió reagendar esta cita. Elige un nuevo horario.' : 'Cambió la disponibilidad del negocio. Reagenda tu cita para mantenerla.';
+  else if (a.movedByAdmin) note = `El negocio movió tu cita. Antes: ${cap(displayDateShort(a.movedByAdmin.from.date))} · ${a.movedByAdmin.from.start}.`;
+  else if (!can) note = `Faltan menos de ${state.config.cancelNoticeHours} horas: ya no puedes cambiarla en línea. Contacta al negocio.`;
   return `
     <div class="hero${light ? ' light' : ''}">
-      <span class="chip-hero ${light ? 'neu' : ''}">${escapeHtml(a.serviceName || 'Cita')}</span>
+      <span class="chip-hero ${light ? (mustAct ? 'cancel' : 'neu') : ''}">${mustAct ? 'Debes reagendar' : escapeHtml(a.serviceName || 'Cita')}</span>
       <div>
         <div class="h-title">${when} · ${a.start}</div>
         ${a.staffName ? `<div class="h-sub">${escapeHtml(a.staffName)}</div>` : ''}
-        <div class="h-meta">${durationMin(a)} min</div>
+        <div class="h-meta">${durationMin(a)} min${a.serviceName && mustAct ? ' · ' + escapeHtml(a.serviceName) : ''}</div>
       </div>
+      ${note ? `<div class="hero-note${mustAct ? ' alert' : ''}" role="${mustAct ? 'alert' : 'note'}">${escapeHtml(note)}</div>` : ''}
       <div class="hero-actions c2">
-        <button type="button" onclick="startReschedule('${a.id}')">${icon('refresh', 20)}<span>Reagendar</span></button>
-        <button type="button" class="danger" onclick="askCancel('${a.id}')">${icon('close', 20, 2.4)}<span>Cancelar</span></button>
+        <button type="button" class="${mustAct ? 'emph' : ''}" ${can ? '' : 'disabled'} onclick="startReschedule('${a.id}')">${icon('refresh', 20)}<span>Reagendar</span></button>
+        <button type="button" class="danger" ${can ? '' : 'disabled'} onclick="askCancel('${a.id}')">${icon('close', 20, 2.4)}<span>Cancelar</span></button>
       </div>
     </div>`;
 }
@@ -2009,7 +2196,8 @@ function renderPacientePanel(b){
               ? `<p class="secondary" style="padding:8px 4px;">Todavía no tuviste citas.</p>`
               : history.map(a => {
                   const cancelled = a.status === 'CANCELLED';
-                  return `<div class="hist-row"><span class="hist-main"><strong>${escapeHtml(cap(displayDateShort(a.date)))} ${escapeHtml(MONTHS[dateFromISO(a.date).getMonth()].slice(0, 3))}</strong> · <span class="tnum">${a.start}</span>${staffLine(a)}</span>${chip(cancelled ? 'danger' : 'neutral', cancelled ? 'Cancelada' : 'Realizada')}</div>`;
+                  const lbl = cancelled ? (a.cancelledBy === 'admin' ? 'Cancelada por el negocio' : 'Cancelada') : (a.attendance === 'no_show' ? 'No asistió' : 'Realizada');
+                  return `<div class="hist-row"><span class="hist-main"><strong>${escapeHtml(cap(displayDateShort(a.date)))} ${escapeHtml(MONTHS[dateFromISO(a.date).getMonth()].slice(0, 3))}</strong> · <span class="tnum">${a.start}</span>${staffLine(a)}</span>${chip(cancelled ? 'danger' : (a.attendance === 'no_show' ? 'warning' : 'neutral'), lbl)}</div>`;
                 }).join('')}
           </div>` : ''}
       </div>
@@ -2038,7 +2226,14 @@ function renderResumen(b, cfg){
           <div class="g-row"><span>${docLabel(b.docType)}</span><span class="tnum">${escapeHtml(b.dni)}</span></div>
           ${bookingServiceId(b) ? `<div class="g-row"><span>Servicio</span><span>${escapeHtml(findService(bookingServiceId(b)).name)}</span></div>` : ''}
           ${canClientPickStaff(b) ? `<div class="g-row"><span>Profesional</span><span>${pickIdFor(b) ? escapeHtml((state.staff.find(m => m.id === pickIdFor(b)) || {}).name || '') : 'Cualquiera disponible'}</span></div>` : ''}
-          ${b.rescheduleId ? `<div class="g-row"><span>Tipo</span><span>Reagendado</span></div>` : ''}
+          ${b.move ? (() => { const o = state.appointments.find(x => x.id === b.moveId); return o ? `<div class="g-row"><span>Antes</span><span>${escapeHtml(cap(displayDateShort(o.date)))} · ${o.start}</span></div>` : ''; })() : (b.rescheduleId ? `<div class="g-row"><span>Tipo</span><span>Reagendado</span></div>` : '')}
+          ${(() => {
+            if (!b.admin || !b.selectedSlot || !b.selectedSlot.manual) return '';
+            const mv = b.move ? state.appointments.find(x => x.id === b.moveId) : null;
+            const sid = pickIdFor(b) || (mv && mv.staffId);
+            const w = manualWarnings(b.selectedDate, b.selectedSlot.start, b.selectedSlot.end, state.staff.find(m => m.id === sid) || null);
+            return w.length ? `<div class="g-row"><span>Aviso</span><span style="color:#FFD08A;">${escapeHtml(w.join(' · '))}</span></div>` : '';
+          })()}
         </div>
         <div style="flex:1;min-height:32px;"></div>
         <button class="dark-cta" type="button" onclick="${cfg.confirmFn}">${cfg.confirmLabel}</button>
@@ -2048,15 +2243,15 @@ function renderResumen(b, cfg){
 
 function renderBookingScreen(b, cfg){
   ensureBookingService(b);
-  let anyAvail = getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b), bookingServiceId(b)).length > 0;
+  let anyAvail = getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b), bookingServiceId(b), !!b.admin).length > 0;
   if (!anyAvail) {
     for (let i = 0; i <= state.config.windowDays; i++) {
       const iso = addDaysISO(todayISO(), i);
-      if (getAvailableSlots(iso, b.rescheduleId, pickIdFor(b), bookingServiceId(b)).length) { b.selectedDate = iso; b.calendarMonth = ymFromISO(iso); anyAvail = true; break; }
+      if (getAvailableSlots(iso, b.rescheduleId, pickIdFor(b), bookingServiceId(b), !!b.admin).length) { b.selectedDate = iso; b.calendarMonth = ymFromISO(iso); anyAvail = true; break; }
     }
   }
   const noAvail = !anyAvail;
-  const slots = getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b), bookingServiceId(b));
+  const slots = getAvailableSlots(b.selectedDate, b.rescheduleId, pickIdFor(b), bookingServiceId(b), !!b.admin);
   const dayText = longDate(b.selectedDate);
 
   const page = `
@@ -2097,6 +2292,17 @@ function renderBookingScreen(b, cfg){
             ? `<p class="secondary" style="margin-top:14px;">No hay horarios disponibles este día. Prueba otra fecha.</p>`
             : `<div class="slot-grid">${slots.map(s => `<button type="button" class="slot" onclick="pickSlot('${s.start}','${s.end}')" aria-pressed="${!!(b.selectedSlot && b.selectedSlot.start === s.start)}">${s.start}</button>`).join('')}</div>`}
           ${b.error ? `<p class="error-text" style="margin-top:14px;">${escapeHtml(b.error)}</p>` : ''}
+          ${b.admin ? `
+            <div style="margin-top:16px;">
+              ${b.selectedSlot && b.selectedSlot.manual ? `<p class="hint" style="margin-bottom:8px;">Hora elegida a mano: <strong>${b.selectedSlot.start} – ${b.selectedSlot.end}</strong></p>` : ''}
+              <button class="btn-text" type="button" style="padding-left:0;" onclick="toggleManual()" aria-expanded="${!!b.manualOpen}">${b.manualOpen ? 'Ocultar' : '¿Otra hora? Escríbela'}</button>
+              ${b.manualOpen ? `
+                <div class="row row-end" style="flex-wrap:nowrap;margin-top:8px;">
+                  <div class="field" style="flex:1;min-width:0;"><label for="manual-time">Hora de inicio</label><input id="manual-time" type="time" value="${escapeHtml(b.manualTime || '')}"></div>
+                  <button class="btn btn-soft" type="button" onclick="setManualTime()">Usar</button>
+                </div>
+                ${b.manualError ? `<p class="error-text" style="margin-top:8px;">${escapeHtml(b.manualError)}</p>` : ''}` : ''}
+            </div>` : ''}
         </div>
       </div>
     </div>
@@ -2194,9 +2400,10 @@ function upcomingCard(a, light, todayIso){
         <div class="h-sub">${escapeHtml(a.name)}</div>
         ${meta ? `<div class="h-meta">${meta}</div>` : ''}
       </div>
-      <div class="hero-actions">
+      <div class="hero-actions c4">
         <button type="button" onclick="togglePaid('${a.id}')">${icon('check', 20, 2.4)}<span>${a.paid ? 'Deshacer pago' : 'Marcar pagado'}</span></button>
         <button type="button" onclick="sendReminder('${a.id}')" aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}">${icon('chat', 20)}<span>Recordar</span></button>
+        <button type="button" onclick="openMove('${a.id}')">${icon('calendar', 20)}<span>Mover</span></button>
         <button type="button" onclick="askReschedule('${a.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}">${icon('refresh', 20)}<span>Reagendar</span></button>
       </div>
     </div>`;
@@ -2221,6 +2428,18 @@ function renderAdminInicio(){
     ${adminHeader('Hola de nuevo', longDate(todayIso))}
 
     <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:20px;" onclick="goNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
+    ${(() => {
+      const wc = waitingAppts().length;
+      return wc ? `
+    <div class="notice-card">
+      <span class="ic">${icon('clock', 22)}</span>
+      <div style="min-width:0;flex:1;">
+        <p class="card-title">${wc === 1 ? '1 cita espera que el cliente reagende' : `${wc} citas esperan que el cliente reagende`}</p>
+        <p class="secondary" style="margin-top:2px;">Revisa si respondieron o vuelve a escribirles.</p>
+        <button class="btn btn-sm btn-soft" type="button" style="margin-top:12px;background:#fff;" onclick="goEsperando()">Ver citas en espera</button>
+      </div>
+    </div>` : '';
+    })()}
     ${pendingCount ? `
     <div class="alert-card" role="alert">
       <span class="ic">${icon('alert', 22)}</span>
@@ -2228,6 +2447,22 @@ function renderAdminInicio(){
         <p class="card-title">${pendingCount === 1 ? 'Tienes 1 cita por resolver' : `Tienes ${pendingCount} citas por resolver`}</p>
         <p class="secondary" style="margin-top:2px;">Cambió tu disponibilidad. Cancela o reagenda estas citas.</p>
         <button class="btn btn-sm btn-danger-solid" type="button" style="margin-top:12px;" onclick="goPendientes()">Ver pendientes</button>
+      </div>
+    </div>` : ''}
+
+    ${state.activity.length ? `
+    <div class="news">
+      <div class="row between" style="flex-wrap:nowrap;">
+        <h2 class="card-title">Novedades${unreadCount() ? ` <span class="badge-inline">${unreadCount()}</span>` : ''}</h2>
+        ${unreadCount() ? `<button class="btn-text" type="button" style="min-height:36px;padding:0 4px;" onclick="markActivityRead()">Marcar como leídas</button>` : ''}
+      </div>
+      <div class="news-list">
+        ${state.activity.slice(0, 5).map(x => `
+          <div class="news-row${x.read ? '' : ' unread'}">
+            <span class="news-dot" aria-hidden="true"></span>
+            <div style="min-width:0;flex:1;"><p class="row-title" style="font-size:15px;line-height:20px;">${escapeHtml(x.title)}</p><p class="secondary" style="font-size:14px;line-height:19px;">${escapeHtml(x.text)}</p></div>
+            <span class="caption" style="white-space:nowrap;">${timeAgo(x.ts)}</span>
+          </div>`).join('')}
       </div>
     </div>` : ''}
 
@@ -2259,28 +2494,46 @@ function renderAdminInicio(){
       ${restUpcoming.length ? `<div class="rows" style="margin-top:12px;">${restUpcoming.map(a => upcomingCard(a, true, todayIso)).join('')}</div>` : ''}` : `<p class="secondary">No tienes citas próximas.</p>`}`;
 }
 
-function citaCard(a, now, pend){
+function citaCard(a, now, mode){
+  const pend = mode === true || mode === 'pend';
+  const wait = mode === 'wait';
   const cancelled = a.status === 'CANCELLED';
   const upcoming = !cancelled && a.date >= now;
   const when = a.date === now ? 'Hoy' : cap(displayDateShort(a.date));
   const meta = [a.serviceName, a.staffName].filter(Boolean).map(escapeHtml).join(' · ');
   const reason = pend ? apptPendingReason(a) : null;
-  const chipHtml = reason ? `<span class="chip-hero cancel">${escapeHtml(reason)}</span>` : cancelled
-    ? `<span class="chip-hero cancel">Cancelada</span>`
-    : `<span class="chip-hero ${a.paid ? 'ok' : 'warn'}">${a.paid ? 'Pagado' : 'Pago pendiente'}</span>`;
+  let chips = '';
+  if (reason) chips = `<span class="chip-hero cancel">${escapeHtml(reason)}</span>`;
+  else if (wait) { const d = daysWaiting(a); chips = `<span class="chip-hero ${d >= 3 ? 'warn' : 'neu'}">Esperando respuesta · ${d === 0 ? 'desde hoy' : `hace ${d} día${d === 1 ? '' : 's'}`}</span>`; }
+  else if (cancelled) chips = `<span class="chip-hero cancel">Cancelada${a.cancelledBy === 'client' ? ' por el cliente' : ''}</span>`;
+  else {
+    chips = `<span class="chip-hero ${a.paid ? 'ok' : 'warn'}">${a.paid ? 'Pagado' : 'Pago pendiente'}</span>`;
+    if (a.attendance === 'no_show') chips += `<span class="chip-hero warn">No asistió</span>`;
+  }
   const btns = [];
+  const B = (cls, fn, ic, label, extra) => `<button type="button" ${cls ? `class="${cls}"` : ''} onclick="${fn}" ${extra || ''}>${ic}<span>${label}</span></button>`;
   if (pend) {
-    btns.push(`<button type="button" onclick="askReschedule('${a.id}')" aria-label="Pedir a ${escapeHtml(a.name)} que reagende por WhatsApp">${icon('refresh', 20)}<span>Reagendar</span></button>`);
-    btns.push(`<button type="button" class="danger" onclick="askCancel('${a.id}')">${icon('close', 20, 2.4)}<span>Cancelar</span></button>`);
-  } else if (!cancelled) btns.push(`<button type="button" onclick="togglePaid('${a.id}')">${icon('check', 20, 2.4)}<span>${a.paid ? 'Deshacer pago' : 'Marcar pagado'}</span></button>`);
-  if (upcoming && !pend) {
-    btns.push(`<button type="button" onclick="sendReminder('${a.id}')" aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}">${icon('chat', 20)}<span>Recordar</span></button>`);
-    btns.push(`<button type="button" onclick="askReschedule('${a.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}">${icon('refresh', 20)}<span>Reagendar</span></button>`);
-    btns.push(`<button type="button" class="danger" onclick="askCancel('${a.id}')">${icon('close', 20, 2.4)}<span>Cancelar</span></button>`);
+    btns.push(B('', `openMove('${a.id}')`, icon('calendar', 20), 'Mover'));
+    btns.push(B('', `askReschedule('${a.id}')`, icon('refresh', 20), 'Reagendar', `aria-label="Pedir a ${escapeHtml(a.name)} que reagende por WhatsApp"`));
+    btns.push(B('danger', `askCancel('${a.id}')`, icon('close', 20, 2.4), 'Cancelar'));
+  } else if (wait) {
+    btns.push(B('', `resendReschedule('${a.id}')`, icon('chat', 20), 'Recordar'));
+    btns.push(B('', `openMove('${a.id}')`, icon('calendar', 20), 'Mover'));
+    btns.push(B('danger', `askCancel('${a.id}')`, icon('close', 20, 2.4), 'Cancelar'));
+  } else if (!cancelled) {
+    btns.push(B('', `togglePaid('${a.id}')`, icon('check', 20, 2.4), a.paid ? 'Deshacer pago' : 'Marcar pagado'));
+    if (upcoming) {
+      btns.push(B('', `sendReminder('${a.id}')`, icon('chat', 20), 'Recordar', `aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}"`));
+      btns.push(B('', `openMove('${a.id}')`, icon('calendar', 20), 'Mover'));
+      btns.push(B('', `askReschedule('${a.id}')`, icon('refresh', 20), 'Reagendar', `aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}"`));
+      btns.push(B('danger', `askCancel('${a.id}')`, icon('close', 20, 2.4), 'Cancelar'));
+    } else {
+      btns.push(B('', `toggleNoShow('${a.id}')`, icon(a.attendance === 'no_show' ? 'check' : 'close', 20, 2.4), a.attendance === 'no_show' ? 'Asistió' : 'No asistió'));
+    }
   }
   return `
     <div class="hero light">
-      ${chipHtml}
+      <div class="chip-row">${chips}</div>
       <div>
         <div class="h-title">${when} · ${a.start}</div>
         <div class="h-sub">${escapeHtml(a.name)}</div>
@@ -2294,10 +2547,12 @@ function citaCard(a, now, pend){
 function renderAdminCitas(){
   const now = todayISO();
   const pendList = pendingAppts();
+  const waitList = waitingAppts();
   let f = state.citasFilter || 'proximas';
   if (f === 'pendientes' && !pendList.length) f = 'proximas';
+  if (f === 'esperando' && !waitList.length) f = 'proximas';
   const isUpcoming = a => a.status === 'CONFIRMED' && a.date >= now;
-  const list = f === 'pendientes' ? pendList : state.appointments
+  const list = f === 'pendientes' ? pendList : f === 'esperando' ? waitList : state.appointments
     .filter(a => !a.rescheduleRequested)
     .filter(a => f === 'todas' ? true : (f === 'pasadas' ? !isUpcoming(a) : (isUpcoming(a) && !apptPendingReason(a))))
     .sort((a, b) => f === 'pasadas'
@@ -2311,13 +2566,14 @@ function renderAdminCitas(){
     <div style="margin-top:16px;">
       <div class="seg seg-scroll" role="group" aria-label="Filtro de citas">
         ${pendList.length ? `<button type="button" aria-pressed="${f === 'pendientes'}" onclick="state.citasFilter='pendientes'; render()">Pendientes<span class="badge">${pendList.length}</span></button>` : ''}
+        ${waitList.length ? `<button type="button" aria-pressed="${f === 'esperando'}" onclick="state.citasFilter='esperando'; render()">Esperando<span class="badge neutral">${waitList.length}</span></button>` : ''}
         <button type="button" aria-pressed="${f === 'proximas'}" onclick="state.citasFilter='proximas'; render()">Próximas</button>
         <button type="button" aria-pressed="${f === 'pasadas'}" onclick="state.citasFilter='pasadas'; render()">Pasadas</button>
         <button type="button" aria-pressed="${f === 'todas'}" onclick="state.citasFilter='todas'; render()">Todas</button>
       </div>
     </div>
 
-    ${list.length === 0 ? `<p class="secondary" style="margin-top:24px;">${f === 'pasadas' ? 'Todavía no hay citas en el historial.' : 'No hay citas para mostrar.'}</p>` : `<div class="rows" style="margin-top:20px;">${list.map(a => citaCard(a, now, f === 'pendientes')).join('')}</div>`}`;
+    ${list.length === 0 ? `<p class="secondary" style="margin-top:24px;">${f === 'pasadas' ? 'Todavía no hay citas en el historial.' : 'No hay citas para mostrar.'}</p>` : `<div class="rows" style="margin-top:20px;">${list.map(a => citaCard(a, now, f === 'pendientes' ? 'pend' : f === 'esperando' ? 'wait' : false)).join('')}</div>`}`;
 }
 
 function renderServicesEditor(){
@@ -2480,6 +2736,7 @@ function renderAdminHorarios(){
         <div class="field"><label for="cfg-buffer">Descanso entre citas (min)</label><input id="cfg-buffer" type="number" inputmode="numeric" value="${cfg.bufferMinutes}"></div>
         <div class="field"><label for="cfg-notice">Anticipación mínima (horas)</label><input id="cfg-notice" type="number" inputmode="numeric" value="${cfg.minNoticeHours}"></div>
         <div class="field"><label for="cfg-window">Reservas hasta (días a futuro)</label><input id="cfg-window" type="number" inputmode="numeric" value="${cfg.windowDays}"></div>
+        <div class="field"><label for="cfg-cancel">Cambios del cliente hasta (horas antes)</label><input id="cfg-cancel" type="number" inputmode="numeric" value="${cfg.cancelNoticeHours}"><span class="hint">Después de ese plazo el cliente ya no puede cancelar ni reagendar en línea. 0 = sin límite.</span></div>
       </div>
       ${isProPlan() ? `<p class="hint">En el plan Pro, cada servicio define su propia duración. La de arriba se usa solo cuando una cita no tiene servicio.</p>` : ''}
       <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="saveConfig()">Guardar configuración</button>
@@ -2646,7 +2903,7 @@ function renderRescheduleModal(){
     <div class="modal-back" onclick="if (event.target === this) closeRescheduleModal()">
       <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="rs-title" aria-describedby="rs-desc">
         <h2 class="title-3" id="rs-title">¿Solicitar reagendado a ${escapeHtml(a.name)}?</h2>
-        <p class="secondary" id="rs-desc" style="margin-top:8px;">Se abrirá WhatsApp con el mensaje para que ${escapeHtml(a.name)} elija un nuevo horario, y la cita del ${displayDateLong(a.date).toLowerCase()} a las ${a.start} saldrá de tu lista. <strong style="color:var(--color-text);">Esta acción es irreversible.</strong></p>
+        <p class="secondary" id="rs-desc" style="margin-top:8px;">Se abrirá WhatsApp con el mensaje para que ${escapeHtml(a.name)} elija un nuevo horario, y la cita del ${displayDateLong(a.date).toLowerCase()} a las ${a.start} pasará a la sección Esperando de Citas hasta que elija. <strong style="color:var(--color-text);">Esta acción es irreversible.</strong></p>
         <div class="stack" style="margin-top:20px;gap:10px;">
           <button class="btn btn-primary btn-block" type="button" onclick="requestReschedule('${a.id}')">Sí, solicitar reagendado</button>
           <button class="btn btn-soft btn-block" type="button" autofocus onclick="closeRescheduleModal()">Volver</button>
@@ -2655,8 +2912,23 @@ function renderRescheduleModal(){
     </div>`;
 }
 
+function renderMoveView(){
+  const n = state.newAppt;
+  const a = state.appointments.find(x => x.id === n.moveId);
+  const top = a ? `
+      <div class="card" style="margin-bottom:24px;">
+        <p class="label">Cita actual</p>
+        <p class="card-title" style="margin-top:4px;">${escapeHtml(a.name)}</p>
+        <p class="secondary tnum">${escapeHtml(cap(displayDateShort(a.date)))} · ${a.start} · ${durationMin(a)} min${staffLine(a)}</p>
+      </div>` : '';
+  return renderBookingScreen(n, {
+    backFn: 'closeNewAppt()', backLabel: 'Volver a Citas', title: 'Mover cita', top,
+    confirmFn: 'confirmMove()', confirmLabel: 'Mover cita', continueLabel: 'Continuar',
+  });
+}
 function renderNewApptView(){
   const n = state.newAppt;
+  if (n.move) return renderMoveView();
   const top = `
       <div class="stack" style="gap:16px;margin-bottom:24px;">
         <p class="label">Datos del cliente</p>
@@ -2698,16 +2970,18 @@ function renderClosureModal(){
     </div>`;
 }
 function renderNotifyModal(){
-  const a = state.appointments.find(x => x.id === state.notifyCancelId);
+  const nt = state.notify;
+  const a = nt && state.appointments.find(x => x.id === nt.id);
   if (!a) return '';
+  const move = nt.type === 'move';
   return `
-    <div class="modal-back" onclick="if (event.target === this) skipCancelNotice()">
+    <div class="modal-back" onclick="if (event.target === this) skipNotice()">
       <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="nt-title" aria-describedby="nt-desc">
         <h2 class="title-3" id="nt-title">¿Avisar a ${escapeHtml(a.name)}?</h2>
-        <p class="secondary" id="nt-desc" style="margin-top:8px;">La cita quedó cancelada, pero ${escapeHtml(a.name)} todavía no lo sabe. Te abrimos WhatsApp con el mensaje listo para que se lo envíes.</p>
+        <p class="secondary" id="nt-desc" style="margin-top:8px;">${move ? `La cita ya cambió, pero ${escapeHtml(a.name)} todavía no lo sabe` : `La cita quedó cancelada, pero ${escapeHtml(a.name)} todavía no lo sabe`}. Te abrimos WhatsApp con el mensaje listo para que se lo envíes.</p>
         <div class="stack" style="margin-top:20px;gap:10px;">
-          <button class="btn btn-primary btn-block" type="button" onclick="sendCancelNotice('${a.id}')">${icon('chat', 18)} Avisar por WhatsApp</button>
-          <button class="btn btn-soft btn-block" type="button" autofocus onclick="skipCancelNotice()">Ahora no</button>
+          <button class="btn btn-primary btn-block" type="button" onclick="sendNotice()">${icon('chat', 18)} Avisar por WhatsApp</button>
+          <button class="btn btn-soft btn-block" type="button" autofocus onclick="skipNotice()">Ahora no</button>
         </div>
       </div>
     </div>`;
@@ -2764,7 +3038,7 @@ function renderAdmin(){
     <nav class="tabbar" aria-label="Secciones">
       ${ADMIN_NAV.map(t => `
         <button class="tab" type="button" ${state.adminTab === t.id ? 'aria-current="page"' : ''} onclick="setAdminTab('${t.id}')">
-          ${icon(t.icon, 24, 2)}<span>${t.label}</span>
+          ${icon(t.icon, 24, 2)}<span>${t.label}</span>${t.id === 'inicio' && unreadCount() ? '<span class="tab-dot" aria-label="Novedades sin leer"></span>' : ''}
         </button>`).join('')}
     </nav>`;
 }
