@@ -147,7 +147,7 @@ button.chip { cursor: pointer; }
 .date-tile { flex-shrink: 0; width: 60px; height: 60px; border-radius: var(--radius-s); background: var(--color-surface); display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .date-tile b { font-size: 22px; line-height: 24px; font-weight: 700; }
 .date-tile b.time { font-size: 17px; line-height: 20px; }
-.date-tile i { font-style: normal; font-size: 11px; line-height: 14px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--color-text-secondary); }
+.date-tile i { font-style: normal; font-size: 12px; line-height: 14px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--color-text-secondary); }
 .appt-card { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 12px 16px; padding: 16px; border-radius: var(--radius-m); border: 1px solid var(--color-border); background: var(--color-bg); align-items: center; }
 .appt-card .row-main { min-width: 0; }
 .appt-card .row-title { font-size: 18px; line-height: 24px; }
@@ -235,7 +235,7 @@ button.chip { cursor: pointer; }
 .week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 12px; }
 .week-day { border: 0; border-radius: var(--radius-s); background: var(--color-surface); padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 76px; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
 .week-day b { font-size: 19px; line-height: 24px; color: var(--color-text); }
-.week-day i { font-style: normal; min-width: 18px; height: 18px; border-radius: 9px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; color: transparent; }
+.week-day i { font-style: normal; min-width: 18px; height: 18px; border-radius: 9px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; color: transparent; }
 .week-day i.on { background: var(--color-primary); color: var(--color-on-primary); }
 .week-day.today b { text-decoration: underline; text-underline-offset: 3px; }
 .week-day.sel { background: var(--color-primary); color: var(--color-on-primary); }
@@ -265,7 +265,7 @@ button.chip { cursor: pointer; }
 
 /* Tab bar flotante */
 .tabbar { position: fixed; z-index: 30; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: min(calc(100% - 24px), 520px); height: 72px; padding: 8px; display: flex; gap: 2px; border-radius: var(--radius-xl); background: rgba(255,255,255,0.92); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: var(--shadow-nav); }
-.tab { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; border-radius: 28px; background: transparent; padding: 0; color: var(--color-nav-text); font-size: 11px; font-weight: 600; }
+.tab { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; border-radius: 28px; background: transparent; padding: 0; color: var(--color-nav-text); font-size: 12px; font-weight: 600; }
 .tab svg { width: 24px; height: 24px; }
 .tab[aria-current="page"] { background: var(--color-surface-active); color: var(--color-text); font-weight: 700; }
 
@@ -3262,7 +3262,25 @@ function renderAdminCuenta(){
     <h2 class="title-2">Contraseña</h2>
     ${renderPasswordCard('admin')}
 
+    <h2 class="title-2">Copia de seguridad</h2>
+    <div class="card stack">
+      <p class="secondary">En este prototipo los datos viven solo en este navegador. Descarga una copia con tus citas, clientes y horarios.</p>
+      <button class="btn btn-soft btn-sm" type="button" style="align-self:flex-start;background:#fff;" onclick="exportBackup()">Descargar copia (.json)</button>
+    </div>
+
     <div style="display:flex;justify-content:center;margin-top:28px;"><button class="btn-text" type="button" onclick="adminLogout()">Cerrar sesión</button></div>`;
+}
+function exportBackup(){
+  const copy = JSON.parse(JSON.stringify(state));
+  Object.values(copy.patients || {}).forEach(p => { delete p.passHash; });
+  (copy.businesses || []).forEach(b => { delete b.adminPassHash; });
+  const blob = new Blob([JSON.stringify(copy, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'caly-copia-' + todayISO() + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  showToast('Copia descargada');
 }
 
 const ADMIN_NAV = [
@@ -3540,6 +3558,36 @@ function render(){
 
 refreshBrandUI();
 render();
+
+// Accesibilidad: Escape cierra el modal (equivale a la opción segura) y el foco queda dentro
+document.addEventListener('keydown', e => {
+  const modal = document.querySelector('.modal-back .modal');
+  if (!modal) return;
+  if (e.key === 'Escape') {
+    const safe = modal.querySelector('.btn-soft, .btn-text, [autofocus]');
+    if (safe) { e.preventDefault(); safe.click(); }
+    return;
+  }
+  if (e.key === 'Tab') {
+    const f = [...modal.querySelectorAll('button, input, select, textarea, a[href]')].filter(x => !x.disabled && x.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (!modal.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+});
+// Enfoca el modal al abrirse
+new MutationObserver(() => {
+  const m = document.querySelector('.modal-back .modal');
+  if (m && !m.contains(document.activeElement)) {
+    const t = m.querySelector('[autofocus]') || m.querySelector('input, select, button');
+    if (t) t.focus({ preventScroll: true });
+  }
+}).observe(document.getElementById('view'), { childList: true });
+// Refresco a medianoche: si cambia el día, recalcula "hoy"
+let lastDay = todayISO();
+setInterval(() => { const d = todayISO(); if (d !== lastDay) { lastDay = d; render(); } }, 60000);
 </script>
 
 </body></html>
