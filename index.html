@@ -289,6 +289,13 @@ button.chip { cursor: pointer; }
 .cal-count { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); line-height: 14px; }
 .cal-dots { display: flex; gap: 3px; }
 .cal-dots i { width: 6px; height: 6px; border-radius: 50%; display: block; }
+.stats.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
+.stat.danger { background: var(--color-danger-bg); }
+.stat.danger .n, .stat.danger .l { color: var(--color-danger); }
+.link-compact { margin-top: 10px; background: var(--color-surface); border-radius: var(--radius-m); padding: 10px 10px 10px 14px; display: flex; align-items: center; gap: 12px; }
+.link-compact .ic { flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.link-text { margin: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
@@ -2933,6 +2940,17 @@ function renderAdminInicio(){
     ${adminHeader('Hola de nuevo', longDate(todayIso))}
 
     <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:20px;" onclick="goNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
+    <div class="stats four">
+      <button type="button" class="stat" onclick="state.calView='dia'; calToday(); document.getElementById('cal-anchor').scrollIntoView({behavior:'smooth'})"><span class="ic">${icon('calendar', 22)}</span><div><div class="n">${todayAppts.length}</div><div class="l">Citas hoy</div></div></button>
+      <button type="button" class="stat" onclick="state.adminTab='citas'; state.citasFilter='proximas'; render(); window.scrollTo(0, 0)"><span class="ic">${icon('clock', 22)}</span><div><div class="n">${next7Count}</div><div class="l">Próximos 7 días</div></div></button>
+      <button type="button" class="stat ${pendingCount > 0 ? 'danger' : ''}" onclick="goPendientes()"><span class="ic">${icon('alert', 22)}</span><div><div class="n">${pendingCount}</div><div class="l">Por resolver</div></div></button>
+      <div class="stat ${pendingPayCount > 0 ? 'warn' : ''}"><span class="ic" style="${pendingPayCount > 0 ? 'color:var(--color-warning)' : ''}">${icon('info', 22)}</span><div><div class="n">${pendingPayCount}</div><div class="l">Pagos pendientes</div></div></div>
+    </div>
+    <div class="link-compact">
+      <span class="ic">${icon('link', 20)}</span>
+      <div style="min-width:0;flex:1;"><p class="caption">Enlace de reservas</p><p class="link-text tnum">${escapeHtml(bookingLink())}</p></div>
+      <button class="btn btn-inverse btn-sm" type="button" onclick="copyBookingLink()">Copiar</button>
+    </div>
     ${(() => {
       const wc = waitingAppts().length;
       return wc ? `
@@ -2964,7 +2982,7 @@ function renderAdminInicio(){
       </div>
     </div>` : ''}
 
-    <h2 class="title-2">Calendario</h2>
+    <h2 class="title-2" id="cal-anchor" style="scroll-margin-top:16px;">Calendario</h2>
     ${renderCalendar()}
 
     ${state.activity.length ? `
@@ -2983,25 +3001,6 @@ function renderAdminInicio(){
       </div>
     </div>` : ''}
 
-    <div class="link-card">
-      <div class="row" style="flex-wrap:nowrap;gap:12px;align-items:flex-start;">
-        <span class="ic">${icon('link', 22)}</span>
-        <div style="min-width:0;">
-          <h2 class="card-title">Enlace de reservas</h2>
-          <p class="secondary">Compártelo con tus clientes para que agenden su cita por su cuenta.</p>
-        </div>
-      </div>
-      <div class="link-url tnum" aria-label="Enlace de reservas">${escapeHtml(bookingLink())}</div>
-      <div class="link-actions">
-        <button class="btn btn-inverse" type="button" onclick="copyBookingLink()">Copiar enlace</button>
-      </div>
-    </div>
-
-    <div class="stats">
-      <div class="stat"><span class="ic">${icon('calendar', 22)}</span><div><div class="n">${todayAppts.length}</div><div class="l">Citas hoy</div></div></div>
-      <div class="stat"><span class="ic">${icon('clock', 22)}</span><div><div class="n">${next7Count}</div><div class="l">Próximos 7 días</div></div></div>
-      <div class="stat ${pendingPayCount > 0 ? 'warn' : ''}"><span class="ic" style="${pendingPayCount > 0 ? 'color:var(--color-warning)' : ''}">${icon('info', 22)}</span><div><div class="n">${pendingPayCount}</div><div class="l">Pagos pendientes</div></div></div>
-    </div>
   `;
 }
 
