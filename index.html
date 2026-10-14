@@ -251,8 +251,9 @@ button.chip { cursor: pointer; }
 .req-note { margin: 0; font-size: 13px; line-height: 18px; color: var(--color-text-secondary); }
 .req-note span { color: var(--color-danger); font-weight: 700; }
 /* Calendario */
-.cal-nav { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
-.cal-title { flex: 1; text-align: center; font-size: 16px; font-weight: 700; min-width: 0; }
+.cal-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cal-nav { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.cal-title { flex: 1; text-align: center; font-size: 17px; line-height: 22px; font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-staff { margin-top: 12px; }
 .cal-staff .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
 .cal-wrap { margin-top: 14px; border: 1px solid var(--color-border); border-radius: var(--radius-m); overflow: hidden; background: var(--color-bg); }
@@ -2859,7 +2860,7 @@ function renderCalendar(){
   const view = state.calView;
   let title = '', body = '';
   if (view === 'dia') {
-    title = sel === todayIso ? 'Hoy · ' + longDate(sel) : longDate(sel);
+    title = longDate(sel);
     const { startH, endH } = calRange([sel]);
     const hpx = 60;
     const n = calAppts(sel).length;
@@ -2912,16 +2913,18 @@ function renderCalendar(){
       ${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${state.calStaff === m.id}" onclick="setCalStaff('${m.id}')"><i class="dot" style="background:${staffColor(m.id).bd}"></i>${escapeHtml(firstWord(m.name))}</button>`).join('')}
     </div>` : '';
   return `
-    <div class="seg" role="group" aria-label="Vista del calendario">
-      <button type="button" aria-pressed="${view === 'dia'}" onclick="setCalView('dia')">Día</button>
-      <button type="button" aria-pressed="${view === 'semana'}" onclick="setCalView('semana')">Semana</button>
-      <button type="button" aria-pressed="${view === 'mes'}" onclick="setCalView('mes')">Mes</button>
+    <div class="cal-top">
+      <div class="seg" role="group" aria-label="Vista del calendario">
+        <button type="button" aria-pressed="${view === 'dia'}" onclick="setCalView('dia')">Día</button>
+        <button type="button" aria-pressed="${view === 'semana'}" onclick="setCalView('semana')">Semana</button>
+        <button type="button" aria-pressed="${view === 'mes'}" onclick="setCalView('mes')">Mes</button>
+      </div>
+      <button class="btn btn-soft btn-sm" type="button" onclick="calToday()" ${sel === todayIso && view === 'dia' ? 'disabled' : ''}>Hoy</button>
     </div>
     <div class="cal-nav">
       <button class="icon-btn" type="button" onclick="shiftCal(-1)" aria-label="Anterior">${icon('left', 20, 2.4)}</button>
       <span class="cal-title" aria-live="polite">${escapeHtml(title)}</span>
       <button class="icon-btn" type="button" onclick="shiftCal(1)" aria-label="Siguiente">${icon('right', 20, 2.4)}</button>
-      <button class="btn btn-soft btn-sm" type="button" onclick="calToday()">Hoy</button>
     </div>
     ${staffPills}
     ${body}
