@@ -2898,8 +2898,7 @@ function renderApptDetail(){
     <div style="display:flex;align-items:center;min-height:48px;margin-top:8px;">
       <button class="icon-btn" type="button" onclick="closeApptDetail()" aria-label="Volver">${icon('left', 22, 2.4)}</button>
     </div>
-    <h1 class="title-1" style="margin-top:12px;">Cita</h1>
-    <div style="margin-top:16px;">${citaCard(a, now, reason ? 'pend' : (a.rescheduleRequested ? 'wait' : false))}</div>`;
+    <div style="margin-top:12px;">${citaCard(a, now, reason ? 'pend' : (a.rescheduleRequested ? 'wait' : false))}</div>`;
 }
 function apptRow(a, now){
   const c = staffColor(a.staffId);
