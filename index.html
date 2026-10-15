@@ -356,6 +356,14 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .stats.one .stat.warn .l { color: var(--color-warning-strong); }
 .stats.one .stat.zero .n { color: var(--color-text-secondary); opacity: .55; }
 .stats.one .stat.zero .l { color: var(--color-text-secondary); font-weight: 500; }
+.citas-bar { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.attn { width: 100%; margin-top: 16px; border: 0; background: var(--color-danger-bg); color: var(--color-danger); border-radius: var(--radius-m); padding: 12px 14px; display: flex; align-items: center; gap: 12px; text-align: left; font: inherit; }
+.attn .ic { flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.attn-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.attn-t b { font-size: 16px; line-height: 21px; }
+.attn-t span { font-size: 14px; line-height: 19px; opacity: .85; }
+.mini-select { height: 40px; border: 0; border-radius: var(--radius-pill); background: var(--color-surface); padding: 0 14px; font: inherit; font-size: 14px; font-weight: 600; max-width: 62%; }
+.cal-cell.selday { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
@@ -667,6 +675,7 @@ function buildDefaultState(){
     editingService: null,
     dayEdit: null,
     citasMode: 'agenda',
+    agendaMonth: false,
     openAppt: null,
     openForm: null,
     calView: 'dia',
@@ -753,7 +762,11 @@ function loadState(){
       parsed.editingStaff = null;
       parsed.dayEdit = null;
       parsed.openAppt = null;
-      if (!['agenda', 'lista', 'calendario'].includes(parsed.citasMode)) parsed.citasMode = 'agenda';
+      parsed.agendaMonth = false;
+      if (parsed.citasMode === 'lista') parsed.citasMode = 'historial';
+      if (!['agenda', 'historial'].includes(parsed.citasMode)) parsed.citasMode = 'agenda';
+      if (['pendientes', 'esperando'].includes(parsed.citasFilter)) parsed.citasFilter = 'atencion';
+      if (!['proximas', 'pasadas', 'canceladas', 'todas', 'atencion'].includes(parsed.citasFilter)) parsed.citasFilter = 'proximas';
       parsed.openForm = null;
       parsed.calSel = null;
       if (!['dia', 'semana', 'mes'].includes(parsed.calView)) parsed.calView = 'dia';
@@ -1363,8 +1376,9 @@ function sendReminder(id){
   const msg = `Hola! Recuerda que ${dateLabel} tienes una reserva. Te esperamos.`;
   window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
-function goEsperando(){ state.adminTab = 'citas'; state.citasFilter = 'esperando'; render(); window.scrollTo(0, 0); }
-function goPendientes(){ state.adminTab = 'citas'; state.citasFilter = 'pendientes'; render(); window.scrollTo(0, 0); }
+function goEsperando(){ goAtencion(); }
+function goAtencion(){ state.adminTab = 'citas'; state.citasMode = 'historial'; state.citasFilter = 'atencion'; state.citasQuery = ''; state.citasLimit = 15; render(); window.scrollTo(0, 0); }
+function goPendientes(){ goAtencion(); }
 function goNewAppt(){ state.adminTab = 'citas'; openNewAppt(); }
 function openNewAppt(dateIso){
   const act = activeServices();
@@ -2869,7 +2883,7 @@ function calAppts(iso){ return dayAppts(iso, state.calStaff); }
 function goHoy(){ const el = document.getElementById('hoy-anchor'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }
 function goAgenda(){ state.adminTab = 'citas'; state.citasMode = 'agenda'; state.agendaDate = todayISO(); state.openAppt = null; render(); window.scrollTo(0, 0); }
 function setCitasMode(m){ state.citasMode = m; state.openAppt = null; render(); }
-function pickAgendaDay(iso){ state.agendaDate = iso; state.openAppt = null; render(); }
+function pickAgendaDay(iso){ state.agendaDate = iso; state.openAppt = null; state.agendaMonth = false; render(); }
 function shiftAgendaWeek(n){ state.agendaDate = addDaysISO(state.agendaDate || todayISO(), 7 * n); state.openAppt = null; render(); }
 function toggleAppt(id){ state.openAppt = state.openAppt === id ? null : id; render(); }
 function apptRow(a, now){
@@ -2889,6 +2903,34 @@ function apptRow(a, now){
       ${open ? `<div class="ar-detail">${citaCard(a, now, reason ? 'pend' : (a.rescheduleRequested ? 'wait' : false))}</div>` : ''}
     </div>`;
 }
+function renderMonthPicker(sel, now){
+  const { y, m } = ymFromISO(sel);
+  const first = isoFromYMD(y, m, 1);
+  const gridStart = weekStart(first);
+  const cells = [];
+  for (let i = 0; i < 42; i++) cells.push(addDaysISO(gridStart, i));
+  while (cells.length > 35 && ymFromISO(cells[35]).m !== m) cells.length = 35;
+  return `
+    <div class="agenda-head">
+      <button class="icon-btn" type="button" onclick="shiftAgendaMonth(-1)" aria-label="Mes anterior">${icon('left', 20, 2.4)}</button>
+      <span class="agenda-range">${cap(MONTHS[m])} ${y}</span>
+      <button class="icon-btn" type="button" onclick="shiftAgendaMonth(1)" aria-label="Mes siguiente">${icon('right', 20, 2.4)}</button>
+    </div>
+    <div class="acal-month">
+      ${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(l => `<span class="cal-mh">${l}</span>`).join('')}
+      ${cells.map(iso => {
+        const list = dayAppts(iso, state.calStaff);
+        const inMonth = ymFromISO(iso).m === m;
+        return `<button type="button" class="cal-cell${inMonth ? '' : ' out'}${iso === now ? ' today' : ''}${iso === sel ? ' selday' : ''}${isClosedDay(iso) ? ' closed' : ''}" onclick="pickAgendaDay('${iso}')" aria-label="${longDate(iso)}${list.length ? ', ' + list.length + ' cita' + (list.length === 1 ? '' : 's') : ''}"><b>${dayNum(iso)}</b>${list.length ? `<span class="cal-count">${list.length}</span>` : ''}</button>`;
+      }).join('')}
+    </div>`;
+}
+function shiftAgendaMonth(n){
+  const { y, m } = ymFromISO(state.agendaDate || todayISO());
+  const t = new Date(y, m + n, 1);
+  state.agendaDate = isoFromYMD(t.getFullYear(), t.getMonth(), 1);
+  render();
+}
 function renderAgendaView(){
   const now = todayISO();
   const sel = state.agendaDate || now;
@@ -2900,12 +2942,12 @@ function renderAgendaView(){
   const fullClosed = closures.filter(c => !c.startTime);
   const list = dayAppts(sel, state.calStaff);
   const range = `${dayNum(ws)} ${monthAbbr(ws).toLowerCase()} – ${dayNum(days[6])} ${monthAbbr(days[6]).toLowerCase()}`;
-  const staffPills = state.staff.length > 1 ? `
-    <div class="pills cal-staff" role="group" aria-label="Filtrar por trabajador">
-      <button type="button" class="pill-opt" aria-pressed="${!state.calStaff}" onclick="setCalStaff(null)">Todos</button>
-      ${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${state.calStaff === m.id}" onclick="setCalStaff('${m.id}')"><i class="dot" style="background:${staffColor(m.id).bd}"></i>${escapeHtml(firstWord(m.name))}</button>`).join('')}
-    </div>` : '';
-  return `
+  const staffSel = state.staff.length > 1 ? `
+    <select class="mini-select" aria-label="Filtrar por trabajador" onchange="setCalStaff(this.value || null)">
+      <option value="">Todos los trabajadores</option>
+      ${state.staff.map(m => `<option value="${m.id}" ${state.calStaff === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
+    </select>` : '';
+  const strip = `
     <div class="agenda-head">
       <button class="icon-btn" type="button" onclick="shiftAgendaWeek(-1)" aria-label="Semana anterior">${icon('left', 20, 2.4)}</button>
       <span class="agenda-range">${range}</span>
@@ -2916,8 +2958,13 @@ function renderAgendaView(){
         const n = dayAppts(iso, state.calStaff).length;
         return `<button type="button" class="week-day${iso === sel ? ' sel' : ''}${iso === now ? ' today' : ''}" aria-pressed="${iso === sel}" aria-label="${longDate(iso)}${n ? `, ${n} cita${n === 1 ? '' : 's'}` : ''}" onclick="pickAgendaDay('${iso}')"><span>${letters[i]}</span><b>${dayNum(iso)}</b><i class="${n ? 'on' : ''}">${n || ''}</i></button>`;
       }).join('')}
+    </div>`;
+  return `
+    <div class="row between" style="flex-wrap:nowrap;gap:10px;margin-bottom:12px;">
+      ${staffSel || '<span></span>'}
+      <button class="btn-text" type="button" style="white-space:nowrap;" onclick="state.agendaMonth = !state.agendaMonth; render()">${state.agendaMonth ? 'Ver semana' : 'Ver mes'}</button>
     </div>
-    ${staffPills}
+    ${state.agendaMonth ? renderMonthPicker(sel, now) : strip}
     <div class="row between" style="flex-wrap:nowrap;margin-top:22px;"><h2 class="title-3" style="margin:0;">${sel === now ? 'Hoy · ' : ''}${longDate(sel)}</h2>${sel !== now ? `<button class="btn btn-soft btn-sm" type="button" onclick="pickAgendaDay('${now}')">Hoy</button>` : ''}</div>
     <div class="row" style="margin-top:8px;">
       ${fullClosed.length ? chip('danger', `Cerrado${fullClosed[0].note ? ': ' + escapeHtml(fullClosed[0].note) : ''}`) : (biz.length ? chip('neutral', `Atención ${biz.map(r => r.start + '–' + r.end).join(', ')}`) : chip('neutral', 'Sin atención ese día'))}
@@ -2929,10 +2976,9 @@ function renderAgendaView(){
 function citasModeSeg(){
   const m = state.citasMode || 'agenda';
   return `
-    <div class="seg" role="group" aria-label="Vista de citas" style="margin-top:16px;">
+    <div class="seg" role="group" aria-label="Vista de citas" style="flex:0 1 auto;">
       <button type="button" aria-pressed="${m === 'agenda'}" onclick="setCitasMode('agenda')">Agenda</button>
-      <button type="button" aria-pressed="${m === 'lista'}" onclick="setCitasMode('lista')">Lista</button>
-      <button type="button" aria-pressed="${m === 'calendario'}" onclick="setCitasMode('calendario')">Calendario</button>
+      <button type="button" aria-pressed="${m === 'historial'}" onclick="setCitasMode('historial')">Historial</button>
     </div>`;
 }
 function calLayout(list){
@@ -3268,7 +3314,7 @@ function confirmMerge(){
 function viewClientAppts(doc){
   const p = state.patients[doc];
   state.adminTab = 'citas';
-  state.citasView = 'lista';
+  state.citasMode = 'historial';
   state.citasFilter = 'todas';
   state.citasQuery = p ? p.name : '';
   state.citasLimit = 15;
@@ -3379,13 +3425,22 @@ function citaMatches(a, q){
 function setCitasQuery(v){ state.citasQuery = v; state.citasLimit = 15; render(); }
 function setCitasFilter(f){ state.citasFilter = f; state.citasLimit = 15; render(); }
 function weekStart(iso){ const dow = dateFromISO(iso).getDay(); return addDaysISO(iso, dow === 0 ? -6 : 1 - dow); }
-function renderAdminCitas(){
-  const mode = state.citasMode || 'agenda';
-  if (mode !== 'lista') return `
+function citasTop(){
+  const att = pendingAppts().length + waitingAppts().length;
+  return `
     ${adminHeader('Citas')}
-    <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:20px;" onclick="openNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
-    ${citasModeSeg()}
-    <div style="margin-top:18px;">${mode === 'agenda' ? renderAgendaView() : renderCalendar()}</div>`;
+    ${att ? `
+    <button type="button" class="attn" onclick="goAtencion()">
+      <span class="ic">${icon('alert', 20)}</span>
+      <span class="attn-t"><b>${att} ${att === 1 ? 'cita requiere' : 'citas requieren'} tu atención</b><span>${[pendingAppts().length ? `${pendingAppts().length} por resolver` : '', waitingAppts().length ? `${waitingAppts().length} esperando respuesta` : ''].filter(Boolean).join(' · ')}</span></span>
+    </button>` : ''}
+    <div class="citas-bar">
+      ${citasModeSeg()}
+      <button class="btn btn-primary btn-sm" type="button" onclick="openNewAppt()">${icon('plus', 18, 2.6)} Nueva</button>
+    </div>`;
+}
+function renderAdminCitas(){
+  if ((state.citasMode || 'agenda') === 'agenda') return `${citasTop()}<div style="margin-top:18px;">${renderAgendaView()}</div>`;
   return renderCitasLista();
 }
 function renderCitasLista(){
@@ -3393,41 +3448,33 @@ function renderCitasLista(){
   const pendList = pendingAppts();
   const waitList = waitingAppts();
   let f = state.citasFilter || 'proximas';
-  if (f === 'pendientes' && !pendList.length) f = 'proximas';
-  if (f === 'esperando' && !waitList.length) f = 'proximas';
-  const isUpcoming = a => a.status === 'CONFIRMED' && a.date >= now;
-  const list = f === 'pendientes' ? pendList : f === 'esperando' ? waitList : state.appointments
-    .filter(a => !a.rescheduleRequested)
-    .filter(a => f === 'todas' ? true : (f === 'pasadas' ? !isUpcoming(a) : (isUpcoming(a) && !apptPendingReason(a))))
-    .sort((a, b) => f === 'pasadas'
-      ? (b.date + b.start).localeCompare(a.date + a.start)
-      : (a.date + a.start).localeCompare(b.date + b.start));
-
-
+  if (f === 'atencion' && !pendList.length && !waitList.length) f = 'proximas';
+  const upcoming = a => a.status === 'CONFIRMED' && a.date >= now;
+  let list;
+  if (f === 'atencion') list = pendList.concat(waitList);
+  else if (f === 'canceladas') list = state.appointments.filter(a => a.status === 'CANCELLED').sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start));
+  else if (f === 'pasadas') list = state.appointments.filter(a => a.status !== 'CANCELLED' && !upcoming(a)).sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start));
+  else if (f === 'todas') list = state.appointments.slice().sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start));
+  else list = state.appointments.filter(a => upcoming(a) && !a.rescheduleRequested && !apptPendingReason(a)).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
   const q = state.citasQuery || '';
   const listQ = list.filter(a => citaMatches(a, q));
   const shown = listQ.slice(0, state.citasLimit);
+  const modeOf = a => apptPendingReason(a) ? 'pend' : (a.rescheduleRequested ? 'wait' : false);
   return `
-    ${adminHeader('Citas')}
-    <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:20px;" onclick="openNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
-    ${citasModeSeg()}
-    ${`
-    <div style="margin-top:12px;">
-      <div class="seg seg-scroll" role="group" aria-label="Filtro de citas">
-        ${pendList.length ? `<button type="button" aria-pressed="${f === 'pendientes'}" onclick="setCitasFilter('pendientes')">Pendientes<span class="badge">${pendList.length}</span></button>` : ''}
-        ${waitList.length ? `<button type="button" aria-pressed="${f === 'esperando'}" onclick="setCitasFilter('esperando')">Esperando<span class="badge neutral">${waitList.length}</span></button>` : ''}
-        <button type="button" aria-pressed="${f === 'proximas'}" onclick="setCitasFilter('proximas')">Próximas</button>
-        <button type="button" aria-pressed="${f === 'pasadas'}" onclick="setCitasFilter('pasadas')">Pasadas</button>
-        <button type="button" aria-pressed="${f === 'todas'}" onclick="setCitasFilter('todas')">Todas</button>
-      </div>
+    ${citasTop()}
+    <div class="seg seg-scroll" role="group" aria-label="Filtro de citas" style="margin-top:14px;">
+      ${f === 'atencion' ? `<button type="button" aria-pressed="true">Requieren atención<span class="badge">${list.length}</span></button>` : ''}
+      <button type="button" aria-pressed="${f === 'proximas'}" onclick="setCitasFilter('proximas')">Próximas</button>
+      <button type="button" aria-pressed="${f === 'pasadas'}" onclick="setCitasFilter('pasadas')">Pasadas</button>
+      <button type="button" aria-pressed="${f === 'canceladas'}" onclick="setCitasFilter('canceladas')">Canceladas</button>
+      ${f === 'todas' ? `<button type="button" aria-pressed="true">Todas</button>` : ''}
     </div>
     <div class="search" style="margin-top:12px;">
       <span class="ic" aria-hidden="true">${icon('search', 20)}</span>
       <input id="citas-q" type="search" placeholder="Buscar por nombre, documento o teléfono" aria-label="Buscar citas" value="${escapeHtml(q)}" oninput="setCitasQuery(this.value)">
     </div>
-
-    ${listQ.length === 0 ? `<p class="secondary" style="margin-top:24px;">${q ? 'No encontramos citas con esa búsqueda.' : (f === 'pasadas' ? 'Todavía no hay citas en el historial.' : 'No hay citas para mostrar.')}</p>` : `<div class="rows" style="margin-top:20px;">${shown.map(a => citaCard(a, now, f === 'pendientes' ? 'pend' : f === 'esperando' ? 'wait' : false)).join('')}</div>
-    ${listQ.length > shown.length ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:14px;" onclick="state.citasLimit += 15; render()">Ver más (${listQ.length - shown.length})</button>` : ''}`}`}`;
+    ${listQ.length === 0 ? `<p class="secondary" style="margin-top:24px;">${q ? 'No encontramos citas con esa búsqueda.' : 'No hay citas para mostrar.'}</p>` : `<div class="rows" style="margin-top:20px;">${shown.map(a => citaCard(a, now, modeOf(a))).join('')}</div>
+    ${listQ.length > shown.length ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:14px;" onclick="state.citasLimit += 15; render()">Ver más (${listQ.length - shown.length})</button>` : ''}`}`;
 }
 
 function startEditService(id){ state.editingService = state.editingService === id ? null : id; render(); }
