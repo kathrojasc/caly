@@ -3033,7 +3033,7 @@ function renderAgendaView(){
     <div style="margin-top:14px;">${renderMonthPicker(sel, now)}</div>
     ${sel !== now ? `<div style="display:flex;justify-content:flex-end;margin-top:8px;"><button class="btn-text" type="button" style="min-height:36px;" onclick="pickAgendaDay('${now}')">Ir a hoy</button></div>` : ''}
     <div class="row" style="margin-top:18px;">
-      ${fullClosed.length ? chip('danger', `Cerrado${fullClosed[0].note ? ': ' + escapeHtml(fullClosed[0].note) : ''}`) : (biz.length ? chip('neutral', `Atención ${biz.map(r => r.start + '–' + r.end).join(', ')}`) : chip('neutral', 'Sin atención ese día'))}
+      ${(() => { const dl = `${WEEKDAYS_LONG[dayOfWeek(sel)]} ${dayNum(sel)}`; return fullClosed.length ? chip('danger', `${dl} · Cerrado${fullClosed[0].note ? ': ' + escapeHtml(fullClosed[0].note) : ''}`) : (biz.length ? chip('neutral', `${dl} · Atención ${biz.map(r => r.start + '–' + r.end).join(', ')}`) : chip('neutral', `${dl} · Sin atención`)); })()}
       ${closures.filter(c => c.startTime).map(c => chip('warning', `Cierre ${c.startTime}–${c.endTime}`)).join('')}
     </div>
     ${list.length ? `<div class="rows" style="margin-top:14px;">${list.map(a => citaCard(a, now, citaMode(a))).join('')}</div>` : `<p class="secondary" style="margin-top:16px;">No hay citas este día.</p>`}
