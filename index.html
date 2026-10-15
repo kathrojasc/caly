@@ -297,6 +297,7 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .link-compact { margin-top: 10px; background: var(--color-surface); border-radius: var(--radius-m); padding: 10px 10px 10px 14px; display: flex; align-items: center; gap: 12px; }
 .link-compact .ic { flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
 .link-text { margin: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.form-open { display: flex; flex-direction: column; gap: 14px; background: #fff; border-radius: var(--radius-m); padding: 14px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
@@ -606,6 +607,7 @@ function buildDefaultState(){
     newOff: { staffId: '', from: '', to: '', note: '' },
     editingService: null,
     dayEdit: null,
+    openForm: null,
     calView: 'dia',
     calDate: '',
     calStaff: null,
@@ -688,6 +690,7 @@ function loadState(){
       parsed.editingService = null;
       parsed.editingStaff = null;
       parsed.dayEdit = null;
+      parsed.openForm = null;
       parsed.calSel = null;
       if (!['dia', 'semana', 'mes'].includes(parsed.calView)) parsed.calView = 'dia';
       if (typeof parsed.calDate !== 'string') parsed.calDate = '';
@@ -1822,6 +1825,11 @@ function dayGroupLabel(days){
   const names = days.map(d => WEEKDAYS_LONG[d]);
   return names.length > 1 ? names.slice(0, -1).join(', ') + ' y ' + names[names.length - 1].toLowerCase() : names[0];
 }
+function toggleForm(key){ state.openForm = state.openForm === key ? null : key; render(); }
+function formGate(key, label, html){
+  if (state.openForm === key) return `<div class="form-open">${html}<button class="btn-text" type="button" style="align-self:center;" onclick="toggleForm('${key}')">Cancelar</button></div>`;
+  return `<button class="btn btn-soft btn-sm add-btn" type="button" style="background:#fff;align-self:flex-start;" onclick="toggleForm('${key}')">${icon('plus', 18, 2.6)} ${label}</button>`;
+}
 function groupHeader(scope, g){
   const csv = g.days.join(',');
   const de = state.dayEdit;
@@ -1908,6 +1916,7 @@ function addBizRule(){
     state.businessHours[day].sort((a, b) => a.start.localeCompare(b.start));
   });
   if (!changed) return showToast('Ese horario ya estaba en esos días. Para cambiar los días de un horario, usa "Cambiar días".');
+  state.openForm = null;
   saveState();
   render();
   showToast(days.length === 1 ? 'Horario agregado' : `Horario agregado a ${days.length} días`);
@@ -1940,6 +1949,7 @@ function commitTimeOff(staffId, entry){
   m.timeOff = (m.timeOff || []).concat(entry).sort((a, b) => a.from.localeCompare(b.from));
   state.newOff = { staffId: '', from: '', to: '', note: '' };
   state.pendingClosure = null;
+  state.openForm = null;
   saveState();
   render();
   const aff = offAffected(staffId, entry);
@@ -1986,6 +1996,7 @@ function commitClosure(entry){
   const keep = state.newClosed;
   state.newClosed = { from: '', to: '', note: '', allDay: true, startTime: keep.startTime, endTime: keep.endTime, repeat: 'none' };
   state.pendingClosure = null;
+  state.openForm = null;
   saveState();
   render();
   const aff = closedAffected(entry);
@@ -2020,6 +2031,7 @@ function addRule(){
   });
   if (added && !changed) return showToast('Ese horario ya estaba en esos días. Para cambiar los días de un horario, usa "Cambiar días".');
   if (!added) return showToast(`Fuera del horario del negocio: ${skipped.join(', ')}. Ajusta el horario del negocio primero`);
+  state.openForm = null;
   saveState();
   render();
   showToast(skipped.length ? `Agregado a ${added} día${added === 1 ? '' : 's'}. No se agregó en: ${skipped.join(', ')} (fuera del horario del negocio)` : (added === 1 ? 'Horario agregado' : `Horario agregado a ${added} días`));
@@ -2040,6 +2052,7 @@ function addStaffMember(){
   }
   state.staff.push({ id: 'staff' + Date.now(), name, schedule: {} });
   state.newStaffName = '';
+  state.openForm = null;
   saveState();
   render();
   showToast('Trabajador agregado');
@@ -2116,6 +2129,7 @@ function addService(){
   if (!n.staffIds.length) return showToast('Asocia al menos un trabajador al servicio');
   state.services.push({ id: 'svc' + Date.now(), name, minutes: Math.round(minutes), staffIds: n.staffIds.slice() });
   state.newService = { name: '', minutes: 45, staffIds: [] };
+  state.openForm = null;
   saveState();
   render();
   showToast('Servicio creado');
@@ -3317,7 +3331,7 @@ function renderServicesEditor(){
           </div>
         </div>`;}).join('')}
     </div>
-    <div class="card stack" style="margin-top:14px;">
+    <div style="margin-top:14px;">${formGate('ns', 'Nuevo servicio', `<div class="card stack">
       <p class="card-title" style="font-size:17px;">Nuevo servicio</p>
       <div class="grid-2">
         <div class="field"><label for="ns-name">Nombre</label><input id="ns-name" placeholder="Ej: Masaje descontracturante" value="${escapeHtml(nsv.name)}" oninput="updateNewService('name', this.value)"></div>
@@ -3328,7 +3342,7 @@ function renderServicesEditor(){
         <div class="pills">${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${nsv.staffIds.includes(m.id)}" onclick="toggleNewServiceStaff('${m.id}')">${escapeHtml(m.name)}</button>`).join('')}</div>
       </div>
       <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="addService()">Crear servicio</button>
-    </div>`;
+    </div>`)}</div>`;
 }
 
 function renderServicesSection(){
@@ -3393,7 +3407,7 @@ function renderBusinessHoursSection(){
     <h2 class="title-2" style="margin-top:28px;">Horario del negocio</h2>
     <p class="secondary" style="margin-bottom:14px;">Las horas en que atiendes. Los horarios de cada trabajador deben estar dentro de este.</p>
     <div class="card stack">
-      <div class="rule-form">
+      ${formGate('bh', 'Agregar horario', `<div class="rule-form">
         <div class="field day">
           <span class="label">Días</span>
           ${dayPicks(nb.days, d => `toggleBizDay('${d}')`)}
@@ -3401,7 +3415,7 @@ function renderBusinessHoursSection(){
         <div class="field"><label for="bh-start">Desde</label><input id="bh-start" type="time" value="${nb.start}" onchange="updateNewBizRule('start', this.value)"></div>
         <div class="field"><label for="bh-end">Hasta</label><input id="bh-end" type="time" value="${nb.end}" onchange="updateNewBizRule('end', this.value)"></div>
         <button class="btn btn-primary" type="button" onclick="addBizRule()">Agregar</button>
-      </div>
+      </div>`)}
       <div class="stack" style="gap:12px;">
         ${groupSchedule(state.businessHours).map(g => `
           <div>
@@ -3414,7 +3428,7 @@ function renderBusinessHoursSection(){
     <h2 class="title-2">Cierres</h2>
     <p class="secondary" style="margin-bottom:14px;">Feriados, vacaciones o un horario en que no atiendes. Pueden repetirse cada semana. No se podrá reservar en ese tiempo.</p>
     <div class="card stack">
-      <div class="rule-form">
+      ${formGate('cd', 'Agregar cierre', `<div class="rule-form">
         <div class="field"><label for="cd-from">${nc.repeat === 'weekly' ? 'Desde el' : 'Desde'}</label><input id="cd-from" type="date" min="${todayISO()}" value="${nc.from}" placeholder="Elegir fecha" onchange="updateNewClosed('from', this.value); render()"></div>
         <div class="field"><label for="cd-to">Hasta (opcional)</label><input id="cd-to" type="date" min="${todayISO()}" value="${nc.to}" placeholder="Elegir fecha" onchange="updateNewClosed('to', this.value); render()"></div>
         <div class="field day">
@@ -3436,7 +3450,7 @@ function renderBusinessHoursSection(){
         </div>
         <div class="field day"><label for="cd-note">Motivo (opcional)</label><input id="cd-note" placeholder="Ej: Feriado, vacaciones, reunión" value="${escapeHtml(nc.note)}" oninput="updateNewClosed('note', this.value)"></div>
         <button class="btn btn-primary" type="button" onclick="addClosedDay()">Guardar cierre</button>
-      </div>
+      </div>`)}
       ${state.closedDays.length ? `<div class="rows">${state.closedDays.map(c => {
         const aff = closedAffected(c);
         return `
@@ -3493,13 +3507,13 @@ function renderAdminHorarios(){
     <h2 class="title-2">Equipo y asignación</h2>
     <div class="card stack">
       <p class="secondary">Cada trabajador tiene su propio horario. Cuando un cliente reserva, Caly asigna automáticamente al trabajador disponible siguiendo un turno rotativo (round robin), para repartir las citas de forma pareja.</p>
-      <div class="row row-end" style="flex-wrap:nowrap;">
+      ${formGate('staff', 'Agregar trabajador', `<div class="row row-end" style="flex-wrap:nowrap;">
         <div class="field" style="flex:1;">
           <label for="new-staff-name">Nuevo trabajador</label>
           <input id="new-staff-name" placeholder="Nombre" value="${escapeHtml(state.newStaffName)}" oninput="updateNewStaffName(this.value)">
         </div>
         <button class="btn btn-primary" type="button" onclick="addStaffMember()">Agregar</button>
-      </div>
+      </div>`)}
     </div>
 
     <p class="label" style="margin:24px 0 0;">Horario de cada trabajador</p>
@@ -3517,7 +3531,7 @@ function renderAdminHorarios(){
             ${state.staff.length > 1 ? `<button class="btn-text danger" type="button" onclick="askRemoveStaff('${member.id}')">Eliminar</button>` : ''}
           </div>
         </div>
-        <div class="rule-form">
+        ${formGate('nr-' + member.id, 'Agregar horario', `<div class="rule-form">
           <div class="field day">
             <span class="label">Días</span>
             ${dayPicks(nr.days, d => `toggleRuleDay('${member.id}','${d}')`)}
@@ -3531,7 +3545,7 @@ function renderAdminHorarios(){
             <input id="nr-end-${member.id}" type="time" value="${nr.end}" onchange="updateNewRule('end', this.value)">
           </div>
           <button class="btn btn-primary" type="button" onclick="updateNewRule('staffId','${member.id}'); addRule()">Agregar</button>
-        </div>
+        </div>`)}
 
         <div class="stack" style="gap:12px;">
           ${state.editingStaff === member.id ? `<div class="row"><button class="btn btn-primary btn-sm" type="button" onclick="saveStaffName('${member.id}')">Guardar nombre</button><button class="btn btn-soft btn-sm" type="button" style="background:#fff;" onclick="startEditStaff('${member.id}')">Cancelar</button></div>` : ''}
@@ -3551,12 +3565,12 @@ function renderAdminHorarios(){
               <div class="row between" style="flex-wrap:nowrap;gap:10px;"><div style="min-width:0;"><p class="row-title" style="font-size:15px;">${o.from === o.to ? fmtDay(o.from) : `${fmtDay(o.from)} – ${fmtDay(o.to)}`}</p>${o.note ? `<p class="secondary">${escapeHtml(o.note)}</p>` : ''}</div><button class="btn-text danger" type="button" onclick="deleteTimeOff('${member.id}','${o.id}')">Quitar</button></div>
               ${aff ? `<div style="margin-top:6px;">${chip('warning', `${aff} cita${aff === 1 ? '' : 's'} afectada${aff === 1 ? '' : 's'}`)}</div>` : ''}
             </div>`; }).join('')}</div>` : ''}
-          <div class="rule-form">
+          ${formGate('of-' + member.id, 'Agregar ausencia', `<div class="rule-form">
             <div class="field"><label for="of-from-${member.id}">Desde</label><input id="of-from-${member.id}" type="date" min="${todayISO()}" value="${state.newOff.staffId === member.id ? state.newOff.from : ''}" placeholder="Elegir fecha" onchange="updateNewOff('staffId','${member.id}'); updateNewOff('from', this.value); render()"></div>
             <div class="field"><label for="of-to-${member.id}">Hasta (opcional)</label><input id="of-to-${member.id}" type="date" min="${todayISO()}" value="${state.newOff.staffId === member.id ? state.newOff.to : ''}" placeholder="Elegir fecha" onchange="updateNewOff('staffId','${member.id}'); updateNewOff('to', this.value); render()"></div>
             <div class="field day"><label for="of-note-${member.id}">Motivo (opcional)</label><input id="of-note-${member.id}" placeholder="Ej: Vacaciones" value="${state.newOff.staffId === member.id ? escapeHtml(state.newOff.note) : ''}" oninput="updateNewOff('staffId','${member.id}'); updateNewOff('note', this.value)"></div>
             <button class="btn btn-soft" type="button" style="background:#fff;" onclick="addTimeOff('${member.id}')">Agregar ausencia</button>
-          </div>
+          </div>`)}
         </div>
       </div>`).join('')}`;
 }
