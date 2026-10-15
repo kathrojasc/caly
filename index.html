@@ -3032,8 +3032,7 @@ function renderAgendaView(){
   return `${controls}
     <div style="margin-top:14px;">${renderMonthPicker(sel, now)}</div>
     <p class="caption legend"><i class="cal-warn" aria-hidden="true"></i> Día con citas con problemas${sel !== now ? ' · <button class="btn-text" type="button" style="min-height:0;padding:0;" onclick="pickAgendaDay(\'' + now + '\')">Ir a hoy</button>' : ''}</p>
-    <div class="row between" style="flex-wrap:nowrap;margin-top:18px;"><h2 class="title-3" style="margin:0;">${sel === now ? 'Hoy · ' : ''}${longDate(sel)}</h2></div>
-    <div class="row" style="margin-top:8px;">
+    <div class="row" style="margin-top:18px;">
       ${fullClosed.length ? chip('danger', `Cerrado${fullClosed[0].note ? ': ' + escapeHtml(fullClosed[0].note) : ''}`) : (biz.length ? chip('neutral', `Atención ${biz.map(r => r.start + '–' + r.end).join(', ')}`) : chip('neutral', 'Sin atención ese día'))}
       ${closures.filter(c => c.startTime).map(c => chip('warning', `Cierre ${c.startTime}–${c.endTime}`)).join('')}
     </div>
