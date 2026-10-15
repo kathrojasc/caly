@@ -364,7 +364,10 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .attn-t span { font-size: 14px; line-height: 19px; opacity: .85; }
 .mini-select { height: 40px; border: 0; border-radius: var(--radius-pill); background: var(--color-surface); padding: 0 14px; font: inherit; font-size: 14px; font-weight: 600; max-width: 62%; }
 .cal-cell.selday { outline: 2px solid var(--color-primary); outline-offset: -2px; }
-.modal .hero.light { border: 0; padding: 0; background: transparent; min-height: 0; border-radius: 0; }
+.modal .hero.light { border: 0; padding: 0; background: transparent; min-height: 0; border-radius: 0; gap: 16px; }
+.modal.sheet { position: relative; }
+.appt-x { position: absolute; top: 18px; right: 18px; width: 40px; height: 40px; }
+.modal .hero.light .chip-row { min-height: 40px; display: flex; align-items: center; padding-right: 48px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
@@ -2900,7 +2903,7 @@ function renderApptDetail(){
   return `
     <div class="modal-back" onclick="if (event.target === this) closeApptDetail()">
       <div class="modal sheet" role="dialog" aria-modal="true" aria-label="Detalle de la cita">
-        <div style="display:flex;justify-content:flex-end;margin:-8px -8px 4px 0;"><button class="icon-btn" type="button" data-close onclick="closeApptDetail()" aria-label="Cerrar">${icon('close', 20, 2.4)}</button></div>
+        <button class="icon-btn appt-x" type="button" data-close onclick="closeApptDetail()" aria-label="Cerrar">${icon('close', 20, 2.4)}</button>
         ${citaCard(a, todayISO(), reason ? 'pend' : (a.rescheduleRequested ? 'wait' : false))}
       </div>
     </div>`;
