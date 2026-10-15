@@ -2927,7 +2927,10 @@ function renderMonthPicker(sel, now){
 function shiftAgendaMonth(n){
   const { y, m } = ymFromISO(state.agendaDate || todayISO());
   const t = new Date(y, m + n, 1);
-  state.agendaDate = isoFromYMD(t.getFullYear(), t.getMonth(), 1);
+  const now = todayISO();
+  const ym = ymFromISO(now);
+  state.agendaDate = (t.getFullYear() === ym.y && t.getMonth() === ym.m) ? now : isoFromYMD(t.getFullYear(), t.getMonth(), 1);
+  state.openAppt = null;
   render();
 }
 function renderAgendaView(){
@@ -2961,10 +2964,10 @@ function renderAgendaView(){
   return `
     <div class="row between" style="flex-wrap:nowrap;gap:10px;margin-bottom:12px;">
       ${staffSel || '<span></span>'}
-      <button class="btn-text" type="button" style="white-space:nowrap;" onclick="state.agendaMonth = !state.agendaMonth; render()">${state.agendaMonth ? 'Ver semana' : 'Ver mes'}</button>
+      ${sel !== now ? `<button class="btn-text" type="button" style="white-space:nowrap;" onclick="pickAgendaDay('${now}')">Ir a hoy</button>` : ''}
     </div>
-    ${state.agendaMonth ? renderMonthPicker(sel, now) : strip}
-    <div class="row between" style="flex-wrap:nowrap;margin-top:22px;"><h2 class="title-3" style="margin:0;">${sel === now ? 'Hoy · ' : ''}${longDate(sel)}</h2>${sel !== now ? `<button class="btn btn-soft btn-sm" type="button" onclick="pickAgendaDay('${now}')">Hoy</button>` : ''}</div>
+    ${renderMonthPicker(sel, now)}
+    <div class="row between" style="flex-wrap:nowrap;margin-top:22px;"><h2 class="title-3" style="margin:0;">${sel === now ? 'Hoy · ' : ''}${longDate(sel)}</h2></div>
     <div class="row" style="margin-top:8px;">
       ${fullClosed.length ? chip('danger', `Cerrado${fullClosed[0].note ? ': ' + escapeHtml(fullClosed[0].note) : ''}`) : (biz.length ? chip('neutral', `Atención ${biz.map(r => r.start + '–' + r.end).join(', ')}`) : chip('neutral', 'Sin atención ese día'))}
       ${closures.filter(c => c.startTime).map(c => chip('warning', `Cierre ${c.startTime}–${c.endTime}`)).join('')}
