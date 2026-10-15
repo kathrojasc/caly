@@ -2944,10 +2944,10 @@ function renderApptDetail(){
       </div>
     </div>`;
 }
-function apptRow(a, now){
+function apptRow(a, now, showDate){
   const c = staffColor(a.staffId);
   const reason = apptPendingReason(a);
-  const meta = [a.serviceName, a.staffName].filter(Boolean).map(escapeHtml).join(' · ');
+  const meta = [showDate ? cap(displayDateShort(a.date)) : '', a.serviceName, a.staffName].filter(Boolean).map(escapeHtml).join(' · ');
   const chipHtml = a.status === 'CANCELLED' ? chip('danger', 'Cancelada') : a.attendance === 'no_show' ? chip('warning', 'No asistió') : a.attendance === 'attended' ? chip('success', 'Asistió') : reason ? chip('danger', 'Por resolver') : a.rescheduleRequested ? chip('neutral', 'Esperando') : (!payOn() ? '' : a.paid ? chip('success', 'Pagado') : chip('warning', 'Por cobrar'));
   return `
     <div class="arow-wrap">
@@ -3220,6 +3220,18 @@ function renderAdminInicio(){
       <button type="button" class="stat ${pendingCount > 0 ? 'danger' : 'zero'}" onclick="goPendientes()"><span class="ic">${icon('alert', 22)}</span><div><div class="n">${pendingCount}</div><div class="l">Por resolver</div></div></button>
       ${payOn() ? `      <div class="stat ${pendingPayCount > 0 ? 'warn' : 'zero'}"><span class="ic" style="${pendingPayCount > 0 ? 'color:var(--color-warning)' : ''}">${icon('info', 22)}</span><div><div class="n">${pendingPayCount}</div><div class="l">Pagos pendientes</div></div></div>` : ''}
     </div>
+    ${(() => {
+      const nowD = new Date();
+      const up = state.appointments.filter(x => x.status === 'CONFIRMED' && !isPastAppt(x) && !isProblem(x)).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
+      const bad = state.appointments.filter(isProblem).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
+      return `
+    <h2 class="title-2">Próximas citas</h2>
+    ${up.length ? `<div class="rows">${up.slice(0, 3).map(x => apptRow(x, todayIso, true)).join('')}</div>${up.length > 3 ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:12px;" onclick="goAgenda()">Ver más (${up.length - 3})</button>` : ''}` : `<p class="secondary">No tienes citas próximas.</p>`}
+    ${bad.length ? `
+    <h2 class="title-2">Citas con problemas</h2>
+    <div class="rows">${bad.slice(0, 3).map(x => apptRow(x, todayIso, true)).join('')}</div>
+    ${bad.length > 3 ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:12px;" onclick="goAtencion()">Ver más (${bad.length - 3})</button>` : ''}` : ''}`;
+    })()}
     ${(() => {
       const wc = waitingAppts().length;
       return wc ? `
