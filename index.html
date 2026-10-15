@@ -203,7 +203,7 @@ button.chip { cursor: pointer; }
 /* Calendario */
 .calendar { background: var(--color-surface-calendar); border-radius: var(--radius-l); padding: 8px 12px 14px; }
 .cal-head { display: flex; align-items: center; justify-content: space-between; height: 56px; padding-left: 8px; }
-.cal-month { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; }
+.cal-month { white-space: nowrap; font-size: 19px; font-weight: 700; letter-spacing: -0.3px; }
 .cal-nav { display: flex; gap: 6px; }
 .cal-week, .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); justify-items: center; }
 .cal-week { height: 28px; align-items: center; font-size: 13px; font-weight: 700; color: var(--color-text-secondary); }
@@ -252,7 +252,7 @@ button.chip { cursor: pointer; }
 .req-note span { color: var(--color-danger); font-weight: 700; }
 /* Calendario */
 .cal-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.cal-nav { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.acal-nav { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
 .cal-title { flex: 1; text-align: center; font-size: 17px; line-height: 22px; font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-staff { margin-top: 12px; }
 .cal-staff .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
@@ -280,7 +280,7 @@ button.chip { cursor: pointer; }
 .cal-weekhead button { flex: 1; min-width: 0; border: 0; background: transparent; padding: 6px 0; display: flex; flex-direction: column; align-items: center; font-size: 12px; color: var(--color-text-secondary); }
 .cal-weekhead button b { font-size: 16px; line-height: 22px; color: var(--color-text); width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
 .cal-weekhead button.today b { background: var(--color-primary); color: var(--color-on-primary); }
-.cal-month { margin-top: 14px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.acal-month { margin-top: 14px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .cal-mh { text-align: center; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); padding: 4px 0; }
 .cal-cell { border: 0; border-radius: var(--radius-s); background: var(--color-surface); min-height: 62px; padding: 6px 4px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; position: relative; }
 .cal-cell b { font-size: 15px; line-height: 20px; }
@@ -2928,7 +2928,7 @@ function renderCalendar(){
     for (let i = 0; i < 42; i++) cells.push(addDaysISO(gridStart, i));
     while (cells.length > 35 && ymFromISO(cells[35]).m !== m) cells.length = 35;
     body = `
-      <div class="cal-month">
+      <div class="acal-month">
         ${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(l => `<span class="cal-mh">${l}</span>`).join('')}
         ${cells.map(iso => {
           const list = calAppts(iso);
@@ -2954,7 +2954,7 @@ function renderCalendar(){
       </div>
       <button class="btn btn-soft btn-sm" type="button" onclick="calToday()" ${sel === todayIso && view === 'dia' ? 'disabled' : ''}>Hoy</button>
     </div>
-    <div class="cal-nav">
+    <div class="acal-nav">
       <button class="icon-btn" type="button" onclick="shiftCal(-1)" aria-label="Anterior">${icon('left', 20, 2.4)}</button>
       <span class="cal-title" aria-live="polite">${escapeHtml(title)}</span>
       <button class="icon-btn" type="button" onclick="shiftCal(1)" aria-label="Siguiente">${icon('right', 20, 2.4)}</button>
