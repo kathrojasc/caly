@@ -364,6 +364,7 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .attn-t span { font-size: 14px; line-height: 19px; opacity: .85; }
 .mini-select { height: 40px; border: 0; border-radius: var(--radius-pill); background: var(--color-surface); padding: 0 14px; font: inherit; font-size: 14px; font-weight: 600; max-width: 62%; }
 .cal-cell.selday { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+.modal .hero.light { border: 0; padding: 0; background: transparent; min-height: 0; border-radius: 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
@@ -1421,6 +1422,7 @@ function setManualTime(){
   render();
 }
 function openMove(id){
+  state.apptView = null;
   const a = state.appointments.find(x => x.id === id);
   if (!a) return;
   const p = state.patients[a.dni] || {};
@@ -1566,6 +1568,7 @@ function askReschedule(id){
 }
 function closeRescheduleModal(){ state.confirmRescheduleId = null; render(); }
 function requestReschedule(id){
+  state.apptView = null;
   const a = state.appointments.find(x => x.id === id);
   if (!a) return;
   const digits = cleanPhoneForWhatsapp(a.phone);
@@ -1590,6 +1593,7 @@ function askCancel(id){
 }
 function dismissCancel(){ state.confirmCancelId = null; render(); }
 function doCancel(id){
+  state.apptView = null;
   const appt = state.appointments.find(a => a.id === id);
   if (!appt) return;
   const wasPending = state.view === 'admin' && !!apptPendingReason(appt);
@@ -2887,18 +2891,19 @@ function setCitasMode(m){ state.citasMode = m; state.openAppt = null; state.cita
 function pickAgendaDay(iso){ state.agendaDate = iso; state.openAppt = null; state.agendaMonth = false; render(); }
 function shiftAgendaWeek(n){ state.agendaDate = addDaysISO(state.agendaDate || todayISO(), 7 * n); state.openAppt = null; render(); }
 let apptBackScroll = 0;
-function openApptDetail(id){ apptBackScroll = window.scrollY; state.apptView = id; render(); window.scrollTo(0, 0); }
-function closeApptDetail(){ state.apptView = null; render(); window.scrollTo(0, apptBackScroll); }
+function openApptDetail(id){ state.apptView = id; render(); }
+function closeApptDetail(){ state.apptView = null; render(); }
 function renderApptDetail(){
   const a = state.appointments.find(x => x.id === state.apptView);
-  if (!a) { state.apptView = null; return renderAdminContent(); }
-  const now = todayISO();
+  if (!a) { state.apptView = null; return ''; }
   const reason = apptPendingReason(a);
   return `
-    <div style="display:flex;align-items:center;min-height:48px;margin-top:8px;">
-      <button class="icon-btn" type="button" onclick="closeApptDetail()" aria-label="Volver">${icon('left', 22, 2.4)}</button>
-    </div>
-    <div style="margin-top:12px;">${citaCard(a, now, reason ? 'pend' : (a.rescheduleRequested ? 'wait' : false))}</div>`;
+    <div class="modal-back" onclick="if (event.target === this) closeApptDetail()">
+      <div class="modal sheet" role="dialog" aria-modal="true" aria-label="Detalle de la cita">
+        <div style="display:flex;justify-content:flex-end;margin:-8px -8px 4px 0;"><button class="icon-btn" type="button" data-close onclick="closeApptDetail()" aria-label="Cerrar">${icon('close', 20, 2.4)}</button></div>
+        ${citaCard(a, todayISO(), reason ? 'pend' : (a.rescheduleRequested ? 'wait' : false))}
+      </div>
+    </div>`;
 }
 function apptRow(a, now){
   const c = staffColor(a.staffId);
@@ -3890,7 +3895,6 @@ const ADMIN_NAV = [
 ];
 
 function renderAdminContent(){
-  if (state.apptView) return renderApptDetail();
   switch (state.adminTab) {
     case 'citas': return renderAdminCitas();
     case 'clientes': return renderAdminClientes();
@@ -4050,7 +4054,7 @@ function renderAdmin(){
   }
   return `
     <div class="page w880 admin-page">${renderAdminContent()}</div>
-    ${renderRescheduleModal()}${renderCancelModal()}${renderClosureModal()}${renderNotifyModal()}${renderMergeModal()}${renderRemoveStaffModal()}
+    ${renderApptDetail()}${renderRescheduleModal()}${renderCancelModal()}${renderClosureModal()}${renderNotifyModal()}${renderMergeModal()}${renderRemoveStaffModal()}
     <nav class="tabbar" aria-label="Secciones">
       ${ADMIN_NAV.map(t => `
         <button class="tab" type="button" ${state.adminTab === t.id ? 'aria-current="page"' : ''} onclick="setAdminTab('${t.id}')">
@@ -4174,10 +4178,11 @@ render();
 
 // Accesibilidad: Escape cierra el modal (equivale a la opción segura) y el foco queda dentro
 document.addEventListener('keydown', e => {
-  const modal = document.querySelector('.modal-back .modal');
+  const modals = document.querySelectorAll('.modal-back .modal');
+  const modal = modals[modals.length - 1];
   if (!modal) return;
   if (e.key === 'Escape') {
-    const safe = modal.querySelector('.btn-soft, .btn-text, [autofocus]');
+    const safe = modal.querySelector('[data-close], .btn-soft, .btn-text, [autofocus]');
     if (safe) { e.preventDefault(); safe.click(); }
     return;
   }
@@ -4192,9 +4197,10 @@ document.addEventListener('keydown', e => {
 });
 // Enfoca el modal al abrirse
 new MutationObserver(() => {
-  const m = document.querySelector('.modal-back .modal');
+  const ms = document.querySelectorAll('.modal-back .modal');
+  const m = ms[ms.length - 1];
   if (m && !m.contains(document.activeElement)) {
-    const t = m.querySelector('[autofocus]') || m.querySelector('input, select, button');
+    const t = m.querySelector('[autofocus]') || m.querySelector('[data-close]') || m.querySelector('input, select, button');
     if (t) t.focus({ preventScroll: true });
   }
 }).observe(document.getElementById('view'), { childList: true });
