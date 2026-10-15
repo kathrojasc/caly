@@ -2962,17 +2962,17 @@ function renderAdminInicio(){
   return `
     ${adminHeader('Hola de nuevo', longDate(todayIso))}
 
-    <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:20px;" onclick="goNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
+    <div class="link-compact" style="margin-top:20px;">
+      <span class="ic">${icon('link', 20)}</span>
+      <div style="min-width:0;flex:1;"><p class="caption">Enlace de reservas</p><p class="link-text tnum">${escapeHtml(bookingLink())}</p></div>
+      <button class="btn btn-inverse btn-sm" type="button" onclick="copyBookingLink()">Copiar</button>
+    </div>
+    <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:12px;" onclick="goNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
     <div class="stats four">
       <button type="button" class="stat" onclick="goCalendar('dia')"><span class="ic">${icon('calendar', 22)}</span><div><div class="n">${todayAppts.length}</div><div class="l">Citas hoy</div></div></button>
       <button type="button" class="stat" onclick="goCalendar('semana')"><span class="ic">${icon('clock', 22)}</span><div><div class="n">${next7Count}</div><div class="l">Próximos 7 días</div></div></button>
       <button type="button" class="stat ${pendingCount > 0 ? 'danger' : ''}" onclick="goPendientes()"><span class="ic">${icon('alert', 22)}</span><div><div class="n">${pendingCount}</div><div class="l">Por resolver</div></div></button>
       <div class="stat ${pendingPayCount > 0 ? 'warn' : ''}"><span class="ic" style="${pendingPayCount > 0 ? 'color:var(--color-warning)' : ''}">${icon('info', 22)}</span><div><div class="n">${pendingPayCount}</div><div class="l">Pagos pendientes</div></div></div>
-    </div>
-    <div class="link-compact">
-      <span class="ic">${icon('link', 20)}</span>
-      <div style="min-width:0;flex:1;"><p class="caption">Enlace de reservas</p><p class="link-text tnum">${escapeHtml(bookingLink())}</p></div>
-      <button class="btn btn-inverse btn-sm" type="button" onclick="copyBookingLink()">Copiar</button>
     </div>
     ${(() => {
       const wc = waitingAppts().length;
