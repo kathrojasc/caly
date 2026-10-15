@@ -327,6 +327,16 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .ar-main b { font-size: 16px; line-height: 21px; overflow-wrap: anywhere; }
 .ar-main span { font-size: 14px; line-height: 19px; color: var(--color-text-secondary); overflow-wrap: anywhere; }
 .ar-side { flex-shrink: 0; align-self: flex-start; }
+.hcards { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.hcard { width: 100%; border: 0; background: var(--color-surface); border-radius: var(--radius-m); padding: 14px 16px; display: flex; align-items: center; gap: 14px; text-align: left; font: inherit; color: inherit; }
+.hcard .ic { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.hc-n { font-size: 28px; line-height: 32px; font-weight: 700; letter-spacing: -0.6px; min-width: 28px; }
+.hc-l { flex: 1; min-width: 0; font-size: 16px; font-weight: 600; color: var(--color-text); }
+.hc-go { color: var(--color-text-secondary); display: inline-flex; }
+.hcard.danger { background: var(--color-danger-bg); }
+.hcard.danger .hc-n, .hcard.danger .hc-l { color: var(--color-danger); }
+.hcard.warn { background: var(--color-warning-bg); }
+.hcard.warn .hc-n, .hcard.warn .hc-l { color: var(--color-warning-strong); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
@@ -3070,11 +3080,11 @@ function renderAdminInicio(){
       <div class="lc-row"><div class="lc-url tnum">${escapeHtml(bookingLink())}</div><button class="btn btn-primary btn-sm" type="button" onclick="copyBookingLink()">Copiar</button></div>
     </div>
     <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:12px;" onclick="goNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
-    <div class="sum-pills">
-      <button type="button" class="sum" onclick="goHoy()"><b>${todayAppts.length}</b> ${todayAppts.length === 1 ? 'cita hoy' : 'citas hoy'}</button>
-      <button type="button" class="sum" onclick="goAgenda()"><b>${next7Count}</b> en 7 días</button>
-      ${pendingCount ? `<button type="button" class="sum danger" onclick="goPendientes()"><b>${pendingCount}</b> por resolver</button>` : ''}
-      ${pendingPayCount ? `<span class="sum warn"><b>${pendingPayCount}</b> por cobrar</span>` : ''}
+    <div class="hcards">
+      <button type="button" class="hcard" onclick="goHoy()"><span class="ic">${icon('calendar', 22)}</span><span class="hc-n">${todayAppts.length}</span><span class="hc-l">Citas hoy</span><span class="hc-go">${icon('right', 18, 2.4)}</span></button>
+      <button type="button" class="hcard" onclick="goAgenda()"><span class="ic">${icon('clock', 22)}</span><span class="hc-n">${next7Count}</span><span class="hc-l">Próximos 7 días</span><span class="hc-go">${icon('right', 18, 2.4)}</span></button>
+      <button type="button" class="hcard${pendingCount > 0 ? ' danger' : ''}" onclick="goPendientes()"><span class="ic">${icon('alert', 22)}</span><span class="hc-n">${pendingCount}</span><span class="hc-l">Por resolver</span><span class="hc-go">${icon('right', 18, 2.4)}</span></button>
+      <div class="hcard${pendingPayCount > 0 ? ' warn' : ''}"><span class="ic">${icon('info', 22)}</span><span class="hc-n">${pendingPayCount}</span><span class="hc-l">Pagos pendientes</span></div>
     </div>
     ${(() => {
       const wc = waitingAppts().length;
