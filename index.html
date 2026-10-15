@@ -3227,10 +3227,10 @@ function renderAdminInicio(){
       const bad = state.appointments.filter(isProblem).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
       return `
     <h2 class="title-2">Próximas citas</h2>
-    ${up.length ? `<div class="rows">${up.slice(0, 3).map(x => apptRow(x, todayIso, true)).join('')}</div>${up.length > 3 ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:12px;" onclick="goAgenda()">Ver más (${up.length - 3})</button>` : ''}` : `<p class="secondary">No tienes citas próximas.</p>`}
+    ${up.length ? `<div class="rows">${up.slice(0, 3).map(x => citaCard(x, todayIso, citaMode(x))).join('')}</div>${up.length > 3 ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:12px;" onclick="goAgenda()">Ver más (${up.length - 3})</button>` : ''}` : `<p class="secondary">No tienes citas próximas.</p>`}
     ${bad.length ? `
     <h2 class="title-2">Citas con problemas</h2>
-    <div class="rows">${bad.slice(0, 3).map(x => apptRow(x, todayIso, true)).join('')}</div>
+    <div class="rows">${bad.slice(0, 3).map(x => citaCard(x, todayIso, citaMode(x))).join('')}</div>
     ${bad.length > 3 ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:12px;" onclick="goAtencion()">Ver más (${bad.length - 3})</button>` : ''}` : ''}`;
     })()}
     ${(() => {
