@@ -368,6 +368,21 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .modal.sheet { position: relative; }
 .appt-x { position: absolute; top: 18px; right: 18px; width: 40px; height: 40px; }
 .modal .hero.light .chip-row { min-height: 40px; display: flex; align-items: center; padding-right: 48px; }
+.view-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--color-surface); border-radius: var(--radius-pill); margin-top: 16px; }
+.view-switch button { border: 0; border-radius: var(--radius-pill); background: transparent; min-height: 44px; font: inherit; font-weight: 700; font-size: 15px; color: var(--color-text-secondary); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.view-switch button[aria-pressed="true"] { background: #fff; color: var(--color-text); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.pill-opt.prob { display: inline-flex; align-items: center; gap: 7px; }
+.pill-opt.prob .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+.pill-opt.prob.on { background: var(--color-danger); color: #fff; }
+.pill-opt.prob.on .dot { background: #fff !important; }
+.hero.light.problem { border-color: var(--color-danger); background: #FFF6F5; }
+.hero.light.waiting { border-style: dashed; }
+.arow.problem { border-color: var(--color-danger); background: #FFF6F5; }
+.cal-warn { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--color-danger); }
+.cal-cell .cal-warn { position: absolute; top: 6px; right: 6px; }
+.cal-cell.bad { box-shadow: inset 0 0 0 2px var(--color-danger); }
+.legend { margin: 10px 4px 0; display: flex; align-items: center; gap: 6px; }
+.modal .hero.light.problem, .modal .hero.light.waiting { border: 0; background: transparent; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
@@ -680,6 +695,8 @@ function buildDefaultState(){
     dayEdit: null,
     citasMode: 'agenda',
     agendaMonth: false,
+    agendaView: 'lista',
+    citasProblems: false,
     openAppt: null,
     apptView: null,
     openForm: null,
@@ -769,6 +786,8 @@ function loadState(){
       parsed.openAppt = null;
       parsed.apptView = null;
       parsed.agendaMonth = false;
+      if (!['lista', 'calendario'].includes(parsed.agendaView)) parsed.agendaView = 'lista';
+      parsed.citasProblems = !!parsed.citasProblems;
       if (parsed.citasMode === 'lista') parsed.citasMode = 'historial';
       if (!['agenda', 'historial'].includes(parsed.citasMode)) parsed.citasMode = 'agenda';
       if (!['todas', 'canceladas', 'noshow'].includes(parsed.citasFilter)) parsed.citasFilter = 'todas';
@@ -1382,7 +1401,7 @@ function sendReminder(id){
   window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
 function goEsperando(){ goAtencion(); }
-function goAtencion(){ state.adminTab = 'citas'; state.citasMode = 'atencion'; state.openAppt = null; render(); window.scrollTo(0, 0); }
+function goAtencion(){ state.adminTab = 'citas'; state.citasMode = 'agenda'; state.agendaView = 'lista'; state.citasProblems = true; state.citasLimit = 15; render(); window.scrollTo(0, 0); }
 function goPendientes(){ goAtencion(); }
 function goNewAppt(){ state.adminTab = 'citas'; openNewAppt(); }
 function openNewAppt(dateIso){
@@ -2341,6 +2360,7 @@ const ICONS = {
   refresh: `<path d="M4 12a8 8 0 0 1 13.66-5.66M20 12a8 8 0 0 1-13.66 5.66"/><path d="M17 3v4h-4M7 21v-4h4"/>`,
   alert: `<path d="M12 3.5 2.5 20h19L12 3.5Z"/><path d="M12 10v4"/><circle cx="12" cy="17" r="1" fill="currentColor"/>`,
   eye: `<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.6"/>`,
+  list: `<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>`,
   users: `<circle cx="9" cy="8.5" r="3"/><path d="M3.5 19c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5"/><circle cx="17" cy="9.5" r="2.4"/><path d="M16.2 14.7c2.2.2 3.8 1.5 4.3 4.3"/>`,
   search: `<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>`,
   info: `<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.5M12 16.2v.3" stroke-width="2.2"/>`,
@@ -2881,6 +2901,10 @@ function shiftCal(n){
   state.calSel = null;
   render();
 }
+function isProblem(a){ return a.status === 'CONFIRMED' && a.date >= todayISO() && (!!apptPendingReason(a) || !!a.rescheduleRequested); }
+function agendaAppts(iso){ return dayAppts(iso, state.calStaff).filter(a => !state.citasProblems || isProblem(a)); }
+function setAgendaView(v){ state.agendaView = v; state.citasLimit = 15; render(); }
+function toggleProblems(){ state.citasProblems = !state.citasProblems; state.citasLimit = 15; render(); }
 function dayAppts(iso, staffId){
   return state.appointments
     .filter(a => a.date === iso && a.status === 'CONFIRMED' && (!staffId || a.staffId === staffId))
@@ -2888,7 +2912,7 @@ function dayAppts(iso, staffId){
 }
 function calAppts(iso){ return dayAppts(iso, state.calStaff); }
 function goHoy(){ const el = document.getElementById('hoy-anchor'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }
-function goAgenda(){ state.adminTab = 'citas'; state.citasMode = 'agenda'; state.agendaDate = todayISO(); state.openAppt = null; render(); window.scrollTo(0, 0); }
+function goAgenda(){ state.adminTab = 'citas'; state.citasMode = 'agenda'; state.citasProblems = false; state.agendaDate = todayISO(); state.openAppt = null; render(); window.scrollTo(0, 0); }
 function setCitasMode(m){ state.citasMode = m; state.openAppt = null; state.citasLimit = 15; render(); }
 function pickAgendaDay(iso){ state.agendaDate = iso; state.openAppt = null; state.agendaMonth = false; render(); }
 function shiftAgendaWeek(n){ state.agendaDate = addDaysISO(state.agendaDate || todayISO(), 7 * n); state.openAppt = null; render(); }
@@ -2914,7 +2938,7 @@ function apptRow(a, now){
   const chipHtml = a.status === 'CANCELLED' ? chip('danger', 'Cancelada') : a.attendance === 'no_show' ? chip('warning', 'No asistió') : reason ? chip('danger', 'Por resolver') : a.rescheduleRequested ? chip('neutral', 'Esperando') : (!payOn() ? '' : a.paid ? chip('success', 'Pagado') : chip('warning', 'Por cobrar'));
   return `
     <div class="arow-wrap">
-      <button type="button" class="arow" onclick="openApptDetail('${a.id}')">
+      <button type="button" class="arow${isProblem(a) ? ' problem' : ''}" onclick="openApptDetail('${a.id}')">
         <span class="ar-bar" style="background:${c.bd}"></span>
         <span class="ar-time tnum"><b>${a.start}</b><span>${a.end}</span></span>
         <span class="ar-main"><b>${escapeHtml(a.name)}</b>${meta ? `<span>${meta}</span>` : ''}</span>
@@ -2938,9 +2962,10 @@ function renderMonthPicker(sel, now){
     <div class="acal-month">
       ${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(l => `<span class="cal-mh">${l}</span>`).join('')}
       ${cells.map(iso => {
-        const list = dayAppts(iso, state.calStaff);
+        const list = agendaAppts(iso);
+        const bad = list.filter(isProblem).length;
         const inMonth = ymFromISO(iso).m === m;
-        return `<button type="button" class="cal-cell${inMonth ? '' : ' out'}${iso === now ? ' today' : ''}${iso === sel ? ' selday' : ''}${isClosedDay(iso) ? ' closed' : ''}" onclick="pickAgendaDay('${iso}')" aria-label="${longDate(iso)}${list.length ? ', ' + list.length + ' cita' + (list.length === 1 ? '' : 's') : ''}"><b>${dayNum(iso)}</b>${list.length ? `<span class="cal-count">${list.length}</span>` : ''}</button>`;
+        return `<button type="button" class="cal-cell${inMonth ? '' : ' out'}${iso === now ? ' today' : ''}${iso === sel ? ' selday' : ''}${isClosedDay(iso) ? ' closed' : ''}${bad ? ' bad' : ''}" onclick="pickAgendaDay('${iso}')" aria-label="${longDate(iso)}${list.length ? ', ' + list.length + ' cita' + (list.length === 1 ? '' : 's') : ''}${bad ? ', ' + bad + ' con problemas' : ''}"><b>${dayNum(iso)}</b>${list.length ? `<span class="cal-count">${list.length}</span>` : ''}${bad ? '<i class="cal-warn" aria-hidden="true"></i>' : ''}</button>`;
       }).join('')}
     </div>`;
 }
@@ -2955,39 +2980,40 @@ function shiftAgendaMonth(n){
 }
 function renderAgendaView(){
   const now = todayISO();
-  const sel = state.agendaDate || now;
-  const ws = weekStart(sel);
-  const days = [0, 1, 2, 3, 4, 5, 6].map(i => addDaysISO(ws, i));
-  const letters = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-  const biz = state.businessHours[String(dayOfWeek(sel))] || [];
-  const closures = state.closedDays.filter(c => closureAppliesOn(c, sel));
-  const fullClosed = closures.filter(c => !c.startTime);
-  const list = dayAppts(sel, state.calStaff);
-  const range = `${dayNum(ws)} ${monthAbbr(ws).toLowerCase()} – ${dayNum(days[6])} ${monthAbbr(days[6]).toLowerCase()}`;
+  const view = state.agendaView || 'lista';
+  const probCount = state.appointments.filter(a => isProblem(a) && (!state.calStaff || a.staffId === state.calStaff)).length;
   const staffSel = state.staff.length > 1 ? `
     <select class="mini-select" aria-label="Filtrar por trabajador" onchange="setCalStaff(this.value || null)">
       <option value="">Todos los trabajadores</option>
       ${state.staff.map(m => `<option value="${m.id}" ${state.calStaff === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
     </select>` : '';
-  const strip = `
-    <div class="agenda-head">
-      <button class="icon-btn" type="button" onclick="shiftAgendaWeek(-1)" aria-label="Semana anterior">${icon('left', 20, 2.4)}</button>
-      <span class="agenda-range">${range}</span>
-      <button class="icon-btn" type="button" onclick="shiftAgendaWeek(1)" aria-label="Semana siguiente">${icon('right', 20, 2.4)}</button>
+  const controls = `
+    <div class="view-switch" role="group" aria-label="Tipo de visualización">
+      <button type="button" aria-pressed="${view === 'lista'}" onclick="setAgendaView('lista')">${icon('list', 18, 2.2)} Lista</button>
+      <button type="button" aria-pressed="${view === 'calendario'}" onclick="setAgendaView('calendario')">${icon('calendar', 18, 2.2)} Calendario</button>
     </div>
-    <div class="week-strip" role="group" aria-label="Días de la semana">
-      ${days.map((iso, i) => {
-        const n = dayAppts(iso, state.calStaff).length;
-        return `<button type="button" class="week-day${iso === sel ? ' sel' : ''}${iso === now ? ' today' : ''}" aria-pressed="${iso === sel}" aria-label="${longDate(iso)}${n ? `, ${n} cita${n === 1 ? '' : 's'}` : ''}" onclick="pickAgendaDay('${iso}')"><span>${letters[i]}</span><b>${dayNum(iso)}</b><i class="${n ? 'on' : ''}">${n || ''}</i></button>`;
-      }).join('')}
+    <div class="row" style="margin-top:12px;gap:8px;">
+      <button type="button" class="pill-opt prob${state.citasProblems ? ' on' : ''}" aria-pressed="${state.citasProblems}" onclick="toggleProblems()"><i class="dot" style="background:var(--color-danger)"></i>Con problemas${probCount ? ` (${probCount})` : ''}</button>
+      ${staffSel}
     </div>`;
-  return `
-    <div class="row between" style="flex-wrap:nowrap;gap:10px;margin-bottom:12px;">
-      ${staffSel || '<span></span>'}
-      ${sel !== now ? `<button class="btn-text" type="button" style="white-space:nowrap;" onclick="pickAgendaDay('${now}')">Ir a hoy</button>` : ''}
-    </div>
-    ${renderMonthPicker(sel, now)}
-    <div class="row between" style="flex-wrap:nowrap;margin-top:22px;"><h2 class="title-3" style="margin:0;">${sel === now ? 'Hoy · ' : ''}${longDate(sel)}</h2></div>
+  if (view === 'lista') {
+    const all = state.appointments
+      .filter(a => a.status === 'CONFIRMED' && a.date >= now && (!state.calStaff || a.staffId === state.calStaff) && (!state.citasProblems || isProblem(a)))
+      .sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
+    const shown = all.slice(0, state.citasLimit);
+    return `${controls}
+    ${all.length ? `<div class="rows" style="margin-top:18px;">${shown.map(a => citaCard(a, now, apptPendingReason(a) ? 'pend' : (a.rescheduleRequested ? 'wait' : false))).join('')}</div>
+    ${all.length > shown.length ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:14px;" onclick="state.citasLimit += 15; render()">Ver más (${all.length - shown.length})</button>` : ''}` : `<p class="secondary" style="margin-top:24px;">${state.citasProblems ? 'No hay citas con problemas.' : 'No hay citas próximas.'}</p>`}`;
+  }
+  const sel = state.agendaDate || now;
+  const biz = state.businessHours[String(dayOfWeek(sel))] || [];
+  const closures = state.closedDays.filter(c => closureAppliesOn(c, sel));
+  const fullClosed = closures.filter(c => !c.startTime);
+  const list = agendaAppts(sel);
+  return `${controls}
+    <div style="margin-top:14px;">${renderMonthPicker(sel, now)}</div>
+    <p class="caption legend"><i class="cal-warn" aria-hidden="true"></i> Día con citas con problemas${sel !== now ? ' · <button class="btn-text" type="button" style="min-height:0;padding:0;" onclick="pickAgendaDay(\'' + now + '\')">Ir a hoy</button>' : ''}</p>
+    <div class="row between" style="flex-wrap:nowrap;margin-top:18px;"><h2 class="title-3" style="margin:0;">${sel === now ? 'Hoy · ' : ''}${longDate(sel)}</h2></div>
     <div class="row" style="margin-top:8px;">
       ${fullClosed.length ? chip('danger', `Cerrado${fullClosed[0].note ? ': ' + escapeHtml(fullClosed[0].note) : ''}`) : (biz.length ? chip('neutral', `Atención ${biz.map(r => r.start + '–' + r.end).join(', ')}`) : chip('neutral', 'Sin atención ese día'))}
       ${closures.filter(c => c.startTime).map(c => chip('warning', `Cierre ${c.startTime}–${c.endTime}`)).join('')}
@@ -3263,7 +3289,7 @@ function citaCard(a, now, mode){
     }
   }
   return `
-    <div class="hero light">
+    <div class="hero light${pend ? ' problem' : wait ? ' waiting' : ''}">
       ${chips ? `<div class="chip-row">${chips}</div>` : ''}
       <div>
         <div class="h-title">${when} · ${a.start}</div>
@@ -3445,14 +3471,8 @@ function setCitasQuery(v){ state.citasQuery = v; state.citasLimit = 15; render()
 function setCitasFilter(f){ state.citasFilter = f; state.citasLimit = 15; render(); }
 function weekStart(iso){ const dow = dateFromISO(iso).getDay(); return addDaysISO(iso, dow === 0 ? -6 : 1 - dow); }
 function citasTop(){
-  const att = pendingAppts().length + waitingAppts().length;
   return `
     ${adminHeader('Citas')}
-    ${att ? `
-    <button type="button" class="attn" onclick="goAtencion()">
-      <span class="ic">${icon('alert', 20)}</span>
-      <span class="attn-t"><b>${att} ${att === 1 ? 'cita requiere' : 'citas requieren'} tu atención</b><span>${[pendingAppts().length ? `${pendingAppts().length} por resolver` : '', waitingAppts().length ? `${waitingAppts().length} esperando respuesta` : ''].filter(Boolean).join(' · ')}</span></span>
-    </button>` : ''}
     <div class="citas-bar">
       ${citasModeSeg()}
       <button class="btn btn-primary btn-sm" type="button" onclick="openNewAppt()">${icon('plus', 18, 2.6)} Nueva</button>
