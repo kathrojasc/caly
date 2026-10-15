@@ -383,6 +383,7 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .cal-cell.bad { box-shadow: inset 0 0 0 2px var(--color-danger); }
 .legend { margin: 10px 4px 0; display: flex; align-items: center; gap: 6px; }
 .modal .hero.light.problem, .modal .hero.light.waiting { border: 0; background: transparent; }
+.cal-muted { opacity: .5; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
@@ -1401,7 +1402,7 @@ function sendReminder(id){
   window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
 function goEsperando(){ goAtencion(); }
-function goAtencion(){ state.adminTab = 'citas'; state.citasMode = 'agenda'; state.agendaView = 'lista'; state.citasProblems = true; state.citasLimit = 15; render(); window.scrollTo(0, 0); }
+function goAtencion(){ state.adminTab = 'citas'; state.agendaView = 'lista'; state.citasProblems = true; state.citasLimit = 15; render(); window.scrollTo(0, 0); }
 function goPendientes(){ goAtencion(); }
 function goNewAppt(){ state.adminTab = 'citas'; openNewAppt(); }
 function openNewAppt(dateIso){
@@ -2902,7 +2903,11 @@ function shiftCal(n){
   render();
 }
 function isProblem(a){ return a.status === 'CONFIRMED' && a.date >= todayISO() && (!!apptPendingReason(a) || !!a.rescheduleRequested); }
-function agendaAppts(iso){ return dayAppts(iso, state.calStaff).filter(a => !state.citasProblems || isProblem(a)); }
+function agendaAppts(iso){
+  return state.appointments
+    .filter(a => a.date === iso && (!state.calStaff || a.staffId === state.calStaff) && (!state.citasProblems || isProblem(a)))
+    .sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
+}
 function setAgendaView(v){ state.agendaView = v; state.citasLimit = 15; render(); }
 function toggleProblems(){ state.citasProblems = !state.citasProblems; state.citasLimit = 15; render(); }
 function dayAppts(iso, staffId){
@@ -2912,8 +2917,8 @@ function dayAppts(iso, staffId){
 }
 function calAppts(iso){ return dayAppts(iso, state.calStaff); }
 function goHoy(){ const el = document.getElementById('hoy-anchor'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }
-function goAgenda(){ state.adminTab = 'citas'; state.citasMode = 'agenda'; state.citasProblems = false; state.agendaDate = todayISO(); state.openAppt = null; render(); window.scrollTo(0, 0); }
-function setCitasMode(m){ state.citasMode = m; state.openAppt = null; state.citasLimit = 15; render(); }
+function goAgenda(){ state.adminTab = 'citas'; state.agendaView = 'calendario'; state.citasProblems = false; state.agendaDate = todayISO(); state.openAppt = null; render(); window.scrollTo(0, 0); }
+function setCitasMode(m){ render(); }
 function pickAgendaDay(iso){ state.agendaDate = iso; state.openAppt = null; state.agendaMonth = false; render(); }
 function shiftAgendaWeek(n){ state.agendaDate = addDaysISO(state.agendaDate || todayISO(), 7 * n); state.openAppt = null; render(); }
 let apptBackScroll = 0;
@@ -2963,9 +2968,10 @@ function renderMonthPicker(sel, now){
       ${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(l => `<span class="cal-mh">${l}</span>`).join('')}
       ${cells.map(iso => {
         const list = agendaAppts(iso);
+        const active = list.filter(a => a.status !== 'CANCELLED');
         const bad = list.filter(isProblem).length;
         const inMonth = ymFromISO(iso).m === m;
-        return `<button type="button" class="cal-cell${inMonth ? '' : ' out'}${iso === now ? ' today' : ''}${iso === sel ? ' selday' : ''}${isClosedDay(iso) ? ' closed' : ''}${bad ? ' bad' : ''}" onclick="pickAgendaDay('${iso}')" aria-label="${longDate(iso)}${list.length ? ', ' + list.length + ' cita' + (list.length === 1 ? '' : 's') : ''}${bad ? ', ' + bad + ' con problemas' : ''}"><b>${dayNum(iso)}</b>${list.length ? `<span class="cal-count">${list.length}</span>` : ''}${bad ? '<i class="cal-warn" aria-hidden="true"></i>' : ''}</button>`;
+        return `<button type="button" class="cal-cell${inMonth ? '' : ' out'}${iso === now ? ' today' : ''}${iso === sel ? ' selday' : ''}${isClosedDay(iso) ? ' closed' : ''}${bad ? ' bad' : ''}" onclick="pickAgendaDay('${iso}')" aria-label="${longDate(iso)}${list.length ? ', ' + list.length + ' cita' + (list.length === 1 ? '' : 's') : ''}${bad ? ', ' + bad + ' con problemas' : ''}"><b>${dayNum(iso)}</b>${active.length ? `<span class="cal-count">${active.length}</span>` : (list.length ? '<span class="cal-count cal-muted">·</span>' : '')}${bad ? '<i class="cal-warn" aria-hidden="true"></i>' : ''}</button>`;
       }).join('')}
     </div>`;
 }
@@ -2978,6 +2984,7 @@ function shiftAgendaMonth(n){
   state.openAppt = null;
   render();
 }
+function citaMode(a){ return apptPendingReason(a) ? 'pend' : (a.rescheduleRequested ? 'wait' : false); }
 function renderAgendaView(){
   const now = todayISO();
   const view = state.agendaView || 'lista';
@@ -2987,23 +2994,27 @@ function renderAgendaView(){
       <option value="">Todos los trabajadores</option>
       ${state.staff.map(m => `<option value="${m.id}" ${state.calStaff === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
     </select>` : '';
+  const q = state.citasQuery || '';
   const controls = `
-    <div class="view-switch" role="group" aria-label="Tipo de visualización">
-      <button type="button" aria-pressed="${view === 'lista'}" onclick="setAgendaView('lista')">${icon('list', 18, 2.2)} Lista</button>
-      <button type="button" aria-pressed="${view === 'calendario'}" onclick="setAgendaView('calendario')">${icon('calendar', 18, 2.2)} Calendario</button>
-    </div>
-    <div class="row" style="margin-top:12px;gap:8px;">
+    <div class="row" style="margin-top:14px;gap:8px;">
       <button type="button" class="pill-opt prob${state.citasProblems ? ' on' : ''}" aria-pressed="${state.citasProblems}" onclick="toggleProblems()"><i class="dot" style="background:var(--color-danger)"></i>Con problemas${probCount ? ` (${probCount})` : ''}</button>
       ${staffSel}
     </div>`;
   if (view === 'lista') {
-    const all = state.appointments
-      .filter(a => a.status === 'CONFIRMED' && a.date >= now && (!state.calStaff || a.staffId === state.calStaff) && (!state.citasProblems || isProblem(a)))
-      .sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
+    const base = state.appointments.filter(a => (!state.calStaff || a.staffId === state.calStaff) && (!state.citasProblems || isProblem(a)) && citaMatches(a, q));
+    const next = base.filter(a => a.status === 'CONFIRMED' && a.date >= now).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
+    const prev = base.filter(a => !(a.status === 'CONFIRMED' && a.date >= now)).sort((x, y) => (y.date + y.start).localeCompare(x.date + x.start));
+    const all = next.concat(prev);
     const shown = all.slice(0, state.citasLimit);
+    const sn = shown.filter(a => next.includes(a)), sp = shown.filter(a => !next.includes(a));
+    const sec = (t, n, arr) => arr.length ? `<div class="row between" style="flex-wrap:nowrap;margin-top:22px;"><p class="card-title" style="font-size:17px;">${t}</p><span class="caption">${n}</span></div><div class="rows" style="margin-top:10px;">${arr.map(a => citaCard(a, now, citaMode(a))).join('')}</div>` : '';
     return `${controls}
-    ${all.length ? `<div class="rows" style="margin-top:18px;">${shown.map(a => citaCard(a, now, apptPendingReason(a) ? 'pend' : (a.rescheduleRequested ? 'wait' : false))).join('')}</div>
-    ${all.length > shown.length ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:14px;" onclick="state.citasLimit += 15; render()">Ver más (${all.length - shown.length})</button>` : ''}` : `<p class="secondary" style="margin-top:24px;">${state.citasProblems ? 'No hay citas con problemas.' : 'No hay citas próximas.'}</p>`}`;
+    <div class="search" style="margin-top:12px;">
+      <span class="ic" aria-hidden="true">${icon('search', 20)}</span>
+      <input id="citas-q" type="search" placeholder="Buscar nombre, DNI o teléfono" aria-label="Buscar citas" value="${escapeHtml(q)}" oninput="setCitasQuery(this.value)">
+    </div>
+    ${all.length ? `${sec('Próximas', next.length, sn)}${sec('Anteriores y canceladas', prev.length, sp)}
+    ${all.length > shown.length ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:14px;" onclick="state.citasLimit += 15; render()">Ver más (${all.length - shown.length})</button>` : ''}` : `<p class="secondary" style="margin-top:24px;">${q ? 'No encontramos citas con esa búsqueda.' : (state.citasProblems ? 'No hay citas con problemas.' : 'Todavía no hay citas.')}</p>`}`;
   }
   const sel = state.agendaDate || now;
   const biz = state.businessHours[String(dayOfWeek(sel))] || [];
@@ -3020,14 +3031,6 @@ function renderAgendaView(){
     </div>
     ${list.length ? `<div class="rows" style="margin-top:14px;">${list.map(a => apptRow(a, now)).join('')}</div>` : `<p class="secondary" style="margin-top:16px;">No hay citas este día.</p>`}
     <button class="btn btn-soft btn-sm" type="button" style="margin-top:14px;" onclick="openNewAppt('${sel}')" ${sel < now ? 'disabled' : ''}>${icon('plus', 18, 2.6)} Agendar en este día</button>`;
-}
-function citasModeSeg(){
-  const m = state.citasMode || 'agenda';
-  return `
-    <div class="seg" role="group" aria-label="Vista de citas" style="flex:0 1 auto;">
-      <button type="button" aria-pressed="${m === 'agenda'}" onclick="setCitasMode('agenda')">Agenda</button>
-      <button type="button" aria-pressed="${m === 'historial'}" onclick="setCitasMode('historial')">Historial</button>
-    </div>`;
 }
 function calLayout(list){
   const out = []; let cluster = []; let clusterEnd = -1;
@@ -3471,55 +3474,19 @@ function setCitasQuery(v){ state.citasQuery = v; state.citasLimit = 15; render()
 function setCitasFilter(f){ state.citasFilter = f; state.citasLimit = 15; render(); }
 function weekStart(iso){ const dow = dateFromISO(iso).getDay(); return addDaysISO(iso, dow === 0 ? -6 : 1 - dow); }
 function citasTop(){
+  const view = state.agendaView || 'lista';
   return `
     ${adminHeader('Citas')}
     <div class="citas-bar">
-      ${citasModeSeg()}
+      <div class="view-switch" role="group" aria-label="Tipo de visualización" style="margin:0;flex:1;">
+        <button type="button" aria-pressed="${view === 'lista'}" onclick="setAgendaView('lista')">${icon('list', 18, 2.2)} Lista</button>
+        <button type="button" aria-pressed="${view === 'calendario'}" onclick="setAgendaView('calendario')">${icon('calendar', 18, 2.2)} Calendario</button>
+      </div>
       <button class="btn btn-primary btn-sm" type="button" onclick="openNewAppt()">${icon('plus', 18, 2.6)} Nueva</button>
     </div>`;
 }
-function renderAtencionView(){
-  const now = todayISO();
-  const pend = pendingAppts(), wait = waitingAppts();
-  if (!pend.length && !wait.length) { state.citasMode = 'agenda'; return renderAdminCitas(); }
-  return `
-    <div style="display:flex;align-items:center;min-height:48px;margin-top:8px;">
-      <button class="icon-btn" type="button" onclick="setCitasMode('agenda')" aria-label="Volver a Citas">${icon('left', 22, 2.4)}</button>
-    </div>
-    <h1 class="title-1" style="margin-top:12px;">Requieren atención</h1>
-    ${pend.length ? `<h2 class="title-2">Por resolver <span class="badge-inline">${pend.length}</span></h2><p class="secondary" style="margin:-8px 0 14px;">Cambió tu disponibilidad. Cancela o mueve estas citas.</p><div class="rows">${pend.map(a => citaCard(a, now, 'pend')).join('')}</div>` : ''}
-    ${wait.length ? `<h2 class="title-2">Esperando respuesta <span class="badge-inline">${wait.length}</span></h2><p class="secondary" style="margin:-8px 0 14px;">Le pediste a estos clientes que elijan un nuevo horario.</p><div class="rows">${wait.map(a => citaCard(a, now, 'wait')).join('')}</div>` : ''}`;
-}
 function renderAdminCitas(){
-  const mode = state.citasMode || 'agenda';
-  if (mode === 'atencion') return renderAtencionView();
-  if (mode === 'agenda') return `${citasTop()}<div style="margin-top:18px;">${renderAgendaView()}</div>`;
-  return renderCitasLista();
-}
-function renderCitasLista(){
-  const now = todayISO();
-  const f = state.citasFilter || 'todas';
-  const past = a => a.status === 'CANCELLED' || a.date < now;
-  let list = state.appointments.filter(past);
-  if (f === 'canceladas') list = list.filter(a => a.status === 'CANCELLED');
-  else if (f === 'noshow') list = list.filter(a => a.attendance === 'no_show');
-  list.sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start));
-  const q = state.citasQuery || '';
-  const listQ = list.filter(a => citaMatches(a, q));
-  const shown = listQ.slice(0, state.citasLimit);
-  return `
-    ${citasTop()}
-    <div class="seg seg-scroll" role="group" aria-label="Filtro del historial" style="margin-top:14px;">
-      <button type="button" aria-pressed="${f === 'todas'}" onclick="setCitasFilter('todas')">Todas</button>
-      <button type="button" aria-pressed="${f === 'canceladas'}" onclick="setCitasFilter('canceladas')">Canceladas</button>
-      <button type="button" aria-pressed="${f === 'noshow'}" onclick="setCitasFilter('noshow')">No asistieron</button>
-    </div>
-    <div class="search" style="margin-top:12px;">
-      <span class="ic" aria-hidden="true">${icon('search', 20)}</span>
-      <input id="citas-q" type="search" placeholder="Buscar nombre, DNI o teléfono" aria-label="Buscar citas" value="${escapeHtml(q)}" oninput="setCitasQuery(this.value)">
-    </div>
-    ${listQ.length === 0 ? `<p class="secondary" style="margin-top:24px;">${q ? 'No encontramos citas con esa búsqueda.' : 'Todavía no hay citas en el historial.'}</p>` : `<div class="rows" style="margin-top:20px;">${shown.map(a => citaCard(a, now, false)).join('')}</div>
-    ${listQ.length > shown.length ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:14px;" onclick="state.citasLimit += 15; render()">Ver más (${listQ.length - shown.length})</button>` : ''}`}`;
+  return `${citasTop()}${renderAgendaView()}`;
 }
 
 function startEditService(id){ state.editingService = state.editingService === id ? null : id; render(); }
