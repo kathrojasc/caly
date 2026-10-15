@@ -305,6 +305,18 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .ss span { font-size: 12px; line-height: 16px; color: var(--color-text-secondary); }
 .ss.danger b { color: var(--color-danger); }
 .ss.warn b { color: var(--color-warning); }
+.link-card2 { margin-top: 20px; background: var(--color-surface); border-radius: var(--radius-l); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.lc-head { display: flex; align-items: center; gap: 12px; }
+.lc-head .ic { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: var(--color-primary); color: var(--color-on-primary); display: inline-flex; align-items: center; justify-content: center; }
+.lc-title { margin: 0; font-size: 18px; line-height: 24px; font-weight: 700; }
+.lc-row { display: flex; align-items: center; gap: 10px; }
+.lc-url { flex: 1; min-width: 0; background: #fff; border-radius: var(--radius-pill); padding: 0 16px; min-height: 48px; display: flex; align-items: center; font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
+.lc-row .btn { min-height: 48px; padding: 0 22px; }
+.sum-pills { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+.sum { border: 0; border-radius: var(--radius-pill); background: var(--color-surface); color: var(--color-text); padding: 8px 14px; font: inherit; font-size: 14px; line-height: 20px; display: inline-flex; gap: 5px; align-items: baseline; }
+.sum b { font-weight: 700; }
+.sum.danger { background: var(--color-danger-bg); color: var(--color-danger); }
+.sum.warn { background: var(--color-warning-bg); color: var(--color-warning-strong); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
@@ -2969,17 +2981,16 @@ function renderAdminInicio(){
   return `
     ${adminHeader('Hola de nuevo', longDate(todayIso))}
 
-    <div class="link-compact" style="margin-top:20px;">
-      <span class="ic">${icon('link', 20)}</span>
-      <div style="min-width:0;flex:1;"><p class="caption">Enlace de reservas</p><p class="link-text tnum">${escapeHtml(bookingLink())}</p></div>
-      <button class="btn btn-inverse btn-sm" type="button" onclick="copyBookingLink()">Copiar</button>
+    <div class="link-card2">
+      <div class="lc-head"><span class="ic">${icon('link', 20)}</span><div style="min-width:0;"><p class="lc-title">Tu enlace de reservas</p><p class="caption">Compártelo con tus clientes para que agenden solos</p></div></div>
+      <div class="lc-row"><div class="lc-url tnum">${escapeHtml(bookingLink())}</div><button class="btn btn-primary btn-sm" type="button" onclick="copyBookingLink()">Copiar</button></div>
     </div>
     <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:12px;" onclick="goNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
-    <div class="stats-strip">
-      <button type="button" class="ss" onclick="goCalendar('dia')"><b>${todayAppts.length}</b><span>Citas hoy</span></button>
-      <button type="button" class="ss" onclick="goCalendar('semana')"><b>${next7Count}</b><span>Próx. 7 días</span></button>
-      <button type="button" class="ss${pendingCount > 0 ? ' danger' : ''}" onclick="goPendientes()"><b>${pendingCount}</b><span>Por resolver</span></button>
-      <div class="ss${pendingPayCount > 0 ? ' warn' : ''}"><b>${pendingPayCount}</b><span>Por cobrar</span></div>
+    <div class="sum-pills">
+      <button type="button" class="sum" onclick="goCalendar('dia')"><b>${todayAppts.length}</b> ${todayAppts.length === 1 ? 'cita hoy' : 'citas hoy'}</button>
+      <button type="button" class="sum" onclick="goCalendar('semana')"><b>${next7Count}</b> en 7 días</button>
+      ${pendingCount ? `<button type="button" class="sum danger" onclick="goPendientes()"><b>${pendingCount}</b> por resolver</button>` : ''}
+      ${pendingPayCount ? `<span class="sum warn"><b>${pendingPayCount}</b> por cobrar</span>` : ''}
     </div>
     ${(() => {
       const wc = waitingAppts().length;
