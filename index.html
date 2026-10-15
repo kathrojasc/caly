@@ -786,6 +786,7 @@ function loadState(){
       parsed.dayEdit = null;
       parsed.openAppt = null;
       parsed.apptView = null;
+      (parsed.appointments || []).forEach(a => { if (a.rescheduleRequested) { a.rescheduleRequested = false; a.rescheduleRequestedAt = null; } });
       parsed.agendaMonth = false;
       if (!['lista', 'calendario'].includes(parsed.agendaView)) parsed.agendaView = 'lista';
       parsed.citasProblems = !!parsed.citasProblems;
@@ -1335,6 +1336,15 @@ function waitingAppts(){
   return state.appointments.filter(a => a.status === 'CONFIRMED' && a.rescheduleRequested && a.date >= today).sort((a, b) => (a.rescheduleRequestedAt || 0) - (b.rescheduleRequestedAt || 0));
 }
 function daysWaiting(a){ return a.rescheduleRequestedAt ? Math.floor((Date.now() - a.rescheduleRequestedAt) / 86400000) : 0; }
+function isPastAppt(a){ return combineDateTime(a.date, a.end) < new Date(); }
+function setAttendance(id, val){
+  const a = state.appointments.find(x => x.id === id);
+  if (!a) return;
+  a.attendance = a.attendance === val ? null : val;
+  saveState();
+  render();
+  showToast(a.attendance === 'attended' ? 'Marcado como asistió' : a.attendance === 'no_show' ? 'Marcado como no asistió' : 'Asistencia sin marcar');
+}
 function toggleNoShow(id){
   const a = state.appointments.find(x => x.id === id);
   if (!a) return;
@@ -1358,7 +1368,7 @@ function resendReschedule(id){
 function startReschedule(id){
   const appt = state.appointments.find(a => a.id === id);
   if (!appt || appt.status !== 'CONFIRMED') return;
-  if (state.view === 'paciente' && !clientCanChange(appt)) { showToast(`Ya no puedes reagendar en línea. Contacta al negocio.`); return; }
+  if (state.view === 'paciente' && !clientCanChange(appt)) { showToast(`Ya no puedes cambiarla en línea. Contacta al negocio.`); return; }
   state.booking.rescheduleId = id;
   state.booking.serviceId = appt.serviceId && findService(appt.serviceId) ? appt.serviceId : state.booking.serviceId;
   state.booking.step = 'reservar';
@@ -1624,7 +1634,7 @@ function doCancel(id){
   appt.cancelledBy = state.view === 'paciente' ? 'client' : 'admin';
   if (state.view === 'paciente') addActivity('Cita cancelada', `${appt.name} canceló su cita del ${displayDateLong(appt.date)} a las ${appt.start}.`, appt.id);
   state.confirmCancelId = null;
-  if (wasPending && cleanPhoneForWhatsapp(appt.phone)) state.notify = { type: 'cancel', id: appt.id };
+  if (state.view === 'admin' && cleanPhoneForWhatsapp(appt.phone)) state.notify = { type: 'cancel', id: appt.id };
   saveState();
   render();
   showToast('Cita cancelada');
@@ -1637,8 +1647,8 @@ function sendNotice(){
     const digits = cleanPhoneForWhatsapp(a.phone);
     const first = firstWord(a.name);
     const msg = nt.type === 'move'
-      ? `Hola ${first}! Tu cita pasó al ${displayDateLong(a.date)} a las ${a.start}. Si no te acomoda, puedes cambiarla desde aquí: https://${bookingLink()}`
-      : `Hola ${first}! Lamentamos avisarte que, por motivos de fuerza mayor, debimos cancelar tu cita del ${displayDateLong(a.date)} a las ${a.start}. Puedes agendar una nueva cuando quieras desde aquí: https://${bookingLink()}`;
+      ? `Hola ${first}! Tu cita pasó al ${displayDateLong(a.date)} a las ${a.start}. Si no te acomoda, escríbenos o agenda otra fecha desde aquí: https://${bookingLink()}`
+      : `Hola ${first}! Lo sentimos mucho: tuvimos que cancelar tu cita del ${displayDateLong(a.date)} a las ${a.start}. Te invitamos a volver a agendar con nosotros en otra fecha cuando quieras, desde aquí: https://${bookingLink()}`;
     if (digits) window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
   }
   render();
@@ -2199,7 +2209,7 @@ function renderRemoveStaffModal(){
     <div class="modal-back" onclick="if (event.target === this) cancelRemoveStaff()">
       <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="rm-title" aria-describedby="rm-desc">
         <h2 class="title-3" id="rm-title">¿Eliminar a ${escapeHtml(m.name)}?</h2>
-        <p class="secondary" id="rm-desc" style="margin-top:8px;">${n ? `Tiene ${n} cita${n === 1 ? '' : 's'} por venir. Pasarán a <strong style="color:var(--color-text);">Pendientes</strong> y tendrás que reagendarlas con otro trabajador o cancelarlas.` : 'No tiene citas por venir.'}${alone.length ? ` Los servicios ${alone.map(escapeHtml).join(', ')} se quedarán sin trabajador asignado.` : ''} <strong style="color:var(--color-text);">Esta acción es irreversible.</strong> Si solo se ausenta un tiempo, usa Ausencias.</p>
+        <p class="secondary" id="rm-desc" style="margin-top:8px;">${n ? `Tiene ${n} cita${n === 1 ? '' : 's'} por venir. Quedarán <strong style="color:var(--color-text);">con problemas</strong> y tendrás que moverlas a otro trabajador o cancelarlas y avisar al cliente.` : 'No tiene citas por venir.'}${alone.length ? ` Los servicios ${alone.map(escapeHtml).join(', ')} se quedarán sin trabajador asignado.` : ''} <strong style="color:var(--color-text);">Esta acción es irreversible.</strong> Si solo se ausenta un tiempo, usa Ausencias.</p>
         <div class="stack" style="margin-top:20px;gap:10px;">
           <button class="btn btn-danger-solid btn-block" type="button" onclick="removeStaffMember('${m.id}')">Sí, eliminar</button>
           <button class="btn btn-soft btn-block" type="button" autofocus onclick="cancelRemoveStaff()">Volver</button>
@@ -2586,7 +2596,6 @@ function renderPatientRow(a, isPast){
       <div class="row-main">
         <div class="row-title">${longDate(a.date)}</div>
         <div class="secondary"><span class="tnum">${a.start}</span>${staffLine(a)}</div>
-        ${canReschedule ? `<button class="btn-text" type="button" style="padding-left:0;min-height:36px;" onclick="startReschedule('${a.id}')">Reagendar</button>` : ''}
       </div>
       ${label ? `<div class="appt-chips">${chip(kind, label, false, 'state')}</div>` : ''}
     </div>`;
@@ -2599,20 +2608,19 @@ function patientCard(a, light){
   const mustAct = !!reason || !!a.rescheduleRequested;
   const can = clientCanChange(a);
   let note = '';
-  if (mustAct) note = a.rescheduleRequested ? 'El negocio te pidió reagendar esta cita. Elige un nuevo horario.' : 'Cambió la disponibilidad del negocio. Reagenda tu cita para mantenerla.';
+  if (mustAct) note = 'Hubo un cambio en el horario del negocio. Te contactaremos por WhatsApp para confirmar tu cita.';
   else if (a.movedByAdmin) note = `El negocio movió tu cita. Antes: ${cap(displayDateShort(a.movedByAdmin.from.date))} · ${a.movedByAdmin.from.start}.`;
-  else if (!can) note = `Faltan menos de ${state.config.cancelNoticeHours} horas: ya no puedes cambiarla en línea. Contacta al negocio.`;
+  else if (!can) note = `Faltan menos de ${state.config.cancelNoticeHours} horas: ya no puedes cancelarla en línea. Contacta al negocio.`;
   return `
     <div class="hero${light ? ' light' : ''}">
-      <span class="chip-hero ${light ? (mustAct ? 'cancel' : 'neu') : ''}">${mustAct ? 'Debes reagendar' : escapeHtml(a.serviceName || 'Cita')}</span>
+      <span class="chip-hero ${light ? (mustAct ? 'cancel' : 'neu') : ''}">${mustAct ? 'Por confirmar' : escapeHtml(a.serviceName || 'Cita')}</span>
       <div>
         <div class="h-title">${when} · ${a.start}</div>
         ${a.staffName ? `<div class="h-sub">${escapeHtml(a.staffName)}</div>` : ''}
         <div class="h-meta">${durationMin(a)} min${a.serviceName && mustAct ? ' · ' + escapeHtml(a.serviceName) : ''}</div>
       </div>
       ${note ? `<div class="hero-note${mustAct ? ' alert' : ''}" role="${mustAct ? 'alert' : 'note'}">${escapeHtml(note)}</div>` : ''}
-      <div class="hero-actions c2">
-        <button type="button" class="${mustAct ? 'emph' : ''}" ${can ? '' : 'disabled'} onclick="startReschedule('${a.id}')">${icon('refresh', 20)}<span>Reagendar</span></button>
+      <div class="hero-actions c1">
         <button type="button" class="danger" ${can ? '' : 'disabled'} onclick="askCancel('${a.id}')">${icon('close', 20, 2.4)}<span>Cancelar</span></button>
       </div>
     </div>`;
@@ -2940,7 +2948,7 @@ function apptRow(a, now){
   const c = staffColor(a.staffId);
   const reason = apptPendingReason(a);
   const meta = [a.serviceName, a.staffName].filter(Boolean).map(escapeHtml).join(' · ');
-  const chipHtml = a.status === 'CANCELLED' ? chip('danger', 'Cancelada') : a.attendance === 'no_show' ? chip('warning', 'No asistió') : reason ? chip('danger', 'Por resolver') : a.rescheduleRequested ? chip('neutral', 'Esperando') : (!payOn() ? '' : a.paid ? chip('success', 'Pagado') : chip('warning', 'Por cobrar'));
+  const chipHtml = a.status === 'CANCELLED' ? chip('danger', 'Cancelada') : a.attendance === 'no_show' ? chip('warning', 'No asistió') : a.attendance === 'attended' ? chip('success', 'Asistió') : reason ? chip('danger', 'Por resolver') : a.rescheduleRequested ? chip('neutral', 'Esperando') : (!payOn() ? '' : a.paid ? chip('success', 'Pagado') : chip('warning', 'Por cobrar'));
   return `
     <div class="arow-wrap">
       <button type="button" class="arow${isProblem(a) ? ' problem' : ''}" onclick="openApptDetail('${a.id}')">
@@ -3258,7 +3266,8 @@ function citaCard(a, now, mode){
   const pend = mode === true || mode === 'pend';
   const wait = mode === 'wait';
   const cancelled = a.status === 'CANCELLED';
-  const upcoming = !cancelled && a.date >= now;
+  const past = !cancelled && isPastAppt(a);
+  const upcoming = !cancelled && !past;
   const when = a.date === now ? 'Hoy' : cap(displayDateShort(a.date));
   const meta = [a.serviceName, a.staffName].filter(Boolean).map(escapeHtml).join(' · ');
   const reason = pend ? apptPendingReason(a) : null;
@@ -3268,14 +3277,15 @@ function citaCard(a, now, mode){
   else if (cancelled) chips = `<span class="chip-hero cancel">Cancelada${a.cancelledBy === 'client' ? ' por el cliente' : ''}</span>`;
   else {
     chips = payOn() ? `<span class="chip-hero ${a.paid ? 'ok' : 'warn'}">${a.paid ? 'Pagado' : 'Pago pendiente'}</span>` : '';
-    if (a.attendance === 'no_show') chips += `<span class="chip-hero warn">No asistió</span>`;
+    if (a.attendance === 'attended') chips += `<span class="chip-hero ok">Asistió</span>`;
+    else if (a.attendance === 'no_show') chips += `<span class="chip-hero warn">No asistió</span>`;
+    else if (past) chips += `<span class="chip-hero neu">Falta marcar asistencia</span>`;
   }
   const btns = [];
   const B = (cls, fn, ic, label, extra) => `<button type="button" ${cls ? `class="${cls}"` : ''} onclick="${fn}" ${extra || ''}>${ic}<span>${label}</span></button>`;
   if (pend) {
     btns.push(B('', `openMove('${a.id}')`, icon('calendar', 20), 'Mover'));
-    btns.push(B('', `askReschedule('${a.id}')`, icon('refresh', 20), 'Reagendar', `aria-label="Pedir a ${escapeHtml(a.name)} que reagende por WhatsApp"`));
-    btns.push(B('danger', `askCancel('${a.id}')`, icon('close', 20, 2.4), 'Cancelar'));
+    btns.push(B('danger', `askCancel('${a.id}')`, icon('close', 20, 2.4), 'Cancelar y avisar'));
   } else if (wait) {
     btns.push(B('', `resendReschedule('${a.id}')`, icon('chat', 20), 'Recordar'));
     btns.push(B('', `openMove('${a.id}')`, icon('calendar', 20), 'Mover'));
@@ -3285,10 +3295,10 @@ function citaCard(a, now, mode){
     if (upcoming) {
       btns.push(B('', `sendReminder('${a.id}')`, icon('chat', 20), 'Recordar', `aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}"`));
       btns.push(B('', `openMove('${a.id}')`, icon('calendar', 20), 'Mover'));
-      btns.push(B('', `askReschedule('${a.id}')`, icon('refresh', 20), 'Reagendar', `aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}"`));
       btns.push(B('danger', `askCancel('${a.id}')`, icon('close', 20, 2.4), 'Cancelar'));
     } else {
-      btns.push(B('', `toggleNoShow('${a.id}')`, icon(a.attendance === 'no_show' ? 'check' : 'close', 20, 2.4), a.attendance === 'no_show' ? 'Asistió' : 'No asistió'));
+      btns.push(B(a.attendance === 'attended' ? 'emph' : '', `setAttendance('${a.id}', 'attended')`, icon('check', 20, 2.4), 'Asistió'));
+      btns.push(B(a.attendance === 'no_show' ? 'emph' : '', `setAttendance('${a.id}', 'no_show')`, icon('close', 20, 2.4), 'No asistió'));
     }
   }
   return `
@@ -3686,7 +3696,7 @@ function renderAdminHorarios(){
         <div class="field"><label for="cfg-buffer">Descanso entre citas (min)</label><input id="cfg-buffer" type="number" inputmode="numeric" value="${cfg.bufferMinutes}"></div>
         <div class="field"><label for="cfg-notice">Anticipación mínima (horas)</label><input id="cfg-notice" type="number" inputmode="numeric" value="${cfg.minNoticeHours}"></div>
         <div class="field"><label for="cfg-window">Reservas hasta (días a futuro)</label><input id="cfg-window" type="number" inputmode="numeric" value="${cfg.windowDays}"></div>
-        <div class="field"><label for="cfg-cancel">Cambios del cliente hasta (horas antes)</label><input id="cfg-cancel" type="number" inputmode="numeric" value="${cfg.cancelNoticeHours}"><span class="hint">Después de ese plazo el cliente ya no puede cancelar ni reagendar en línea. 0 = sin límite.</span></div>
+        <div class="field"><label for="cfg-cancel">Cancelaciones del cliente hasta (horas antes)</label><input id="cfg-cancel" type="number" inputmode="numeric" value="${cfg.cancelNoticeHours}"><span class="hint">Después de ese plazo el cliente ya no puede cancelar en línea. 0 = sin límite.</span></div>
       </div>
       ${isProPlan() ? `<p class="hint">En el plan Pro, cada servicio define su propia duración. La de arriba se usa solo cuando una cita no tiene servicio.</p>` : ''}
       <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="saveConfig()">Guardar configuración</button>
@@ -3815,7 +3825,7 @@ function renderAdminCuenta(){
   const planFeatures = [
     'Citas y horarios ilimitados',
     'Equipo con asignación automática (round robin)',
-    'Recordatorios y reagendado por WhatsApp',
+    'Recordatorios y avisos por WhatsApp',
     'Marca personalizada (color y logo)',
   ];
 
@@ -3959,7 +3969,7 @@ function renderClosureModal(){
     <div class="modal-back" onclick="if (event.target === this) cancelClosure()">
       <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="cl-title" aria-describedby="cl-desc">
         <h2 class="title-3" id="cl-title">Hay ${pc.aff} cita${pc.aff === 1 ? '' : 's'}${who} en ese tiempo</h2>
-        <p class="secondary" id="cl-desc" style="margin-top:8px;">Si lo guardas, <strong style="color:var(--color-text);">tendrás que cancelar o reagendar ${pc.aff === 1 ? 'esa cita' : 'esas citas'}</strong>. Aparecerán en la sección Pendientes de Citas.</p>
+        <p class="secondary" id="cl-desc" style="margin-top:8px;">Si lo guardas, <strong style="color:var(--color-text);">tendrás que cancelar ${pc.aff === 1 ? 'esa cita' : 'esas citas'} y avisar al cliente</strong>. Aparecerán marcadas con problemas en Citas.</p>
         <div class="stack" style="margin-top:20px;gap:10px;">
           <button class="btn btn-danger-solid btn-block" type="button" onclick="confirmClosure()">Guardar de todos modos</button>
           <button class="btn btn-soft btn-block" type="button" autofocus onclick="cancelClosure()">Volver</button>
@@ -3976,7 +3986,7 @@ function renderNotifyModal(){
     <div class="modal-back" onclick="if (event.target === this) skipNotice()">
       <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="nt-title" aria-describedby="nt-desc">
         <h2 class="title-3" id="nt-title">¿Avisar a ${escapeHtml(a.name)}?</h2>
-        <p class="secondary" id="nt-desc" style="margin-top:8px;">${move ? `La cita ya cambió, pero ${escapeHtml(a.name)} todavía no lo sabe` : `La cita quedó cancelada, pero ${escapeHtml(a.name)} todavía no lo sabe`}. Te abrimos WhatsApp con el mensaje listo para que se lo envíes.</p>
+        <p class="secondary" id="nt-desc" style="margin-top:8px;">${move ? `La cita ya cambió, pero ${escapeHtml(a.name)} todavía no lo sabe` : `La cita quedó cancelada, pero ${escapeHtml(a.name)} todavía no lo sabe`}. Te abrimos WhatsApp con el mensaje listo: le pide disculpas y lo invita a volver a agendar con tu enlace.</p>
         <div class="stack" style="margin-top:20px;gap:10px;">
           <button class="btn btn-primary btn-block" type="button" onclick="sendNotice()">${icon('chat', 18)} Avisar por WhatsApp</button>
           <button class="btn btn-soft btn-block" type="button" autofocus onclick="skipNotice()">Ahora no</button>
@@ -3991,7 +4001,7 @@ function renderCancelModal(){
     <div class="modal-back" onclick="if (event.target === this) dismissCancel()">
       <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="cn-title" aria-describedby="cn-desc">
         <h2 class="title-3" id="cn-title">${state.view === 'paciente' ? '¿Cancelar tu cita?' : `¿Cancelar la cita de ${escapeHtml(a.name)}?`}</h2>
-        <p class="secondary" id="cn-desc" style="margin-top:8px;">${state.view === 'paciente' ? 'Tu cita' : 'La cita'} del ${displayDateLong(a.date).toLowerCase()} a las ${a.start} quedará cancelada y el horario volverá a estar disponible. <strong style="color:var(--color-text);">Esta acción es irreversible.</strong></p>
+        <p class="secondary" id="cn-desc" style="margin-top:8px;">${state.view === 'paciente' ? 'Tu cita' : 'La cita'} del ${displayDateLong(a.date).toLowerCase()} a las ${a.start} quedará cancelada y el horario volverá a estar disponible. <strong style="color:var(--color-text);">Esta acción es irreversible.</strong>${state.view === 'paciente' ? '' : ' Después podrás avisarle por WhatsApp.'}</p>
         <div class="stack" style="margin-top:20px;gap:10px;">
           <button class="btn btn-danger-solid btn-block" type="button" onclick="doCancel('${a.id}')">Sí, cancelar cita</button>
           <button class="btn btn-soft btn-block" type="button" autofocus onclick="dismissCancel()">Volver</button>
