@@ -346,10 +346,10 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .itile.warn { background: var(--color-warning-bg); }
 .itile.warn b, .itile.warn span { color: var(--color-warning-strong); }
 .stats.one { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-.stats.one .stat { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "ic n" "l l"; align-items: center; column-gap: 12px; row-gap: 6px; padding: 14px 16px; }
+.stats.one .stat { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "ic n" "l n"; align-items: center; column-gap: 12px; row-gap: 6px; padding: 14px 16px; }
 .stats.one .stat > div { display: contents; }
 .stats.one .stat .ic { grid-area: ic; }
-.stats.one .stat .n { grid-area: n; justify-self: end; width: 56px; text-align: center; font-size: 34px; line-height: 40px; font-variant-numeric: tabular-nums; }
+.stats.one .stat .n { grid-area: n; justify-self: end; align-self: center; width: 56px; text-align: center; font-size: 34px; line-height: 40px; font-variant-numeric: tabular-nums; }
 .stats.one .stat .go { grid-area: go; color: var(--color-text-secondary); display: inline-flex; }
 .stats.one .stat .l { grid-area: l; font-size: 15px; font-weight: 600; color: var(--color-text); }
 .stats.one .stat.danger .l, .stats.one .stat.danger .go { color: var(--color-danger); }
