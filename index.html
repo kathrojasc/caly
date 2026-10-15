@@ -3080,12 +3080,6 @@ function renderAdminInicio(){
       <div class="lc-row"><div class="lc-url tnum">${escapeHtml(bookingLink())}</div><button class="btn btn-primary btn-sm" type="button" onclick="copyBookingLink()">Copiar</button></div>
     </div>
     <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:12px;" onclick="goNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
-    <div class="hcards">
-      <button type="button" class="hcard" onclick="goHoy()"><span class="ic">${icon('calendar', 22)}</span><span class="hc-n">${todayAppts.length}</span><span class="hc-l">Citas hoy</span><span class="hc-go">${icon('right', 18, 2.4)}</span></button>
-      <button type="button" class="hcard" onclick="goAgenda()"><span class="ic">${icon('clock', 22)}</span><span class="hc-n">${next7Count}</span><span class="hc-l">Próximos 7 días</span><span class="hc-go">${icon('right', 18, 2.4)}</span></button>
-      <button type="button" class="hcard${pendingCount > 0 ? ' danger' : ''}" onclick="goPendientes()"><span class="ic">${icon('alert', 22)}</span><span class="hc-n">${pendingCount}</span><span class="hc-l">Por resolver</span><span class="hc-go">${icon('right', 18, 2.4)}</span></button>
-      <div class="hcard${pendingPayCount > 0 ? ' warn' : ''}"><span class="ic">${icon('info', 22)}</span><span class="hc-n">${pendingPayCount}</span><span class="hc-l">Pagos pendientes</span></div>
-    </div>
     ${(() => {
       const wc = waitingAppts().length;
       return wc ? `
@@ -3116,7 +3110,7 @@ function renderAdminInicio(){
     ${list.length > 2 ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:12px;" onclick="goPendientes()">Ver más (${list.length - 2})</button>` : ''}`;
     })() : ''}
 
-    <h2 class="title-2" id="hoy-anchor" style="scroll-margin-top:16px;">Tu agenda</h2>
+    <div class="row between" style="flex-wrap:nowrap;margin-top:28px;"><h2 class="title-2" id="hoy-anchor" style="scroll-margin-top:16px;margin:0;">Tu agenda</h2>${pendingPayCount ? chip('warning', `${pendingPayCount} por cobrar`) : ''}</div>
     ${[[todayIso, 'Hoy'], [addDaysISO(todayIso, 1), 'Mañana']].map(([iso, label]) => {
       const list = dayAppts(iso);
       return `
