@@ -1828,7 +1828,7 @@ function dayGroupLabel(days){
 function toggleForm(key){ state.openForm = state.openForm === key ? null : key; render(); }
 function formGate(key, label, html){
   if (state.openForm === key) return `<div class="form-open">${html}<button class="btn-text" type="button" style="align-self:center;" onclick="toggleForm('${key}')">Cancelar</button></div>`;
-  return `<button class="btn btn-soft btn-sm add-btn" type="button" style="background:#fff;align-self:flex-start;" onclick="toggleForm('${key}')">${icon('plus', 18, 2.6)} ${label}</button>`;
+  return `<button class="btn btn-primary btn-sm add-btn" type="button" style="align-self:flex-start;" onclick="toggleForm('${key}')">${icon('plus', 18, 2.6)} ${label}</button>`;
 }
 function groupHeader(scope, g){
   const csv = g.days.join(',');
@@ -1840,7 +1840,7 @@ function groupHeader(scope, g){
       <div class="row"><button class="btn btn-primary btn-sm" type="button" onclick="saveDayEdit()">Guardar días</button><button class="btn btn-soft btn-sm" type="button" style="background:#fff;" onclick="cancelDayEdit()">Cancelar</button></div>
     </div>`;
   }
-  return `<div class="row between" style="flex-wrap:nowrap;margin-bottom:6px;"><p class="label">${dayGroupLabel(g.days)}</p><button class="btn-text" type="button" style="min-height:32px;padding:0 4px;" onclick="startDayEdit('${scope}', '${csv}')">Cambiar días</button></div>`;
+  return `<div class="row between" style="flex-wrap:nowrap;margin-bottom:6px;"><p class="label">${dayGroupLabel(g.days)}</p><button class="btn-text" type="button" style="min-height:32px;padding:0 4px;white-space:nowrap;flex-shrink:0;" onclick="startDayEdit('${scope}', '${csv}')">Cambiar días</button></div>`;
 }
 function startDayEdit(scope, csv){ state.dayEdit = { scope, daysCsv: csv, days: csv.split(',') }; render(); }
 function toggleDayEdit(d){ const de = state.dayEdit; if (!de) return; de.days = de.days.includes(d) ? de.days.filter(x => x !== d) : de.days.concat(d); render(); }
