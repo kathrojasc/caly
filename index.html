@@ -3031,7 +3031,7 @@ function renderAgendaView(){
   const list = agendaAppts(sel);
   return `${controls}
     <div style="margin-top:14px;">${renderMonthPicker(sel, now)}</div>
-    <p class="caption legend"><i class="cal-warn" aria-hidden="true"></i> Día con citas con problemas${sel !== now ? ' · <button class="btn-text" type="button" style="min-height:0;padding:0;" onclick="pickAgendaDay(\'' + now + '\')">Ir a hoy</button>' : ''}</p>
+    ${sel !== now ? `<div style="display:flex;justify-content:flex-end;margin-top:8px;"><button class="btn-text" type="button" style="min-height:36px;" onclick="pickAgendaDay('${now}')">Ir a hoy</button></div>` : ''}
     <div class="row" style="margin-top:18px;">
       ${fullClosed.length ? chip('danger', `Cerrado${fullClosed[0].note ? ': ' + escapeHtml(fullClosed[0].note) : ''}`) : (biz.length ? chip('neutral', `Atención ${biz.map(r => r.start + '–' + r.end).join(', ')}`) : chip('neutral', 'Sin atención ese día'))}
       ${closures.filter(c => c.startTime).map(c => chip('warning', `Cierre ${c.startTime}–${c.endTime}`)).join('')}
@@ -3497,9 +3497,7 @@ function weekStart(iso){ const dow = dateFromISO(iso).getDay(); return addDaysIS
 function citasTop(){
   return `
     ${adminHeader('Citas')}
-    <div class="citas-bar" style="justify-content:flex-end;">
-      <button class="btn btn-primary btn-sm" type="button" onclick="openNewAppt()">${icon('plus', 18, 2.6)} Nueva cita</button>
-    </div>`;
+    <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:20px;" onclick="openNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>`;
 }
 function renderAdminCitas(){
   return `${citasTop()}${renderAgendaView()}`;
