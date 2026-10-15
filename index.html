@@ -346,7 +346,7 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .itile.warn { background: var(--color-warning-bg); }
 .itile.warn b, .itile.warn span { color: var(--color-warning-strong); }
 .stats.one { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-.stats.one .stat { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "ic n go" "l l l"; align-items: center; column-gap: 12px; row-gap: 6px; padding: 14px 16px; }
+.stats.one .stat { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "ic n" "l l"; align-items: center; column-gap: 12px; row-gap: 6px; padding: 14px 16px; }
 .stats.one .stat > div { display: contents; }
 .stats.one .stat .ic { grid-area: ic; }
 .stats.one .stat .n { grid-area: n; text-align: right; font-size: 34px; line-height: 38px; }
@@ -3110,9 +3110,9 @@ function renderAdminInicio(){
     </div>
     <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:12px;" onclick="goNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
     <div class="stats one">
-      <button type="button" class="stat${todayAppts.length ? '' : ' zero'}" onclick="goAgenda()"><span class="ic">${icon('calendar', 22)}</span><div><div class="n">${todayAppts.length}</div><div class="l">Citas hoy</div></div><span class="go">${icon('right', 18, 2.4)}</span></button>
-      <button type="button" class="stat${next7Count ? '' : ' zero'}" onclick="goAgenda()"><span class="ic">${icon('clock', 22)}</span><div><div class="n">${next7Count}</div><div class="l">Próximos 7 días</div></div><span class="go">${icon('right', 18, 2.4)}</span></button>
-      <button type="button" class="stat ${pendingCount > 0 ? 'danger' : 'zero'}" onclick="goPendientes()"><span class="ic">${icon('alert', 22)}</span><div><div class="n">${pendingCount}</div><div class="l">Por resolver</div></div><span class="go">${icon('right', 18, 2.4)}</span></button>
+      <button type="button" class="stat${todayAppts.length ? '' : ' zero'}" onclick="goAgenda()"><span class="ic">${icon('calendar', 22)}</span><div><div class="n">${todayAppts.length}</div><div class="l">Citas hoy</div></div></button>
+      <button type="button" class="stat${next7Count ? '' : ' zero'}" onclick="goAgenda()"><span class="ic">${icon('clock', 22)}</span><div><div class="n">${next7Count}</div><div class="l">Próximos 7 días</div></div></button>
+      <button type="button" class="stat ${pendingCount > 0 ? 'danger' : 'zero'}" onclick="goPendientes()"><span class="ic">${icon('alert', 22)}</span><div><div class="n">${pendingCount}</div><div class="l">Por resolver</div></div></button>
       ${payOn() ? `      <div class="stat ${pendingPayCount > 0 ? 'warn' : 'zero'}"><span class="ic" style="${pendingPayCount > 0 ? 'color:var(--color-warning)' : ''}">${icon('info', 22)}</span><div><div class="n">${pendingPayCount}</div><div class="l">Pagos pendientes</div></div></div>` : ''}
     </div>
     ${(() => {
