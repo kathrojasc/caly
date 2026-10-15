@@ -677,6 +677,7 @@ function buildDefaultState(){
     citasMode: 'agenda',
     agendaMonth: false,
     openAppt: null,
+    apptView: null,
     openForm: null,
     calView: 'dia',
     calDate: '',
@@ -762,6 +763,7 @@ function loadState(){
       parsed.editingStaff = null;
       parsed.dayEdit = null;
       parsed.openAppt = null;
+      parsed.apptView = null;
       parsed.agendaMonth = false;
       if (parsed.citasMode === 'lista') parsed.citasMode = 'historial';
       if (!['agenda', 'historial'].includes(parsed.citasMode)) parsed.citasMode = 'agenda';
@@ -1015,7 +1017,7 @@ function setView(v){
   saveState();
   render();
 }
-function setAdminTab(t){ state.adminTab = t; render(); }
+function setAdminTab(t){ state.adminTab = t; state.apptView = null; render(); }
 
 function resetDemo(){
   if (state.confirmingReset) {
@@ -2884,22 +2886,34 @@ function goAgenda(){ state.adminTab = 'citas'; state.citasMode = 'agenda'; state
 function setCitasMode(m){ state.citasMode = m; state.openAppt = null; state.citasLimit = 15; render(); }
 function pickAgendaDay(iso){ state.agendaDate = iso; state.openAppt = null; state.agendaMonth = false; render(); }
 function shiftAgendaWeek(n){ state.agendaDate = addDaysISO(state.agendaDate || todayISO(), 7 * n); state.openAppt = null; render(); }
-function toggleAppt(id){ state.openAppt = state.openAppt === id ? null : id; render(); }
+let apptBackScroll = 0;
+function openApptDetail(id){ apptBackScroll = window.scrollY; state.apptView = id; render(); window.scrollTo(0, 0); }
+function closeApptDetail(){ state.apptView = null; render(); window.scrollTo(0, apptBackScroll); }
+function renderApptDetail(){
+  const a = state.appointments.find(x => x.id === state.apptView);
+  if (!a) { state.apptView = null; return renderAdminContent(); }
+  const now = todayISO();
+  const reason = apptPendingReason(a);
+  return `
+    <div style="display:flex;align-items:center;min-height:48px;margin-top:8px;">
+      <button class="icon-btn" type="button" onclick="closeApptDetail()" aria-label="Volver">${icon('left', 22, 2.4)}</button>
+    </div>
+    <h1 class="title-1" style="margin-top:12px;">Cita</h1>
+    <div style="margin-top:16px;">${citaCard(a, now, reason ? 'pend' : (a.rescheduleRequested ? 'wait' : false))}</div>`;
+}
 function apptRow(a, now){
   const c = staffColor(a.staffId);
   const reason = apptPendingReason(a);
   const meta = [a.serviceName, a.staffName].filter(Boolean).map(escapeHtml).join(' · ');
   const chipHtml = a.status === 'CANCELLED' ? chip('danger', 'Cancelada') : a.attendance === 'no_show' ? chip('warning', 'No asistió') : reason ? chip('danger', 'Por resolver') : a.rescheduleRequested ? chip('neutral', 'Esperando') : (!payOn() ? '' : a.paid ? chip('success', 'Pagado') : chip('warning', 'Por cobrar'));
-  const open = state.openAppt === a.id;
   return `
     <div class="arow-wrap">
-      <button type="button" class="arow${open ? ' open' : ''}" aria-expanded="${open}" onclick="toggleAppt('${a.id}')">
+      <button type="button" class="arow" onclick="openApptDetail('${a.id}')">
         <span class="ar-bar" style="background:${c.bd}"></span>
         <span class="ar-time tnum"><b>${a.start}</b><span>${a.end}</span></span>
         <span class="ar-main"><b>${escapeHtml(a.name)}</b>${meta ? `<span>${meta}</span>` : ''}</span>
         <span class="ar-side">${chipHtml}</span>
       </button>
-      ${open ? `<div class="ar-detail">${citaCard(a, now, reason ? 'pend' : (a.rescheduleRequested ? 'wait' : false))}</div>` : ''}
     </div>`;
 }
 function renderMonthPicker(sel, now){
@@ -3877,6 +3891,7 @@ const ADMIN_NAV = [
 ];
 
 function renderAdminContent(){
+  if (state.apptView) return renderApptDetail();
   switch (state.adminTab) {
     case 'citas': return renderAdminCitas();
     case 'clientes': return renderAdminClientes();
