@@ -635,6 +635,7 @@ function buildDefaultState(){
     ],
     roundRobinCursor: 0,
     allowClientStaffPick: true,
+    trackPayments: true,
     patients: {
       '30111222': { docType: 'DNI', nombres: 'Marina', apellidos: 'Ibáñez', name: 'Marina Ibáñez', phone: '11-4455-6677', passHash: hashPw('marina123'), mustChange: false, createdBy: 'self' },
       '28999888': { docType: 'DNI', nombres: 'Julián', apellidos: 'Ortiz', name: 'Julián Ortiz', phone: '11-2233-4455', passHash: hashPw('julian123'), mustChange: false, createdBy: 'self' },
@@ -727,6 +728,7 @@ function loadState(){
       if (!Array.isArray(parsed.staff) || !parsed.staff.length) parsed.staff = def.staff;
       if (typeof parsed.roundRobinCursor !== 'number') parsed.roundRobinCursor = 0;
       if (typeof parsed.allowClientStaffPick !== 'boolean') parsed.allowClientStaffPick = false;
+      if (typeof parsed.trackPayments !== 'boolean') parsed.trackPayments = true;
       if (!parsed.newRule || !parsed.newRule.staffId) parsed.newRule = def.newRule;
       if (typeof parsed.newStaffName !== 'string') parsed.newStaffName = '';
       if (!Array.isArray(parsed.businesses) || !parsed.businesses.length) parsed.businesses = def.businesses;
@@ -1328,6 +1330,13 @@ function startReschedule(id){
   render();
 }
 
+function payOn(){ return state.trackPayments !== false; }
+function toggleTrackPayments(){
+  state.trackPayments = !payOn();
+  saveState();
+  render();
+  showToast(payOn() ? 'Control de pagos activado' : 'Control de pagos desactivado');
+}
 function togglePaid(id){
   const appt = state.appointments.find(a => a.id === id);
   if (!appt) return;
@@ -2780,10 +2789,11 @@ function statusChip(a){
   return a.status === 'CANCELLED' ? chip('danger', 'Cancelada', false, 'pay') : '';
 }
 function paidChip(a){
-  if (a.status === 'CANCELLED') return '';
+  if (a.status === 'CANCELLED' || !payOn()) return '';
   return `<button class="chip pay ${a.paid ? 'chip-success' : 'chip-warning'}" type="button" onclick="togglePaid('${a.id}')" aria-label="${a.paid ? 'Pagado' : 'Pago pendiente'}: tocar para cambiar">${a.paid ? 'Pagado' : 'Pago pendiente'}</button>`;
 }
 function payAction(a){
+  if (!payOn()) return '';
   return a.paid
     ? `<button class="btn btn-sm btn-soft pay-btn" type="button" onclick="togglePaid('${a.id}')">${icon('check', 18, 2.6)} Pagado · Deshacer</button>`
     : `<button class="btn btn-sm btn-primary pay-btn" type="button" onclick="togglePaid('${a.id}')">${icon('check', 18, 2.6)} Marcar como pagado</button>`;
@@ -2866,7 +2876,7 @@ function apptRow(a, now){
   const c = staffColor(a.staffId);
   const reason = apptPendingReason(a);
   const meta = [a.serviceName, a.staffName].filter(Boolean).map(escapeHtml).join(' · ');
-  const chipHtml = reason ? chip('danger', 'Por resolver') : a.rescheduleRequested ? chip('neutral', 'Esperando') : (a.paid ? chip('success', 'Pagado') : chip('warning', 'Por cobrar'));
+  const chipHtml = reason ? chip('danger', 'Por resolver') : a.rescheduleRequested ? chip('neutral', 'Esperando') : (!payOn() ? '' : a.paid ? chip('success', 'Pagado') : chip('warning', 'Por cobrar'));
   const open = state.openAppt === a.id;
   return `
     <div class="arow-wrap">
@@ -3103,7 +3113,7 @@ function renderAdminInicio(){
       <button type="button" class="stat${todayAppts.length ? '' : ' zero'}" onclick="goAgenda()"><span class="ic">${icon('calendar', 22)}</span><div><div class="n">${todayAppts.length}</div><div class="l">Citas hoy</div></div><span class="go">${icon('right', 18, 2.4)}</span></button>
       <button type="button" class="stat${next7Count ? '' : ' zero'}" onclick="goAgenda()"><span class="ic">${icon('clock', 22)}</span><div><div class="n">${next7Count}</div><div class="l">Próximos 7 días</div></div><span class="go">${icon('right', 18, 2.4)}</span></button>
       <button type="button" class="stat ${pendingCount > 0 ? 'danger' : 'zero'}" onclick="goPendientes()"><span class="ic">${icon('alert', 22)}</span><div><div class="n">${pendingCount}</div><div class="l">Por resolver</div></div><span class="go">${icon('right', 18, 2.4)}</span></button>
-      <div class="stat ${pendingPayCount > 0 ? 'warn' : 'zero'}"><span class="ic" style="${pendingPayCount > 0 ? 'color:var(--color-warning)' : ''}">${icon('info', 22)}</span><div><div class="n">${pendingPayCount}</div><div class="l">Pagos pendientes</div></div></div>
+      ${payOn() ? `      <div class="stat ${pendingPayCount > 0 ? 'warn' : 'zero'}"><span class="ic" style="${pendingPayCount > 0 ? 'color:var(--color-warning)' : ''}">${icon('info', 22)}</span><div><div class="n">${pendingPayCount}</div><div class="l">Pagos pendientes</div></div></div>` : ''}
     </div>
     ${(() => {
       const wc = waitingAppts().length;
@@ -3160,7 +3170,7 @@ function citaCard(a, now, mode){
   else if (wait) { const d = daysWaiting(a); chips = `<span class="chip-hero ${d >= 3 ? 'warn' : 'neu'}">Esperando respuesta · ${d === 0 ? 'desde hoy' : `hace ${d} día${d === 1 ? '' : 's'}`}</span>`; }
   else if (cancelled) chips = `<span class="chip-hero cancel">Cancelada${a.cancelledBy === 'client' ? ' por el cliente' : ''}</span>`;
   else {
-    chips = `<span class="chip-hero ${a.paid ? 'ok' : 'warn'}">${a.paid ? 'Pagado' : 'Pago pendiente'}</span>`;
+    chips = payOn() ? `<span class="chip-hero ${a.paid ? 'ok' : 'warn'}">${a.paid ? 'Pagado' : 'Pago pendiente'}</span>` : '';
     if (a.attendance === 'no_show') chips += `<span class="chip-hero warn">No asistió</span>`;
   }
   const btns = [];
@@ -3174,7 +3184,7 @@ function citaCard(a, now, mode){
     btns.push(B('', `openMove('${a.id}')`, icon('calendar', 20), 'Mover'));
     btns.push(B('danger', `askCancel('${a.id}')`, icon('close', 20, 2.4), 'Cancelar'));
   } else if (!cancelled) {
-    btns.push(B('', `togglePaid('${a.id}')`, icon('check', 20, 2.4), a.paid ? 'Deshacer pago' : 'Marcar pagado'));
+    if (payOn()) btns.push(B('', `togglePaid('${a.id}')`, icon('check', 20, 2.4), a.paid ? 'Deshacer pago' : 'Marcar pagado'));
     if (upcoming) {
       btns.push(B('', `sendReminder('${a.id}')`, icon('chat', 20), 'Recordar', `aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}"`));
       btns.push(B('', `openMove('${a.id}')`, icon('calendar', 20), 'Mover'));
@@ -3186,7 +3196,7 @@ function citaCard(a, now, mode){
   }
   return `
     <div class="hero light">
-      <div class="chip-row">${chips}</div>
+      ${chips ? `<div class="chip-row">${chips}</div>` : ''}
       <div>
         <div class="h-title">${when} · ${a.start}</div>
         <div class="h-sub">${escapeHtml(a.name)}</div>
@@ -3774,6 +3784,17 @@ function renderAdminCuenta(){
     </div>
 
     ${renderAdminMarca()}
+
+    <h2 class="title-2">Pagos</h2>
+    <div class="card">
+      <div class="row between" style="flex-wrap:nowrap;">
+        <div style="min-width:0;">
+          <p class="card-title" style="font-size:17px;">Control de pagos</p>
+          <p class="secondary" style="margin-top:2px;">Muestra en cada cita si el cliente ya pagó o tiene el pago pendiente, y te deja marcarlo. Si lo apagas, desaparecen las etiquetas y los pagos pendientes.</p>
+        </div>
+        <button class="switch" type="button" role="switch" aria-checked="${payOn()}" aria-label="Control de pagos" onclick="toggleTrackPayments()"></button>
+      </div>
+    </div>
 
     <h2 class="title-2">Tu plan</h2>
     <div class="card stack">
