@@ -1046,7 +1046,6 @@ function apptPendingReason(a){
   if (a.status !== 'CONFIRMED' || a.rescheduleRequested || a.date < todayISO()) return null;
   if (closureBlocks(a.date, a.start, a.end)) return isClosedDay(a.date) ? 'Día cerrado' : 'Cierre en ese horario';
   if (doubleWith(a)) return 'Doble reserva';
-  if (a.manual) return null;   // el admin la fijó a mano, fuera de la grilla
   const dow = String(dayOfWeek(a.date));
   if (!insideRanges(state.businessHours[dow], a.start, a.end)) return 'Fuera del horario del negocio';
   const m = state.staff.find(x => x.id === a.staffId);
@@ -1180,7 +1179,7 @@ function showToast(msg){
   clearTimeout(window.__toastTimer);
   window.__toastTimer = setTimeout(() => { state.toast = null; renderToast(); }, 2200);
 }
-const REQUIRED_RE = /^((login|reg|na|cd)-type|login-doc|auth-email|reg-(nombres|apellidos|doc|phone)|perfil-(nombres|apellidos|phone)|cd-(doc|nombres|apellidos|phone|from|st|et)|mg-dupe|sv-name-.+|ns-(name|min)|bh-(start|end)|cfg-(slot|buffer|notice|window|cancel)|new-staff-name|nr-(start|end)-.+|of-from-.+|brand-name|acc-(name|email)|na-(dni|nombres|apellidos|phone)|nb-(name|user|pass)|np-.+|manual-time|sa-.+)$/;
+const REQUIRED_RE = /^((login|reg|na|cd)-type|login-doc|auth-email|reg-(nombres|apellidos|doc|phone)|perfil-(nombres|apellidos|phone)|cd-(doc|nombres|apellidos|phone|from|st|et)|mg-dupe|sv-(name|min)|es-name|ns-(name|min)|bh-(start|end)|cfg-(slot|buffer|notice|window|cancel)|new-staff-name|nr-(start|end)-.+|of-from-.+|brand-name|acc-(name|email)|na-(dni|nombres|apellidos|phone)|nb-(name|user|pass)|manual-time|sa-.+)$/;
 function markRequired(){
   const root = document.getElementById('view');
   if (!root) return;
@@ -1620,6 +1619,17 @@ function manualWarnings(date, start, end, staff){
   }
   return w;
 }
+function manualPick(date, start, end, svcId, pickId){
+  const cands = pickId ? serviceStaff(svcId).filter(m => m.id === pickId) : serviceStaff(svcId);
+  let why = 'No hay un trabajador disponible para ese servicio';
+  for (const m of cands) {
+    const w = manualWarnings(date, start, end, m);
+    if (w.length) { why = w[0]; continue; }
+    if (staffConflict(m.id, date, start, end, null)) { why = 'Choca con otra cita'; continue; }
+    return { staff: m, why: null };
+  }
+  return { staff: null, why };
+}
 function toggleManual(){ const b = ab(); b.manualOpen = !b.manualOpen; b.manualError = null; render(); }
 function setManualTime(){
   const b = ab();
@@ -1630,6 +1640,8 @@ function setManualTime(){
   const end = timeToMinutes(v) + dur;
   if (end >= 24 * 60) { b.manualError = 'La cita no puede terminar después de medianoche.'; render(); return; }
   b.manualTime = v;
+  const chk = manualPick(b.selectedDate, v, minutesToTime(end), bookingServiceId(b), pickIdFor(b));
+  if (!chk.staff) { b.manualError = `${chk.why}. Elige una hora que cumpla las reglas.`; b.selectedSlot = null; render(); return; }
   b.manualError = null;
   b.selectedSlot = { start: v, end: minutesToTime(end), manual: true };
   render();
@@ -1727,10 +1739,9 @@ function createAdminAppointment(){
   }
   let assigned = null;
   if (n.selectedSlot.manual) {
-    const pool = (pickId ? serviceStaff(svcId).filter(m => m.id === pickId) : serviceStaff(svcId))
-      .filter(m => !staffConflict(m.id, n.selectedDate, n.selectedSlot.start, n.selectedSlot.end, null));
-    assigned = pool.find(m => manualWarnings(n.selectedDate, n.selectedSlot.start, n.selectedSlot.end, m).length === 0) || pool[0] || null;
-    if (!assigned) return fail('Choca con otra cita. Elige otra hora.');
+    const chk = manualPick(n.selectedDate, n.selectedSlot.start, n.selectedSlot.end, svcId, pickId);
+    assigned = chk.staff;
+    if (!assigned) return fail(`${chk.why}. Elige otra hora.`);
   } else {
     assigned = assignStaffRoundRobin(n.selectedDate, n.selectedSlot.start, n.selectedSlot.end, null, pickId, svcId, true);
     if (!assigned) return fail('Ese horario se acaba de ocupar. Elige otro.');
