@@ -378,6 +378,9 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .drawer-body { overflow-y: auto; padding: 0 0 20px; -webkit-overflow-scrolling: touch; }
 .drawer-foot { padding: 12px 0 max(16px, env(safe-area-inset-bottom)); border-top: 1px solid var(--color-border); background: #fff; }
 .dr-block { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-m); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.dr-day { display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-top: 1px solid var(--color-border); }
+.dr-day:first-of-type { border-top: 0; padding-top: 0; }
+.dr-dayname { font-weight: 700; font-size: 16px; }
 .dr-range { display: flex; align-items: center; gap: 8px; }
 .dr-range input { flex: 1; min-width: 0; background: #fff; border: 1px solid var(--color-border); }
 .icon-x { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--color-text-secondary); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; }
@@ -2375,18 +2378,25 @@ function startEditStaff(id){
   state.drawerAnim = true;
   state.staffDraft = {
     name: m.name,
-    blocks: groupSchedule(m.schedule).map(g => ({ days: g.days.slice(), ranges: g.ranges.map(r => ({ start: r.start, end: r.end })) })),
+    sched: JSON.parse(JSON.stringify(m.schedule || {})),
     off: (m.timeOff || []).map(o => ({ id: o.id, from: o.from, to: o.to, note: o.note || '' }))
   };
   render();
 }
 function dName(v){ state.staffDraft.name = v; }
-function dDay(bi, d){ const b = state.staffDraft.blocks[bi]; b.days = b.days.includes(d) ? b.days.filter(x => x !== d) : b.days.concat(d); render(); }
-function dRange(bi, ri, f, v){ state.staffDraft.blocks[bi].ranges[ri][f] = v; }
-function dAddRange(bi){ const r = state.staffDraft.blocks[bi].ranges; const last = r[r.length - 1]; r.push({ start: last ? last.end : '09:00', end: last && last.end < '20:00' ? '20:00' : '18:00' }); render(); }
-function dDelRange(bi, ri){ const b = state.staffDraft.blocks[bi]; b.ranges.splice(ri, 1); if (!b.ranges.length) state.staffDraft.blocks.splice(bi, 1); render(); }
-function dAddBlock(){ state.staffDraft.blocks.push({ days: [], ranges: [{ start: '09:00', end: '18:00' }] }); render(); }
-function dDelBlock(bi){ state.staffDraft.blocks.splice(bi, 1); render(); }
+function dRange(day, ri, f, v){ state.staffDraft.sched[day][ri][f] = v; }
+function dAddRange(day){
+  const bh = state.businessHours[day] || [];
+  if (!bh.length) return showToast('El negocio no atiende ese día');
+  const r = state.staffDraft.sched[day] || [];
+  const start = r.length ? r[r.length - 1].end : bh[0].start;
+  const end = bh[bh.length - 1].end;
+  if (start >= end) return showToast('No queda espacio dentro del horario del negocio');
+  r.push({ start, end });
+  state.staffDraft.sched[day] = r;
+  render();
+}
+function dDelRange(day, ri){ const r = state.staffDraft.sched[day]; r.splice(ri, 1); if (!r.length) delete state.staffDraft.sched[day]; render(); }
 function dOff(i, f, v){ state.staffDraft.off[i][f] = v; }
 function dAddOff(){ state.staffDraft.off.push({ id: 'of' + Date.now(), from: '', to: '', note: '' }); render(); }
 function dDelOff(i){ state.staffDraft.off.splice(i, 1); render(); }
@@ -2397,20 +2407,17 @@ function saveStaffDraft(){
   const name = (d.name || '').trim();
   if (name.length < 2) return showToast('Ingresa el nombre del trabajador');
   const sched = {};
-  for (const b of d.blocks) {
-    if (!b.days.length) return showToast('Marca al menos un día en cada horario, o quítalo');
-    for (const r of b.ranges) {
-      if (!r.start || !r.end || r.start >= r.end) return showToast('La hora de inicio debe ser antes que la de fin');
-      for (const day of b.days) {
-        if (!insideRanges(state.businessHours[day] || [], r.start, r.end)) return showToast(`${r.start} – ${r.end} está fuera del horario del negocio el ${WEEKDAYS_LONG[day].toLowerCase()}`);
-        sched[day] = sched[day] || [];
-        if (!sched[day].some(x => x.start === r.start && x.end === r.end)) sched[day].push({ start: r.start, end: r.end });
-      }
+  for (const day of DAY_ORDER) {
+    for (const r of (d.sched[day] || [])) {
+      if (!r.start || !r.end || r.start >= r.end) return showToast(`${WEEKDAYS_LONG[day]}: la hora de inicio debe ser antes que la de fin`);
+      if (!insideRanges(state.businessHours[day] || [], r.start, r.end)) return showToast(`${WEEKDAYS_LONG[day]}: ${r.start} – ${r.end} está fuera del horario del negocio`);
+      sched[day] = sched[day] || [];
+      if (!sched[day].some(x => x.start === r.start && x.end === r.end)) sched[day].push({ start: r.start, end: r.end });
     }
   }
   for (const day of Object.keys(sched)) {
     sched[day].sort((a, b) => a.start.localeCompare(b.start));
-    for (let i = 1; i < sched[day].length; i++) if (sched[day][i].start < sched[day][i - 1].end) return showToast(`Hay horarios que se cruzan el ${WEEKDAYS_LONG[day].toLowerCase()}`);
+    for (let i = 1; i < sched[day].length; i++) if (sched[day][i].start < sched[day][i - 1].end) return showToast(`${WEEKDAYS_LONG[day]}: hay horarios que se cruzan`);
   }
   const off = [];
   for (const o of d.off) {
@@ -4023,20 +4030,26 @@ function renderStaffDrawer(){
           <div class="field"><label for="es-name">Nombre</label><input id="es-name" value="${escapeHtml(d.name)}" oninput="dName(this.value)"></div>
 
           <div class="stack" style="gap:10px;">
-            <p class="label">Horario</p>
-            ${d.blocks.map((b, bi) => `
-              <div class="dr-block">
-                ${dayPicks(b.days, x => `dDay(${bi},'${x}')`)}
-                ${b.ranges.map((r, ri) => `
+            <p class="label">Horario por día</p>
+            ${DAY_ORDER.map(day => {
+              const rs = d.sched[day] || [];
+              const bh = state.businessHours[day] || [];
+              return `
+              <div class="dr-day">
+                <div class="row between" style="flex-wrap:nowrap;">
+                  <p class="dr-dayname">${WEEKDAYS_LONG[day]}</p>
+                  <span class="hint">${bh.length ? 'Negocio: ' + bh.map(r => r.start + ' – ' + r.end).join(', ') : 'Negocio cerrado'}</span>
+                </div>
+                ${rs.map((r, ri) => `
                   <div class="dr-range">
-                    <input id="dr-s-${bi}-${ri}" type="time" value="${r.start}" aria-label="Desde" onchange="dRange(${bi},${ri},'start',this.value)">
+                    <input id="dr-s-${day}-${ri}" type="time" value="${r.start}" aria-label="${WEEKDAYS_LONG[day]} desde" onchange="dRange('${day}',${ri},'start',this.value)">
                     <span>–</span>
-                    <input id="dr-e-${bi}-${ri}" type="time" value="${r.end}" aria-label="Hasta" onchange="dRange(${bi},${ri},'end',this.value)">
-                    <button class="icon-x" type="button" onclick="dDelRange(${bi},${ri})" aria-label="Quitar franja">${icon('close', 18, 2.4)}</button>
+                    <input id="dr-e-${day}-${ri}" type="time" value="${r.end}" aria-label="${WEEKDAYS_LONG[day]} hasta" onchange="dRange('${day}',${ri},'end',this.value)">
+                    <button class="icon-x" type="button" onclick="dDelRange('${day}',${ri})" aria-label="Quitar franja del ${WEEKDAYS_LONG[day].toLowerCase()}">${icon('close', 18, 2.4)}</button>
                   </div>`).join('')}
-                <div class="row between" style="flex-wrap:nowrap;"><button class="btn-text" type="button" style="min-height:32px;padding:0;" onclick="dAddRange(${bi})">+ Otra franja</button><button class="btn-text danger" type="button" style="min-height:32px;padding:0;" onclick="dDelBlock(${bi})">Quitar</button></div>
-              </div>`).join('') || `<p class="secondary">Sin horario configurado.</p>`}
-            <button class="btn-text" type="button" style="align-self:flex-start;padding:0;" onclick="dAddBlock()">+ Agregar horario</button>
+                ${rs.length ? '' : '<p class="secondary">No atiende</p>'}
+                ${bh.length ? `<button class="btn-text" type="button" style="align-self:flex-start;min-height:32px;padding:0;" onclick="dAddRange('${day}')">${rs.length ? '+ Otra franja' : '+ Agregar horario'}</button>` : ''}
+              </div>`; }).join('')}
           </div>
 
           <div class="stack" style="gap:10px;">
