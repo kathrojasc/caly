@@ -996,6 +996,7 @@ function regLabel(a){
   const by = a.createdBy === 'client' ? 'lo reservó el cliente' : a.createdBy === 'admin' ? 'la creó el administrador' : '';
   return t ? `${tsShort(t)}${by ? ' (' + by + ')' : ''}` : 'sin registro de hora';
 }
+function sameInstant(a, b){ const x = apptCreatedAt(a), y = apptCreatedAt(b); return !!x && !!y && Math.abs(x - y) <= 10000; }
 function doubleBookings(){
   const today = todayISO(), seen = new Set(), out = [];
   state.appointments.filter(a => a.status === 'CONFIRMED' && a.date >= today).forEach(a => {
@@ -1013,7 +1014,7 @@ function checkDoubles(){
   doubleBookings().forEach(d => {
     if (state.dblSeen.includes(d.key)) return;
     state.dblSeen.push(d.key);
-    logEvent('system.double_booking', `Posible doble reserva el ${displayDateLong(d.a.date)}${d.a.staffName ? ' con ' + d.a.staffName : ''}. Primero se registró ${d.a.name} (${regLabel(d.a)}) y después ${d.b.name} (${regLabel(d.b)}).`, { role: 'system', actor: 'Caly (sistema)', doc: d.a.dni, apptId: d.a.id, data: { cita1: d.a.id, cita2: d.b.id, fecha: d.a.date } });
+    logEvent('system.double_booking', `Posible doble reserva el ${displayDateLong(d.a.date)}${d.a.staffName ? ' con ' + d.a.staffName : ''}. ${d.a.name} y ${d.b.name}: ${sameInstant(d.a, d.b) ? 'ambas citas se registraron en el mismo instante' : 'las citas se registraron en momentos distintos'}.`, { role: 'system', actor: 'Caly (sistema)', doc: d.a.dni, apptId: d.a.id, data: { cita1: d.a.id, cita2: d.b.id, fecha: d.a.date, 'registro cita 1': tsFull(apptCreatedAt(d.a) || 0), 'registro cita 2': tsFull(apptCreatedAt(d.b) || 0) } });
   });
 }
 function apptPendingReason(a){
@@ -1831,13 +1832,14 @@ function reportDoubleBookingAlert(iso, slot, clientName){
 function simulateDoubleBookingAlert(){
   const base = state.appointments.filter(a => a.status === 'CONFIRMED' && a.date >= todayISO() && !apptPendingReason(a)).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start))[0];
   if (!base) return showToast('Primero hace falta una cita próxima en el negocio de demo');
-  if (!base.createdAt) { base.createdAt = Date.now() - 4000; base.createdBy = base.createdBy || 'client'; }
+  const nowTs = Date.now();
+  base.createdAt = nowTs; base.createdBy = base.createdBy || 'client';
   const other = Object.keys(state.patients).find(d => d !== base.dni);
   const p = other ? state.patients[other] : null;
   state.appointments.push({
     id: 'a' + Date.now(), dni: other || '00000000', name: p ? p.name : 'Cliente de prueba', phone: p ? p.phone : '',
     date: base.date, start: base.start, end: base.end, status: 'CONFIRMED', paid: false,
-    staffId: base.staffId, staffName: base.staffName, serviceId: base.serviceId, serviceName: base.serviceName, manual: true, createdAt: Date.now(), createdBy: 'client',
+    staffId: base.staffId, staffName: base.staffName, serviceId: base.serviceId, serviceName: base.serviceName, manual: true, createdAt: nowTs, createdBy: 'client',
   });
   saveState();
   render();
@@ -3429,7 +3431,7 @@ function renderAdminInicio(){
         ${doubleBookings().map(d => `
           <div class="news-row alertrow" role="alert">
             <span class="news-dot" aria-hidden="true" style="background:var(--color-danger);"></span>
-            <div style="min-width:0;flex:1;"><p class="row-title" style="font-size:15px;line-height:20px;color:var(--color-danger);">Posible doble reserva</p><p class="secondary" style="font-size:14px;line-height:19px;">${escapeHtml(d.a.name)} y ${escapeHtml(d.b.name)} tienen cita el ${escapeHtml(displayDateShort(d.a.date))} a las ${d.a.start}${d.a.staffName ? ' con ' + escapeHtml(d.a.staffName) : ''}.</p><p class="secondary" style="font-size:14px;line-height:19px;margin-top:4px;"><b>Primero:</b> ${escapeHtml(d.a.name)}, ${escapeHtml(regLabel(d.a))}.<br><b>Después:</b> ${escapeHtml(d.b.name)}, ${escapeHtml(regLabel(d.b))}.</p><button class="btn btn-sm btn-danger-solid" type="button" style="margin-top:10px;" onclick="goAtencion()">Ver las citas</button></div>
+            <div style="min-width:0;flex:1;"><p class="row-title" style="font-size:15px;line-height:20px;color:var(--color-danger);">Posible doble reserva</p><p class="secondary" style="font-size:14px;line-height:19px;">${escapeHtml(d.a.name)} y ${escapeHtml(d.b.name)} tienen cita el ${escapeHtml(displayDateShort(d.a.date))} a las ${d.a.start}${d.a.staffName ? ' con ' + escapeHtml(d.a.staffName) : ''}.</p><p class="secondary" style="font-size:14px;line-height:19px;margin-top:4px;">${sameInstant(d.a, d.b) ? 'Ambas se registraron en el mismo instante.' : 'Se registraron en momentos distintos.'}</p><button class="btn btn-sm btn-danger-solid" type="button" style="margin-top:10px;" onclick="goAtencion()">Ver las citas</button></div>
           </div>`).join('')}
         ${state.activity.slice(0, 5).map(x => `
           <div class="news-row${x.read ? '' : ' unread'}">
@@ -3488,7 +3490,7 @@ function citaCard(a, now, mode){
         ${a.phone ? `<div class="h-meta tnum">${escapeHtml(a.phone)}</div>` : ''}
         ${meta ? `<div class="h-meta" style="margin-top:2px;">${meta}</div>` : ''}
       </div>
-      ${(() => { const o = reason === 'Doble reserva' ? doubleWith(a) : null; if (!o) return ''; const mine = apptCreatedAt(a) || 0, theirs = apptCreatedAt(o) || 0; return `<div class="hero-note alert" role="note">Se cruza con la cita de ${escapeHtml(o.name)} a las ${o.start}.<br>${mine || theirs ? (mine <= theirs ? 'Esta se registró primero' : 'Esta se registró después') : 'No hay hora de registro'}: ${regLabel(a)}. La otra: ${regLabel(o)}.<br>Cancela una de las dos y avísale.</div>`; })()}
+      ${(() => { const o = reason === 'Doble reserva' ? doubleWith(a) : null; if (!o) return ''; return `<div class="hero-note alert" role="note">Se cruza con la cita de ${escapeHtml(o.name)} a las ${o.start}.<br>${sameInstant(a, o) ? 'Ambas citas se registraron en el mismo instante.' : 'Las dos citas se registraron en momentos distintos.'}<br>Cancela una de las dos y avísale.</div>`; })()}
       ${btns.length ? `<div class="hero-actions c${btns.length}">${btns.join('')}</div>` : ''}
     </div>`;
 }
