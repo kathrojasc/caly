@@ -395,6 +395,10 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .log-detail { padding: 0 14px 14px 70px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 20px; color: var(--color-text-secondary); }
 .log-detail p { margin: 0; overflow-wrap: anywhere; }
 .log-detail b { color: var(--color-text); }
+.tag-staff { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; background: var(--color-surface); color: var(--color-text); font-size: 14px; font-weight: 500; }
+.tag-staff .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.pill-opt svg { vertical-align: -3px; }
+.form-open .field input:not([type=checkbox]):not([type=file]):not([type=color]), .form-open .field select, .pay-block .field input:not([type=checkbox]):not([type=file]):not([type=color]), .pay-block .field select { background-color: var(--color-surface); border: 1.5px solid #DADADF; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
@@ -3159,8 +3163,7 @@ function renderAgendaView(){
     </div>
       ${sel !== now ? `<button class="btn-text" type="button" style="white-space:nowrap;min-height:36px;flex-shrink:0;" onclick="pickAgendaDay('${now}')">Ir a hoy</button>` : ''}
     </div>
-    ${list.length ? `<div class="rows" style="margin-top:14px;">${list.map(a => citaCard(a, now, citaMode(a))).join('')}</div>` : `<p class="secondary" style="margin-top:16px;">No hay citas este día.</p>`}
-    <button class="btn btn-soft btn-sm" type="button" style="margin-top:14px;" onclick="openNewAppt('${sel}')" ${sel < now ? 'disabled' : ''}>${icon('plus', 18, 2.6)} Agendar en este día</button>`;
+    ${list.length ? `<div class="rows" style="margin-top:14px;">${list.map(a => citaCard(a, now, citaMode(a))).join('')}</div>` : `<p class="secondary" style="margin-top:16px;">No hay citas este día.</p>`}`;
 }
 function calLayout(list){
   const out = []; let cluster = []; let clusterEnd = -1;
@@ -3659,8 +3662,10 @@ function renderServicesEditor(){
           </div>
           ${editing ? `<div class="row"><button class="btn btn-primary btn-sm" type="button" onclick="saveService('${v.id}')">Guardar</button><button class="btn btn-soft btn-sm" type="button" onclick="startEditService('${v.id}')">Cancelar</button></div>` : ''}
           <div>
-            <p class="label" style="margin-bottom:8px;">Trabajadores que lo prestan</p>
-            <div class="pills">${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${v.staffIds.includes(m.id)}" onclick="toggleServiceStaff('${v.id}','${m.id}')">${escapeHtml(m.name)}</button>`).join('')}</div>
+            <p class="label" style="margin-bottom:8px;">Trabajadores que lo prestan${editing ? ' · toca para elegir' : ''}</p>
+            ${editing
+              ? `<div class="pills">${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${v.staffIds.includes(m.id)}" onclick="toggleServiceStaff('${v.id}','${m.id}')">${v.staffIds.includes(m.id) ? icon('check', 16, 3) + ' ' : ''}${escapeHtml(m.name)}</button>`).join('')}</div>`
+              : `<div class="row" style="gap:8px;">${serviceStaff(v.id).map(m => `<span class="tag-staff"><i class="dot" style="background:${staffColor(m.id).bd}"></i>${escapeHtml(m.name)}</span>`).join('') || '<span class="secondary">Ninguno</span>'}</div>`}
             ${noStaff ? `<p class="hint" style="margin-top:8px;">Mientras no tenga trabajadores, este servicio no se puede reservar.</p>` : ''}
           </div>
         </div>`;}).join('')}
@@ -3673,7 +3678,7 @@ function renderServicesEditor(){
       </div>
       <div>
         <p class="label" style="margin-bottom:8px;">Trabajadores que lo prestan</p>
-        <div class="pills">${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${nsv.staffIds.includes(m.id)}" onclick="toggleNewServiceStaff('${m.id}')">${escapeHtml(m.name)}</button>`).join('')}</div>
+        <div class="pills">${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${nsv.staffIds.includes(m.id)}" onclick="toggleNewServiceStaff('${m.id}')">${nsv.staffIds.includes(m.id) ? icon('check', 16, 3) + ' ' : ''}${escapeHtml(m.name)}</button>`).join('')}</div>
       </div>
       <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="addService()">Crear servicio</button>
     </div>`)}</div>`;
