@@ -4003,7 +4003,11 @@ function renderAdminHorarios(){
   return `
     ${adminHeader('Horarios')}
 
-    <h2 class="title-2" style="margin-top:28px;">Equipo y asignación</h2>
+    ${renderBusinessHoursSection()}
+
+    ${renderClosuresSection()}
+
+    <h2 class="title-2">Equipo y asignación</h2>
     <div class="card stack">
       <p class="secondary">Cada trabajador tiene su propio horario. Cuando un cliente reserva, Caly asigna automáticamente al trabajador disponible siguiendo un turno rotativo (round robin), para repartir las citas de forma pareja.</p>
       ${formGate('staff', 'Agregar trabajador', `<div class="row row-end" style="flex-wrap:nowrap;">
@@ -4040,11 +4044,7 @@ function renderAdminHorarios(){
 
     ${renderServicesSection()}
 
-    ${renderClosuresSection()}
-
-    ${renderBusinessHoursSection()}
-
-    <h2 class="title-2" >Configuración de citas</h2>
+    <h2 class="title-2">Configuración de citas</h2>
     <div class="card stack">
       <div class="grid-2">
         ${isProPlan() && activeServices().length ? `<input id="cfg-slot" type="hidden" value="${cfg.slotMinutes}"><p class="secondary">La duración de cada cita la define su servicio (ver Servicios arriba).</p>` : `<div class="field"><label for="cfg-slot">Duración de la cita (min)</label><input id="cfg-slot" type="number" inputmode="numeric" value="${cfg.slotMinutes}"></div>`}
