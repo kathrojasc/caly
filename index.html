@@ -3572,7 +3572,13 @@ function renderClientDetail(doc){
     </form>
 
     <h2 class="title-2">Citas</h2>
-    ${appts.length ? `<div class="rows">${appts.slice().sort((x, y) => (y.date + y.start).localeCompare(x.date + x.start)).map(a => `<div><p class="caption" style="margin:0 4px 6px;">${escapeHtml(cap(displayDateShort(a.date)))}</p>${apptRow(a, todayISO())}</div>`).join('')}</div>` : `<div class="card"><p class="secondary">Todavía no tiene citas.</p></div>`}
+    ${appts.length ? (() => {
+      const now = todayISO();
+      const nx = appts.filter(a => a.status === 'CONFIRMED' && !isPastAppt(a)).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
+      const pv = appts.filter(a => !nx.includes(a)).sort((x, y) => (y.date + y.start).localeCompare(x.date + x.start));
+      const sec = (t, arr) => arr.length ? `<p class="card-title" style="font-size:17px;margin:${t === 'Próximas' ? '0' : '18px'} 0 10px;">${t}</p><div class="rows">${arr.map(a => citaCard(a, now, citaMode(a))).join('')}</div>` : '';
+      return sec('Próximas', nx) + sec('Anteriores y canceladas', pv);
+    })() : `<div class="card"><p class="secondary">Todavía no tiene citas.</p></div>`}
 
     <h2 class="title-2">Acceso</h2>
     <div class="card stack">
