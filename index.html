@@ -1130,7 +1130,8 @@ function serviceStaff(id){
   const v = findService(id);
   return v ? state.staff.filter(m => v.staffIds.includes(m.id)) : state.staff;
 }
-function activeServices(){ return state.services.filter(v => serviceStaff(v.id).length > 0); }
+function activeServices(){ return state.services.filter(v => !v.paused && serviceStaff(v.id).length > 0); }
+function serviceFutureAppts(id){ return state.appointments.filter(a => a.serviceId === id && a.status === 'CONFIRMED' && a.date >= todayISO()).length; }
 
 function getAvailableSlots(iso, excludeApptId, staffId, serviceId, ignoreNotice){
   const minutes = serviceMinutes(serviceId);
@@ -2537,8 +2538,7 @@ function toggleServiceStaff(svcId, staffId){
   render();
 }
 function deleteService(id){
-  const used = state.appointments.some(a => a.serviceId === id && a.status === 'CONFIRMED' && a.date >= todayISO());
-  if (used) return showToast('Hay citas próximas con este servicio. Reasígnalas o cancélalas primero');
+  if (serviceFutureAppts(id)) return showToast('Tiene citas por venir. Pausa el servicio para que no se agenden nuevas');
   state.services = state.services.filter(v => v.id !== id);
   saveState();
   render();
@@ -3790,11 +3790,12 @@ function startEditService(id){
   if (id !== 'new' && !v) return;
   state.editingService = id;
   state.drawerAnim = true;
-  state.svcDraft = v ? { name: v.name, minutes: v.minutes, staffIds: v.staffIds.slice() } : { name: '', minutes: 45, staffIds: [] };
+  state.svcDraft = v ? { name: v.name, minutes: v.minutes, staffIds: v.staffIds.slice(), paused: !!v.paused } : { name: '', minutes: 45, staffIds: [], paused: false };
   render();
 }
 function svName(v){ state.svcDraft.name = v; }
 function svMin(v){ state.svcDraft.minutes = v; }
+function svPause(p){ state.svcDraft.paused = p; render(); }
 function svStaff(id){ const d = state.svcDraft; d.staffIds = d.staffIds.includes(id) ? d.staffIds.filter(x => x !== id) : d.staffIds.concat(id); render(); }
 function saveServiceDraft(){
   const d = state.svcDraft;
@@ -3813,6 +3814,7 @@ function saveServiceDraft(){
     v.name = name;
     v.minutes = Math.round(minutes);
     v.staffIds = d.staffIds.slice();
+    v.paused = !!d.paused;
     state.appointments.forEach(a => { if (a.serviceId === v.id) a.serviceName = name; });
   }
   state.editingService = null;
@@ -3823,8 +3825,7 @@ function saveServiceDraft(){
 }
 function deleteServiceFromDrawer(){
   const id = state.editingService;
-  const used = state.appointments.some(a => a.serviceId === id && a.status === 'CONFIRMED' && a.date >= todayISO());
-  if (used) return showToast('Hay citas próximas con este servicio. Reasígnalas o cancélalas primero');
+  if (serviceFutureAppts(id)) return showToast('Tiene citas por venir. Pausa el servicio para que no se agenden nuevas');
   state.editingService = null;
   state.svcDraft = null;
   deleteService(id);
@@ -3849,7 +3850,17 @@ function renderServiceDrawer(){
             <p class="label" style="margin-bottom:8px;">Trabajadores que lo prestan · toca para elegir</p>
             <div class="pills">${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${d.staffIds.includes(m.id)}" onclick="svStaff('${m.id}')">${d.staffIds.includes(m.id) ? icon('check', 16, 3) + ' ' : ''}${escapeHtml(m.name)}</button>`).join('')}</div>
           </div>
-          ${isNew ? '' : `<button class="btn-text danger" type="button" style="align-self:center;" onclick="deleteServiceFromDrawer()">Eliminar servicio</button>`}
+          ${isNew ? '' : `<div>
+            <p class="label" style="margin-bottom:8px;">Nuevas reservas</p>
+            <div class="pills">
+              <button type="button" class="pill-opt" aria-pressed="${!d.paused}" onclick="svPause(false)">Activo</button>
+              <button type="button" class="pill-opt" aria-pressed="${!!d.paused}" onclick="svPause(true)">Pausado</button>
+            </div>
+            <p class="hint" style="margin-top:8px;">${d.paused ? 'Los clientes ya no pueden agendar este servicio. Las citas que ya existen se mantienen.' : 'Los clientes pueden agendar este servicio.'}</p>
+          </div>
+          ${(() => { const n = serviceFutureAppts(state.editingService); return n
+            ? `<p class="hint" style="text-align:center;">No se puede eliminar: tiene ${n} cita${n === 1 ? '' : 's'} por venir. Pausa el servicio para que no se agenden nuevas.</p>`
+            : `<button class="btn-text danger" type="button" style="align-self:center;" onclick="deleteServiceFromDrawer()">Eliminar servicio</button>`; })()}`}
         </div>
         <div class="drawer-foot">
           <button class="btn btn-primary btn-block" type="button" onclick="saveServiceDraft()">${isNew ? 'Crear servicio' : 'Guardar cambios'}</button>
@@ -3867,7 +3878,7 @@ function renderServicesEditor(){
           <div class="row between" style="flex-wrap:nowrap;">
             <div style="min-width:0;"><p class="row-title">${escapeHtml(v.name)}</p><p class="secondary">${v.minutes} min</p></div>
             <div class="row" style="flex-wrap:nowrap;gap:8px;">
-              ${noStaff ? chip('warning', 'Sin trabajador') : ''}
+              ${v.paused ? chip('neutral', 'Pausado') : noStaff ? chip('warning', 'Sin trabajador') : ''}
               <button class="btn btn-soft btn-sm" type="button" style="background:#fff;" onclick="startEditService('${v.id}')">Editar</button>
             </div>
           </div>
