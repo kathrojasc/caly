@@ -835,6 +835,7 @@ function loadState(){
       parsed.newClosed = Object.assign({}, def.newClosed, parsed.newClosed || {});
       parsed.newOff = Object.assign({}, def.newOff, parsed.newOff || {});
       parsed.editingService = null;
+      parsed.svcDraft = null;
       parsed.editingStaff = null;
       parsed.staffDraft = null;
       parsed.dayEdit = null;
@@ -3772,62 +3773,102 @@ function renderAdminCitas(){
   return `${citasTop()}${renderAgendaView()}`;
 }
 
-function startEditService(id){ state.editingService = state.editingService === id ? null : id; render(); }
-function saveService(id){
-  const v = findService(id);
-  if (!v) return;
-  const name = ($('sv-name-' + id).value || '').trim();
-  const minutes = Number($('sv-min-' + id).value);
+function startEditService(id){
+  if (state.editingService === id) { state.editingService = null; state.svcDraft = null; render(); return; }
+  const v = id === 'new' ? null : findService(id);
+  if (id !== 'new' && !v) return;
+  state.editingService = id;
+  state.drawerAnim = true;
+  state.svcDraft = v ? { name: v.name, minutes: v.minutes, staffIds: v.staffIds.slice() } : { name: '', minutes: 45, staffIds: [] };
+  render();
+}
+function svName(v){ state.svcDraft.name = v; }
+function svMin(v){ state.svcDraft.minutes = v; }
+function svStaff(id){ const d = state.svcDraft; d.staffIds = d.staffIds.includes(id) ? d.staffIds.filter(x => x !== id) : d.staffIds.concat(id); render(); }
+function saveServiceDraft(){
+  const d = state.svcDraft;
+  if (!d) return;
+  const name = (d.name || '').trim();
+  const minutes = Number(d.minutes);
   if (name.length < 2) return showToast('Ingresa el nombre del servicio');
   if (!(minutes >= 5 && minutes <= 480)) return showToast('La duración debe estar entre 5 y 480 min');
-  v.name = name;
-  v.minutes = Math.round(minutes);
-  state.appointments.forEach(a => { if (a.serviceId === id) a.serviceName = name; });
+  if (!d.staffIds.length) return showToast('Elige al menos un trabajador que lo preste');
+  const isNew = state.editingService === 'new';
+  if (isNew) {
+    state.services.push({ id: 'svc' + Date.now(), name, minutes: Math.round(minutes), staffIds: d.staffIds.slice() });
+  } else {
+    const v = findService(state.editingService);
+    if (!v) return;
+    v.name = name;
+    v.minutes = Math.round(minutes);
+    v.staffIds = d.staffIds.slice();
+    state.appointments.forEach(a => { if (a.serviceId === v.id) a.serviceName = name; });
+  }
   state.editingService = null;
+  state.svcDraft = null;
   saveState();
   render();
-  showToast('Servicio actualizado. Las citas ya agendadas conservan su duración');
+  showToast(isNew ? 'Servicio creado' : 'Cambios guardados. Las citas ya agendadas conservan su duración');
+}
+function deleteServiceFromDrawer(){
+  const id = state.editingService;
+  const used = state.appointments.some(a => a.serviceId === id && a.status === 'CONFIRMED' && a.date >= todayISO());
+  if (used) return showToast('Hay citas próximas con este servicio. Reasígnalas o cancélalas primero');
+  state.editingService = null;
+  state.svcDraft = null;
+  deleteService(id);
+}
+function renderServiceDrawer(){
+  const d = state.svcDraft;
+  if (!state.editingService || !d) return '';
+  const isNew = state.editingService === 'new';
+  const fresh = state.drawerAnim; state.drawerAnim = false;
+  return `
+    <div class="drawer-back${fresh ? ' fresh' : ''}">
+      <div class="drawer" role="dialog" aria-modal="true" aria-label="${isNew ? 'Nuevo servicio' : 'Editar servicio'}">
+        <div class="drawer-grip" aria-hidden="true"></div>
+        <div class="row between" style="flex-wrap:nowrap;">
+          <h2 class="title-3">${isNew ? 'Nuevo servicio' : 'Editar servicio'}</h2>
+          <button class="icon-btn" type="button" onclick="startEditService('${state.editingService}')" aria-label="Cerrar sin guardar">${icon('close', 20, 2.4)}</button>
+        </div>
+        <div class="drawer-body stack" style="gap:22px;">
+          <div class="field"><label for="sv-name">Nombre</label><input id="sv-name" placeholder="Ej: Masaje descontracturante" value="${escapeHtml(d.name)}" oninput="svName(this.value)"></div>
+          <div class="field"><label for="sv-min">Duración (min)</label><input id="sv-min" type="number" inputmode="numeric" value="${d.minutes}" oninput="svMin(this.value)"></div>
+          <div>
+            <p class="label" style="margin-bottom:8px;">Trabajadores que lo prestan · toca para elegir</p>
+            <div class="pills">${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${d.staffIds.includes(m.id)}" onclick="svStaff('${m.id}')">${d.staffIds.includes(m.id) ? icon('check', 16, 3) + ' ' : ''}${escapeHtml(m.name)}</button>`).join('')}</div>
+          </div>
+          ${isNew ? '' : `<button class="btn-text danger" type="button" style="align-self:center;" onclick="deleteServiceFromDrawer()">Eliminar servicio</button>`}
+        </div>
+        <div class="drawer-foot">
+          <button class="btn btn-primary btn-block" type="button" onclick="saveServiceDraft()">${isNew ? 'Crear servicio' : 'Guardar cambios'}</button>
+        </div>
+      </div>
+    </div>`;
 }
 function renderServicesEditor(){
-  const nsv = state.newService;
   return `
     <div class="rows">
       ${state.services.length === 0 ? `<p class="secondary">Todavía no creaste ningún servicio.</p>` : state.services.map(v => {
         const noStaff = serviceStaff(v.id).length === 0;
-        const editing = state.editingService === v.id;
         return `
         <div class="card-line stack" style="gap:12px;">
           <div class="row between" style="flex-wrap:nowrap;">
-            ${editing
-              ? `<div class="grid-2" style="flex:1;"><div class="field"><label for="sv-name-${v.id}">Nombre</label><input id="sv-name-${v.id}" value="${escapeHtml(v.name)}"></div><div class="field"><label for="sv-min-${v.id}">Duración (min)</label><input id="sv-min-${v.id}" type="number" inputmode="numeric" value="${v.minutes}"></div></div>`
-              : `<div style="min-width:0;"><p class="row-title">${escapeHtml(v.name)}</p><p class="secondary">${v.minutes} min</p></div>`}
-            <div class="row" style="flex-wrap:nowrap;gap:0;">
+            <div style="min-width:0;"><p class="row-title">${escapeHtml(v.name)}</p><p class="secondary">${v.minutes} min</p></div>
+            <div class="row" style="flex-wrap:nowrap;gap:8px;">
               ${noStaff ? chip('warning', 'Sin trabajador') : ''}
-              ${editing ? '' : `<button class="btn-text" type="button" onclick="startEditService('${v.id}')">Editar</button><button class="btn-text danger" type="button" onclick="deleteService('${v.id}')">Eliminar</button>`}
+              <button class="btn btn-soft btn-sm" type="button" style="background:#fff;" onclick="startEditService('${v.id}')">Editar</button>
             </div>
           </div>
-          ${editing ? `<div class="row"><button class="btn btn-primary btn-sm" type="button" onclick="saveService('${v.id}')">Guardar</button><button class="btn btn-soft btn-sm" type="button" onclick="startEditService('${v.id}')">Cancelar</button></div>` : ''}
           <div>
-            <p class="label" style="margin-bottom:8px;">Trabajadores que lo prestan${editing ? ' · toca para elegir' : ''}</p>
-            ${editing
-              ? `<div class="pills">${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${v.staffIds.includes(m.id)}" onclick="toggleServiceStaff('${v.id}','${m.id}')">${v.staffIds.includes(m.id) ? icon('check', 16, 3) + ' ' : ''}${escapeHtml(m.name)}</button>`).join('')}</div>`
-              : `<div class="row" style="gap:8px;">${serviceStaff(v.id).map(m => `<span class="tag-staff"><i class="dot" style="background:${staffColor(m.id).bd}"></i>${escapeHtml(m.name)}</span>`).join('') || '<span class="secondary">Ninguno</span>'}</div>`}
+            <p class="label" style="margin-bottom:8px;">Trabajadores que lo prestan</p>
+            <div class="row" style="gap:8px;">${serviceStaff(v.id).map(m => `<span class="tag-staff"><i class="dot" style="background:${staffColor(m.id).bd}"></i>${escapeHtml(m.name)}</span>`).join('') || '<span class="secondary">Ninguno</span>'}</div>
             ${noStaff ? `<p class="hint" style="margin-top:8px;">Mientras no tenga trabajadores, este servicio no se puede reservar.</p>` : ''}
           </div>
         </div>`;}).join('')}
     </div>
-    <div style="margin-top:14px;">${formGate('ns', 'Nuevo servicio', `<div class="card stack">
-      <p class="card-title" style="font-size:17px;">Nuevo servicio</p>
-      <div class="grid-2">
-        <div class="field"><label for="ns-name">Nombre</label><input id="ns-name" placeholder="Ej: Masaje descontracturante" value="${escapeHtml(nsv.name)}" oninput="updateNewService('name', this.value)"></div>
-        <div class="field"><label for="ns-min">Duración (min)</label><input id="ns-min" type="number" inputmode="numeric" value="${nsv.minutes}" oninput="updateNewService('minutes', this.value)"></div>
-      </div>
-      <div>
-        <p class="label" style="margin-bottom:8px;">Trabajadores que lo prestan</p>
-        <div class="pills">${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${nsv.staffIds.includes(m.id)}" onclick="toggleNewServiceStaff('${m.id}')">${nsv.staffIds.includes(m.id) ? icon('check', 16, 3) + ' ' : ''}${escapeHtml(m.name)}</button>`).join('')}</div>
-      </div>
-      <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="addService()">Crear servicio</button>
-    </div>`)}</div>`;
+    <button class="btn btn-primary btn-sm add-btn" type="button" style="align-self:flex-start;margin-top:14px;" onclick="startEditService('new')">${icon('plus', 18, 2.6)} Nuevo servicio</button>
+    ${renderServiceDrawer()}`;
 }
 
 function renderServicesSection(){
