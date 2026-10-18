@@ -3377,7 +3377,7 @@ function renderAdminInicio(){
     </div>
     ${(() => {
       const nowD = new Date();
-      const up = state.appointments.filter(x => x.status === 'CONFIRMED' && !isPastAppt(x) && !isProblem(x)).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
+      const up = state.appointments.filter(x => x.status === 'CONFIRMED' && !isPastAppt(x)).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
       const bad = state.appointments.filter(isProblem).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
       return `
     <h2 class="title-2">Próximas citas</h2>
