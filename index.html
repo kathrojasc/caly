@@ -3031,17 +3031,6 @@ function renderBookingScreen(b, cfg){
             ? `<p class="secondary" style="margin-top:14px;">No hay horarios disponibles este día. Prueba otra fecha.</p>`
             : `<div class="slot-grid">${slots.map(s => `<button type="button" class="slot" onclick="pickSlot('${s.start}','${s.end}')" aria-pressed="${!!(b.selectedSlot && b.selectedSlot.start === s.start)}">${s.start}</button>`).join('')}</div>`}
           ${b.error ? `<p class="error-text" style="margin-top:14px;">${escapeHtml(b.error)}</p>` : ''}
-          ${b.admin ? `
-            <div style="margin-top:16px;">
-              ${b.selectedSlot && b.selectedSlot.manual ? `<p class="hint" style="margin-bottom:8px;">Hora elegida a mano: <strong>${b.selectedSlot.start} – ${b.selectedSlot.end}</strong></p>` : ''}
-              <button class="btn-text" type="button" style="padding-left:0;" onclick="toggleManual()" aria-expanded="${!!b.manualOpen}">${b.manualOpen ? 'Ocultar' : '¿Otra hora? Escríbela'}</button>
-              ${b.manualOpen ? `
-                <div class="row row-end" style="flex-wrap:nowrap;margin-top:8px;">
-                  <div class="field" style="flex:1;min-width:0;"><label for="manual-time">Hora de inicio</label><input id="manual-time" type="time" value="${escapeHtml(b.manualTime || '')}"></div>
-                  <button class="btn btn-soft" type="button" onclick="setManualTime()">Usar</button>
-                </div>
-                ${b.manualError ? `<p class="error-text" style="margin-top:8px;">${escapeHtml(b.manualError)}</p>` : ''}` : ''}
-            </div>` : ''}
         </div>
       </div>
     </div>
