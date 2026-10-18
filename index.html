@@ -375,7 +375,12 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 @keyframes drawerUp { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes drawerFade { from { opacity: 0; } to { opacity: 1; } }
 .drawer-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--color-border, #d9d9dc); align-self: center; }
-.drawer-body { overflow-y: auto; padding: 0 0 28px; -webkit-overflow-scrolling: touch; }
+.drawer-body { overflow-y: auto; padding: 0 0 20px; -webkit-overflow-scrolling: touch; }
+.drawer-foot { padding: 12px 0 max(16px, env(safe-area-inset-bottom)); border-top: 1px solid var(--color-border); background: #fff; }
+.dr-block { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-m); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.dr-range { display: flex; align-items: center; gap: 8px; }
+.dr-range input { flex: 1; min-width: 0; background: #fff; border: 1px solid var(--color-border); }
+.icon-x { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--color-text-secondary); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; }
 .drawer-danger { border-top: 1px solid var(--color-border, #e5e5e8); padding-top: 16px; }
 .sa-groups { width: 100%; display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
 .sa-group { display: flex; flex-direction: column; gap: 8px; }
@@ -828,6 +833,7 @@ function loadState(){
       parsed.newOff = Object.assign({}, def.newOff, parsed.newOff || {});
       parsed.editingService = null;
       parsed.editingStaff = null;
+      parsed.staffDraft = null;
       parsed.dayEdit = null;
       if (!Array.isArray(parsed.dblSeen)) parsed.dblSeen = [];
       if (!Array.isArray(parsed.auditLog)) parsed.auditLog = [];
@@ -2362,7 +2368,71 @@ function addStaffMember(){
   render();
   showToast('Trabajador agregado');
 }
-function startEditStaff(id){ state.editingStaff = state.editingStaff === id ? null : id; state.drawerAnim = !!state.editingStaff; state.openForm = null; state.dayEdit = null; render(); }
+function startEditStaff(id){
+  const m = state.staff.find(x => x.id === id);
+  if (!m || state.editingStaff === id) { state.editingStaff = null; state.staffDraft = null; render(); return; }
+  state.editingStaff = id;
+  state.drawerAnim = true;
+  state.staffDraft = {
+    name: m.name,
+    blocks: groupSchedule(m.schedule).map(g => ({ days: g.days.slice(), ranges: g.ranges.map(r => ({ start: r.start, end: r.end })) })),
+    off: (m.timeOff || []).map(o => ({ id: o.id, from: o.from, to: o.to, note: o.note || '' }))
+  };
+  render();
+}
+function dName(v){ state.staffDraft.name = v; }
+function dDay(bi, d){ const b = state.staffDraft.blocks[bi]; b.days = b.days.includes(d) ? b.days.filter(x => x !== d) : b.days.concat(d); render(); }
+function dRange(bi, ri, f, v){ state.staffDraft.blocks[bi].ranges[ri][f] = v; }
+function dAddRange(bi){ const r = state.staffDraft.blocks[bi].ranges; const last = r[r.length - 1]; r.push({ start: last ? last.end : '09:00', end: last && last.end < '20:00' ? '20:00' : '18:00' }); render(); }
+function dDelRange(bi, ri){ const b = state.staffDraft.blocks[bi]; b.ranges.splice(ri, 1); if (!b.ranges.length) state.staffDraft.blocks.splice(bi, 1); render(); }
+function dAddBlock(){ state.staffDraft.blocks.push({ days: [], ranges: [{ start: '09:00', end: '18:00' }] }); render(); }
+function dDelBlock(bi){ state.staffDraft.blocks.splice(bi, 1); render(); }
+function dOff(i, f, v){ state.staffDraft.off[i][f] = v; }
+function dAddOff(){ state.staffDraft.off.push({ id: 'of' + Date.now(), from: '', to: '', note: '' }); render(); }
+function dDelOff(i){ state.staffDraft.off.splice(i, 1); render(); }
+function saveStaffDraft(){
+  const d = state.staffDraft;
+  const m = state.staff.find(x => x.id === state.editingStaff);
+  if (!d || !m) return;
+  const name = (d.name || '').trim();
+  if (name.length < 2) return showToast('Ingresa el nombre del trabajador');
+  const sched = {};
+  for (const b of d.blocks) {
+    if (!b.days.length) return showToast('Marca al menos un día en cada horario, o quítalo');
+    for (const r of b.ranges) {
+      if (!r.start || !r.end || r.start >= r.end) return showToast('La hora de inicio debe ser antes que la de fin');
+      for (const day of b.days) {
+        if (!insideRanges(state.businessHours[day] || [], r.start, r.end)) return showToast(`${r.start} – ${r.end} está fuera del horario del negocio el ${WEEKDAYS_LONG[day].toLowerCase()}`);
+        sched[day] = sched[day] || [];
+        if (!sched[day].some(x => x.start === r.start && x.end === r.end)) sched[day].push({ start: r.start, end: r.end });
+      }
+    }
+  }
+  for (const day of Object.keys(sched)) {
+    sched[day].sort((a, b) => a.start.localeCompare(b.start));
+    for (let i = 1; i < sched[day].length; i++) if (sched[day][i].start < sched[day][i - 1].end) return showToast(`Hay horarios que se cruzan el ${WEEKDAYS_LONG[day].toLowerCase()}`);
+  }
+  const off = [];
+  for (const o of d.off) {
+    if (!o.from && !o.to && !(o.note || '').trim()) continue;
+    if (!o.from) return showToast('Elige desde qué fecha no atiende');
+    const to = o.to || o.from;
+    if (to < o.from) return showToast('La fecha final de una ausencia no puede ser antes que la inicial');
+    off.push({ id: o.id, from: o.from, to, note: (o.note || '').trim() });
+  }
+  off.sort((a, b) => a.from.localeCompare(b.from));
+  const before = pendingAppts().length;
+  m.name = name;
+  m.schedule = sched;
+  m.timeOff = off;
+  state.appointments.forEach(a => { if (a.staffId === m.id) a.staffName = name; });
+  state.editingStaff = null;
+  state.staffDraft = null;
+  saveState();
+  render();
+  showToast('Cambios guardados');
+  setTimeout(() => warnNewPending(before), 1800);
+}
 function saveStaffName(id){
   const name = ($('es-name').value || '').trim();
   if (name.length < 2) return showToast('Ingresa el nombre del trabajador');
@@ -2379,6 +2449,7 @@ function askRemoveStaff(id){
   if (state.staff.length <= 1) return showToast('Debe quedar al menos un trabajador configurado');
   state.confirmRemoveStaff = id;
   state.editingStaff = null;
+  state.staffDraft = null;
   render();
 }
 function cancelRemoveStaff(){ state.confirmRemoveStaff = null; render(); }
@@ -3937,69 +4008,55 @@ function renderAdminHorarios(){
 
 function renderStaffDrawer(){
   const member = state.staff.find(x => x.id === state.editingStaff);
-  if (!member) return '';
-  const nr = state.newRule;
+  const d = state.staffDraft;
+  if (!member || !d) return '';
   const fresh = state.drawerAnim; state.drawerAnim = false;
   return `
-    <div class="drawer-back${fresh ? ' fresh' : ''}" onclick="if (event.target === this) startEditStaff('${member.id}')">
+    <div class="drawer-back${fresh ? ' fresh' : ''}">
       <div class="drawer" role="dialog" aria-modal="true" aria-label="Editar a ${escapeHtml(member.name)}">
         <div class="drawer-grip" aria-hidden="true"></div>
         <div class="row between" style="flex-wrap:nowrap;">
           <h2 class="title-3">Editar trabajador</h2>
-          <button class="icon-btn" type="button" onclick="startEditStaff('${member.id}')" aria-label="Cerrar">${icon('close', 20, 2.4)}</button>
+          <button class="icon-btn" type="button" onclick="startEditStaff('${member.id}')" aria-label="Cerrar sin guardar">${icon('close', 20, 2.4)}</button>
         </div>
-        <div class="drawer-body stack" style="gap:20px;">
+        <div class="drawer-body stack" style="gap:22px;">
+          <div class="field"><label for="es-name">Nombre</label><input id="es-name" value="${escapeHtml(d.name)}" oninput="dName(this.value)"></div>
+
           <div class="stack" style="gap:10px;">
-            <p class="label">Datos</p>
-            <div class="row row-end" style="flex-wrap:nowrap;">
-              <div class="field" style="flex:1;min-width:0;"><label for="es-name">Nombre</label><input id="es-name" value="${escapeHtml(member.name)}"></div>
-              <button class="btn btn-primary" type="button" onclick="saveStaffName('${member.id}')">Guardar</button>
-            </div>
-          </div>
-
-          <div class="stack" style="gap:12px;">
             <p class="label">Horario</p>
-            ${groupSchedule(member.schedule).map(g => `
-              <div>
-                ${groupHeader(member.id, g)}
-                <div class="row">
-                  ${g.ranges.map((r, idx) => { const ok = g.days.every(d => insideRanges(state.businessHours[d], r.start, r.end)); return `<span class="rule-chip${ok ? '' : ' warn'}" ${ok ? '' : 'title="Fuera del horario del negocio: no se ofrece a los clientes"'}>${r.start} – ${r.end}<button type="button" onclick="deleteRuleGroup('${member.id}', '${g.days.join(',')}', ${idx})" aria-label="Eliminar horario ${r.start} a ${r.end}">${icon('close', 16, 2.4)}</button></span>`; }).join('')}
+            ${d.blocks.map((b, bi) => `
+              <div class="dr-block">
+                ${dayPicks(b.days, x => `dDay(${bi},'${x}')`)}
+                ${b.ranges.map((r, ri) => `
+                  <div class="dr-range">
+                    <input id="dr-s-${bi}-${ri}" type="time" value="${r.start}" aria-label="Desde" onchange="dRange(${bi},${ri},'start',this.value)">
+                    <span>–</span>
+                    <input id="dr-e-${bi}-${ri}" type="time" value="${r.end}" aria-label="Hasta" onchange="dRange(${bi},${ri},'end',this.value)">
+                    <button class="icon-x" type="button" onclick="dDelRange(${bi},${ri})" aria-label="Quitar franja">${icon('close', 18, 2.4)}</button>
+                  </div>`).join('')}
+                <div class="row between" style="flex-wrap:nowrap;"><button class="btn-text" type="button" style="min-height:32px;padding:0;" onclick="dAddRange(${bi})">+ Otra franja</button><button class="btn-text danger" type="button" style="min-height:32px;padding:0;" onclick="dDelBlock(${bi})">Quitar</button></div>
+              </div>`).join('') || `<p class="secondary">Sin horario configurado.</p>`}
+            <button class="btn-text" type="button" style="align-self:flex-start;padding:0;" onclick="dAddBlock()">+ Agregar horario</button>
+          </div>
+
+          <div class="stack" style="gap:10px;">
+            <p class="label">Ausencias</p>
+            ${d.off.map((o, i) => `
+              <div class="dr-block">
+                <div class="grid-2">
+                  <div class="field"><label for="do-f-${i}">Desde</label><input id="do-f-${i}" type="date" value="${o.from}" onchange="dOff(${i},'from',this.value)"></div>
+                  <div class="field"><label for="do-t-${i}">Hasta (opcional)</label><input id="do-t-${i}" type="date" value="${o.to}" onchange="dOff(${i},'to',this.value)"></div>
                 </div>
-              </div>`).join('') || `<p class="secondary">Todavía no configuraste ningún horario para ${escapeHtml(member.name)}.</p>`}
-            ${formGate('nr-' + member.id, 'Agregar horario', `<div class="rule-form">
-              <div class="field day">
-                <span class="label">Días</span>
-                ${dayPicks(nr.days, d => `toggleRuleDay('${member.id}','${d}')`)}
-              </div>
-              <div class="field">
-                <label for="nr-start-${member.id}">Desde</label>
-                <input id="nr-start-${member.id}" type="time" value="${nr.start}" onchange="updateNewRule('start', this.value)">
-              </div>
-              <div class="field">
-                <label for="nr-end-${member.id}">Hasta</label>
-                <input id="nr-end-${member.id}" type="time" value="${nr.end}" onchange="updateNewRule('end', this.value)">
-              </div>
-              <button class="btn btn-primary" type="button" onclick="updateNewRule('staffId','${member.id}'); addRule()">Agregar</button>
-            </div>`)}
+                <div class="field"><label for="do-n-${i}">Motivo (opcional)</label><input id="do-n-${i}" placeholder="Ej: Vacaciones" value="${escapeHtml(o.note)}" oninput="dOff(${i},'note',this.value)"></div>
+                <div><button class="btn-text danger" type="button" style="min-height:32px;padding:0;" onclick="dDelOff(${i})">Quitar</button></div>
+              </div>`).join('')}
+            <button class="btn-text" type="button" style="align-self:flex-start;padding:0;" onclick="dAddOff()">+ Agregar ausencia</button>
           </div>
 
-          <div class="stack" style="gap:12px;">
-            <p class="label">Ausencias (vacaciones, licencias)</p>
-            ${(member.timeOff || []).length ? `<div class="rows">${member.timeOff.map(o => {
-              const aff = offAffected(member.id, o);
-              return `<div class="card-line" style="padding:12px 14px;background:#fff;">
-                <div class="row between" style="flex-wrap:nowrap;gap:10px;"><div style="min-width:0;"><p class="row-title" style="font-size:15px;">${o.from === o.to ? fmtDay(o.from) : `${fmtDay(o.from)} – ${fmtDay(o.to)}`}</p>${o.note ? `<p class="secondary">${escapeHtml(o.note)}</p>` : ''}</div><button class="btn-text danger" type="button" onclick="deleteTimeOff('${member.id}','${o.id}')">Quitar</button></div>
-                ${aff ? `<div style="margin-top:6px;">${chip('warning', `${aff} cita${aff === 1 ? '' : 's'} afectada${aff === 1 ? '' : 's'}`)}</div>` : ''}
-              </div>`; }).join('')}</div>` : ''}
-            ${formGate('of-' + member.id, 'Agregar ausencia', `<div class="rule-form">
-              <div class="field"><label for="of-from-${member.id}">Desde</label><input id="of-from-${member.id}" type="date" min="${todayISO()}" value="${state.newOff.staffId === member.id ? state.newOff.from : ''}" placeholder="Elegir fecha" onchange="updateNewOff('staffId','${member.id}'); updateNewOff('from', this.value); render()"></div>
-              <div class="field"><label for="of-to-${member.id}">Hasta (opcional)</label><input id="of-to-${member.id}" type="date" min="${todayISO()}" value="${state.newOff.staffId === member.id ? state.newOff.to : ''}" placeholder="Elegir fecha" onchange="updateNewOff('staffId','${member.id}'); updateNewOff('to', this.value); render()"></div>
-              <div class="field day"><label for="of-note-${member.id}">Motivo (opcional)</label><input id="of-note-${member.id}" placeholder="Ej: Vacaciones" value="${state.newOff.staffId === member.id ? escapeHtml(state.newOff.note) : ''}" oninput="updateNewOff('staffId','${member.id}'); updateNewOff('note', this.value)"></div>
-              <button class="btn btn-soft" type="button" style="background:#fff;" onclick="addTimeOff('${member.id}')">Agregar ausencia</button>
-            </div>`)}
-          </div>
-
-          ${state.staff.length > 1 ? `<div class="drawer-danger"><button class="btn btn-danger btn-block" type="button" onclick="askRemoveStaff('${member.id}')">Eliminar trabajador</button></div>` : ''}
+          ${state.staff.length > 1 ? `<button class="btn-text danger" type="button" style="align-self:center;" onclick="askRemoveStaff('${member.id}')">Eliminar trabajador</button>` : ''}
+        </div>
+        <div class="drawer-foot">
+          <button class="btn btn-primary btn-block" type="button" onclick="saveStaffDraft()">Guardar cambios</button>
         </div>
       </div>
     </div>`;
