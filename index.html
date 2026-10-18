@@ -1075,7 +1075,7 @@ function timeAgo(ts){
 }
 function warnNewPending(before){
   const n = pendingAppts().length - before;
-  if (n > 0) showToast(`${n} cita${n === 1 ? '' : 's'} pasaron a Pendientes`);
+  if (n > 0) showToast(`${n} cita${n === 1 ? '' : 's'} pasaron a Citas con problemas`);
 }
 function closureAppliesOn(c, iso){
   if (c.repeat === 'weekly') return iso >= c.from && (!c.to || iso <= c.to) && dayOfWeek(iso) === dayOfWeek(c.from);
@@ -2268,7 +2268,7 @@ function commitTimeOff(staffId, entry){
   saveState();
   render();
   const aff = offAffected(staffId, entry);
-  showToast(aff ? `Ausencia guardada. ${aff} cita${aff === 1 ? '' : 's'} en Pendientes` : 'Ausencia guardada');
+  showToast(aff ? `Ausencia guardada. ${aff} cita${aff === 1 ? '' : 's'} con problemas` : 'Ausencia guardada');
 }
 function deleteTimeOff(staffId, id){
   const m = state.staff.find(x => x.id === staffId);
@@ -2315,7 +2315,7 @@ function commitClosure(entry){
   saveState();
   render();
   const aff = closedAffected(entry);
-  showToast(aff ? `Cierre guardado. ${aff} cita${aff === 1 ? '' : 's'} en Pendientes` : 'Cierre guardado');
+  showToast(aff ? `Cierre guardado. ${aff} cita${aff === 1 ? '' : 's'} con problemas` : 'Cierre guardado');
 }
 function confirmClosure(){
   const pc = state.pendingClosure;
