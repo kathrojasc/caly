@@ -391,6 +391,7 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .log-text { font-size: 15px; line-height: 21px; overflow-wrap: anywhere; }
 .log-chip { align-self: flex-start; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: var(--color-chip-neutral); color: var(--color-chip-neutral-text); }
 .log-chip.client { background: var(--color-success-bg); color: var(--color-success); }
+.log-chip.system { background: var(--color-danger-bg); color: var(--color-danger); }
 .log-chip.super { background: var(--color-warning-bg); color: var(--color-warning-strong); }
 .log-detail { padding: 0 14px 14px 70px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 20px; color: var(--color-text-secondary); }
 .log-detail p { margin: 0; overflow-wrap: anywhere; }
@@ -401,6 +402,7 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .form-open .field input:not([type=checkbox]):not([type=file]):not([type=color]), .form-open .field select, .pay-block .field input:not([type=checkbox]):not([type=file]):not([type=color]), .pay-block .field select { background-color: var(--color-surface); border: 1.5px solid #DADADF; }
 .notice.ok-box { background: var(--color-success-bg); color: var(--color-success); }
 .field input:disabled { opacity: 1; -webkit-text-fill-color: var(--color-text-secondary); color: var(--color-text-secondary); background: #EDEDF0 !important; }
+.news-row.alertrow { background: var(--color-danger-bg); border-radius: var(--radius-m); padding: 12px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
@@ -711,6 +713,7 @@ function buildDefaultState(){
     newOff: { staffId: '', from: '', to: '', note: '' },
     editingService: null,
     dayEdit: null,
+    dblSeen: [],
     auditLog: [],
     logView: null,
     logQuery: '',
@@ -811,6 +814,7 @@ function loadState(){
       parsed.editingService = null;
       parsed.editingStaff = null;
       parsed.dayEdit = null;
+      if (!Array.isArray(parsed.dblSeen)) parsed.dblSeen = [];
       if (!Array.isArray(parsed.auditLog)) parsed.auditLog = [];
       parsed.logView = null; parsed.logOpen = null; parsed.logLimit = 40;
       ['logQuery', 'logFrom', 'logTo', 'logRole', 'exportFrom', 'exportTo'].forEach(k => { if (typeof parsed[k] !== 'string') parsed[k] = ''; });
@@ -857,7 +861,7 @@ function loadState(){
   } catch (e) {}
   return buildDefaultState();
 }
-function saveState(){ try { auditPass(); } catch (e) {} try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {} }
+function saveState(){ try { checkDoubles(); } catch (e) {} try { auditPass(); } catch (e) {} try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {} }
 
 let state = loadState();
 
@@ -865,7 +869,7 @@ let state = loadState();
    Se detectan los cambios comparando una foto del estado antes y después de cada guardado.
    En el prototipo vive en el navegador; en producción debe guardarse en el servidor. */
 let auditPrev = null;
-const ROLE_LABEL = { client: 'Cliente', admin: 'Administrador', super: 'Superadmin' };
+const ROLE_LABEL = { client: 'Cliente', admin: 'Administrador', super: 'Superadmin', system: 'Sistema' };
 function auditRole(){ return state.view === 'paciente' ? 'client' : state.view === 'super' ? 'super' : 'admin'; }
 function auditActor(){
   const r = auditRole();
@@ -981,9 +985,33 @@ function refreshBrandUI(){
   applyBrandTheme();
 }
 
+function doubleWith(a){
+  if (a.status !== 'CONFIRMED' || !a.staffId) return null;
+  return state.appointments.find(b => b.id !== a.id && b.status === 'CONFIRMED' && b.date === a.date && b.staffId === a.staffId && overlaps(a.start, a.end, b.start, b.end)) || null;
+}
+function doubleBookings(){
+  const today = todayISO(), seen = new Set(), out = [];
+  state.appointments.filter(a => a.status === 'CONFIRMED' && a.date >= today).forEach(a => {
+    const b = doubleWith(a);
+    if (!b) return;
+    const key = [a.id, b.id].sort().join('|');
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ key, a: a.start <= b.start ? a : b, b: a.start <= b.start ? b : a });
+  });
+  return out;
+}
+function checkDoubles(){
+  doubleBookings().forEach(d => {
+    if (state.dblSeen.includes(d.key)) return;
+    state.dblSeen.push(d.key);
+    logEvent('system.double_booking', `Posible doble reserva: ${d.a.name} (${d.a.start}) y ${d.b.name} (${d.b.start}) el ${displayDateLong(d.a.date)}${d.a.staffName ? ' con ' + d.a.staffName : ''}.`, { role: 'system', actor: 'Caly (sistema)', doc: d.a.dni, apptId: d.a.id, data: { cita1: d.a.id, cita2: d.b.id, fecha: d.a.date } });
+  });
+}
 function apptPendingReason(a){
   if (a.status !== 'CONFIRMED' || a.rescheduleRequested || a.date < todayISO()) return null;
   if (closureBlocks(a.date, a.start, a.end)) return isClosedDay(a.date) ? 'Día cerrado' : 'Cierre en ese horario';
+  if (doubleWith(a)) return 'Doble reserva';
   if (a.manual) return null;   // el admin la fijó a mano, fuera de la grilla
   const dow = String(dayOfWeek(a.date));
   if (!insideRanges(state.businessHours[dow], a.start, a.end)) return 'Fuera del horario del negocio';
@@ -1530,7 +1558,7 @@ function sendReminder(id){
   saveState();
 }
 function goEsperando(){ goAtencion(); }
-function goAtencion(){ state.adminTab = 'citas'; state.agendaView = 'lista'; state.citasProblems = true; state.citasLimit = 15; render(); window.scrollTo(0, 0); }
+function goAtencion(){ const first = state.appointments.filter(isProblem).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start))[0]; if (first) state.agendaDate = first.date; state.adminTab = 'citas'; state.agendaView = 'lista'; state.citasProblems = true; state.citasLimit = 15; render(); window.scrollTo(0, 0); }
 function goPendientes(){ goAtencion(); }
 function goNewAppt(){ openNewAppt(); }
 function openNewAppt(dateIso){
@@ -1789,27 +1817,22 @@ function skipNotice(){ state.notify = null; render(); }
 
 // --- Superadministrador: alertas y cuentas de negocio ---
 function reportDoubleBookingAlert(iso, slot, clientName){
-  state.superAlerts.unshift({
-    id: 'al' + Date.now(),
-    type: 'double-booking',
-    business: (state.businesses[0] && state.businesses[0].name) || state.brand.name,
-    detail: `Posible doble reserva el ${displayDateShort(iso)} a las ${slot.start} (cliente: ${clientName || 'sin nombre'}).`,
-    status: 'pending',
-  });
+  logEvent('system.double_booking_race', `Se evitó una doble reserva el ${displayDateShort(iso)} a las ${slot.start}: el horario se ocupó mientras ${clientName || 'un cliente'} reservaba.`, { role: 'system', actor: 'Caly (sistema)' });
   saveState();
 }
 function simulateDoubleBookingAlert(){
-  const t = addDaysISO(todayISO(), 1);
-  state.superAlerts.unshift({
-    id: 'al' + Date.now(),
-    type: 'double-booking',
-    business: (state.businesses[1] && state.businesses[1].name) || 'Clínica Dental Sonric',
-    detail: `Dos clientes reservaron el mismo horario el ${displayDateShort(t)} a las 10:00 (caso hipotético simulado).`,
-    status: 'pending',
+  const base = state.appointments.filter(a => a.status === 'CONFIRMED' && a.date >= todayISO() && !apptPendingReason(a)).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start))[0];
+  if (!base) return showToast('Primero hace falta una cita próxima en el negocio de demo');
+  const other = Object.keys(state.patients).find(d => d !== base.dni);
+  const p = other ? state.patients[other] : null;
+  state.appointments.push({
+    id: 'a' + Date.now(), dni: other || '00000000', name: p ? p.name : 'Cliente de prueba', phone: p ? p.phone : '',
+    date: base.date, start: base.start, end: base.end, status: 'CONFIRMED', paid: false,
+    staffId: base.staffId, staffName: base.staffName, serviceId: base.serviceId, serviceName: base.serviceName, manual: true, createdAt: Date.now(),
   });
   saveState();
   render();
-  showToast('Alerta simulada: llegó a Superadmin');
+  showToast('Doble reserva de prueba creada en el negocio de demo');
 }
 function resolveAlert(id){
   const alert = state.superAlerts.find(a => a.id === id);
@@ -2741,7 +2764,7 @@ function patientCard(a, light){
   const mustAct = !!reason || !!a.rescheduleRequested;
   const can = clientCanChange(a);
   let note = '';
-  if (mustAct) note = 'Hubo un cambio en el horario del negocio. Te contactaremos por WhatsApp para confirmar tu cita.';
+  if (mustAct) note = 'Estamos confirmando tu cita. Si hace falta algún cambio, te contactaremos por WhatsApp.';
   else if (a.movedByAdmin) note = `El negocio movió tu cita. Antes: ${cap(displayDateShort(a.movedByAdmin.from.date))} · ${a.movedByAdmin.from.start}.`;
   else if (!can) note = `Faltan menos de ${state.config.cancelNoticeHours} horas: ya no puedes cancelarla en línea. Contacta al negocio.`;
   return `
@@ -3080,7 +3103,7 @@ function apptRow(a, now, showDate){
   const c = staffColor(a.staffId);
   const reason = apptPendingReason(a);
   const meta = [showDate ? cap(displayDateShort(a.date)) : '', a.serviceName, a.staffName].filter(Boolean).map(escapeHtml).join(' · ');
-  const chipHtml = a.status === 'CANCELLED' ? chip('danger', 'Cancelada') : a.attendance === 'no_show' ? chip('warning', 'No asistió') : a.attendance === 'attended' ? chip('success', 'Asistió') : reason ? chip('danger', 'Por resolver') : a.rescheduleRequested ? chip('neutral', 'Esperando') : (!payOn() ? '' : a.paid ? chip('success', 'Pagado') : chip('warning', 'Por cobrar'));
+  const chipHtml = a.status === 'CANCELLED' ? chip('danger', 'Cancelada') : a.attendance === 'no_show' ? chip('warning', 'No asistió') : a.attendance === 'attended' ? chip('success', 'Asistió') : reason ? chip('danger', reason === 'Doble reserva' ? 'Doble reserva' : 'Por resolver') : a.rescheduleRequested ? chip('neutral', 'Esperando') : (!payOn() ? '' : a.paid ? chip('success', 'Pagado') : chip('warning', 'Por cobrar'));
   return `
     <div class="arow-wrap">
       <button type="button" class="arow${isProblem(a) ? ' problem' : ''}" onclick="openApptDetail('${a.id}')">
@@ -3387,13 +3410,18 @@ function renderAdminInicio(){
     </div>` : ''; })()}
 
 
-    ${state.activity.length ? `
+    ${(state.activity.length || doubleBookings().length) ? `
     <div class="news">
       <div class="row between" style="flex-wrap:nowrap;">
         <h2 class="card-title">Novedades${unreadCount() ? ` <span class="badge-inline">${unreadCount()}</span>` : ''}</h2>
         ${unreadCount() ? `<button class="btn-text" type="button" style="min-height:36px;padding:0 4px;" onclick="markActivityRead()">Marcar como leídas</button>` : ''}
       </div>
       <div class="news-list">
+        ${doubleBookings().map(d => `
+          <div class="news-row alertrow" role="alert">
+            <span class="news-dot" aria-hidden="true" style="background:var(--color-danger);"></span>
+            <div style="min-width:0;flex:1;"><p class="row-title" style="font-size:15px;line-height:20px;color:var(--color-danger);">Posible doble reserva</p><p class="secondary" style="font-size:14px;line-height:19px;">${escapeHtml(d.a.name)} y ${escapeHtml(d.b.name)} tienen cita el ${escapeHtml(displayDateShort(d.a.date))} a las ${d.a.start}${d.a.staffName ? ' con ' + escapeHtml(d.a.staffName) : ''}.</p><button class="btn btn-sm btn-danger-solid" type="button" style="margin-top:10px;" onclick="goAtencion()">Ver las citas</button></div>
+          </div>`).join('')}
         ${state.activity.slice(0, 5).map(x => `
           <div class="news-row${x.read ? '' : ' unread'}">
             <span class="news-dot" aria-hidden="true"></span>
@@ -3451,6 +3479,7 @@ function citaCard(a, now, mode){
         ${a.phone ? `<div class="h-meta tnum">${escapeHtml(a.phone)}</div>` : ''}
         ${meta ? `<div class="h-meta" style="margin-top:2px;">${meta}</div>` : ''}
       </div>
+      ${(() => { const o = reason === 'Doble reserva' ? doubleWith(a) : null; return o ? `<div class="hero-note alert" role="note">Se cruza con la cita de ${escapeHtml(o.name)} a las ${o.start}. Cancela una de las dos y avísale.</div>` : ''; })()}
       ${btns.length ? `<div class="hero-actions c${btns.length}">${btns.join('')}</div>` : ''}
     </div>`;
 }
@@ -4406,6 +4435,7 @@ function renderBizLog(){
           <option value="client" ${state.logRole === 'client' ? 'selected' : ''}>Clientes</option>
           <option value="admin" ${state.logRole === 'admin' ? 'selected' : ''}>Administrador</option>
           <option value="super" ${state.logRole === 'super' ? 'selected' : ''}>Superadmin</option>
+          <option value="system" ${state.logRole === 'system' ? 'selected' : ''}>Sistema</option>
         </select>
       </div>
       <div class="row" style="margin-top:14px;gap:8px;">
@@ -4444,8 +4474,6 @@ function renderSuper(){
   if (!state.session.super) return renderAuth('super');
   if (state.superAccount.mustChange) return renderForcedPassword('super');
   if (state.logView) return renderBizLog();
-  const pending = state.superAlerts.filter(a => a.status === 'pending');
-  const resolved = state.superAlerts.filter(a => a.status === 'resolved');
   const nb = state.newBusiness;
 
   return `
@@ -4459,20 +4487,10 @@ function renderSuper(){
       </div>
       <p class="secondary" style="margin-top:6px;">Gestiona las cuentas de negocios y revisa alertas de la plataforma.</p>
 
-      <h2 class="title-2">Alertas de la plataforma</h2>
+      <h2 class="title-2">Herramientas de demo</h2>
       <div class="card stack">
-        <p class="secondary">Hoy la disponibilidad ya evita que dos personas reserven el mismo horario. Esto simula el caso hipotético en que, por una carrera entre dos reservas simultáneas, ocurriera igual, para que el superadmin se entere y lo resuelva manualmente.</p>
-        <button class="btn btn-soft btn-sm" type="button" style="align-self:flex-start;background:#fff;" onclick="simulateDoubleBookingAlert()">Simular alerta de doble reserva</button>
-        ${pending.length === 0 ? `<p class="secondary">No hay alertas pendientes.</p>` : `
-          <div class="rows">
-            ${pending.map(a => `
-              <div class="row-card" style="background:#fff;border-color:transparent;">
-                <span class="date-tile" style="background:var(--color-danger-bg);color:var(--color-danger);">${icon('alert', 24)}</span>
-                <div class="row-main"><div class="row-title">${escapeHtml(a.business)}</div><div class="secondary">${escapeHtml(a.detail)}</div></div>
-                <button class="btn btn-sm btn-soft" type="button" onclick="resolveAlert('${a.id}')">Marcar resuelta</button>
-              </div>`).join('')}
-          </div>`}
-        ${resolved.length > 0 ? `<p class="hint">${resolved.length} alerta(s) ya resuelta(s).</p>` : ''}
+        <p class="secondary">Las dobles reservas ya no llegan aquí: se avisan al administrador del negocio, y a ti te queda su registro en "Ver registro". Esto crea una doble reserva de prueba en el negocio de demo para ver cómo se ve.</p>
+        <button class="btn btn-soft btn-sm" type="button" style="align-self:flex-start;background:#fff;" onclick="simulateDoubleBookingAlert()">Crear doble reserva de prueba</button>
       </div>
 
       <h2 class="title-2">Cuentas de negocios</h2>
