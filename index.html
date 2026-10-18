@@ -366,6 +366,21 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .cal-cell.selday { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 .modal .hero.light { border: 0; padding: 0; background: transparent; min-height: 0; border-radius: 0; gap: 16px; }
 .modal.sheet { position: relative; }
+.staff-ro { font-size: 15px; line-height: 22px; color: var(--color-text-secondary); }
+.staff-ro b { color: var(--color-text); font-weight: 600; }
+.drawer-back { position: fixed; inset: 0; z-index: 65; background: rgba(11,11,12,0.45); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); display: flex; align-items: flex-end; justify-content: center; }
+.drawer { width: 100%; max-width: 560px; max-height: 90vh; max-height: 90dvh; background: #fff; border-radius: 24px 24px 0 0; padding: 10px 20px 0; display: flex; flex-direction: column; gap: 14px; box-shadow: var(--shadow-dark-tile); }
+.drawer-back.fresh { animation: drawerFade .2s ease-out; }
+.drawer-back.fresh .drawer { animation: drawerUp .28s cubic-bezier(.2,.8,.2,1); }
+@keyframes drawerUp { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes drawerFade { from { opacity: 0; } to { opacity: 1; } }
+.drawer-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--color-border, #d9d9dc); align-self: center; }
+.drawer-body { overflow-y: auto; padding: 0 0 28px; -webkit-overflow-scrolling: touch; }
+.drawer-danger { border-top: 1px solid var(--color-border, #e5e5e8); padding-top: 16px; }
+.sa-groups { width: 100%; display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.sa-group { display: flex; flex-direction: column; gap: 8px; }
+.sa-group .row { gap: 8px; }
+.sa-danger { border-top: 1px solid var(--color-border, #e5e5e8); padding-top: 14px; }
 .appt-x { position: absolute; top: 18px; right: 18px; width: 40px; height: 40px; }
 .modal .hero.light .chip-row { min-height: 40px; display: flex; align-items: center; padding-right: 48px; }
 .view-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--color-surface); border-radius: var(--radius-pill); margin-top: 16px; }
@@ -2347,7 +2362,7 @@ function addStaffMember(){
   render();
   showToast('Trabajador agregado');
 }
-function startEditStaff(id){ state.editingStaff = state.editingStaff === id ? null : id; render(); }
+function startEditStaff(id){ state.editingStaff = state.editingStaff === id ? null : id; state.drawerAnim = !!state.editingStaff; state.openForm = null; state.dayEdit = null; render(); }
 function saveStaffName(id){
   const name = ($('es-name').value || '').trim();
   if (name.length < 2) return showToast('Ingresa el nombre del trabajador');
@@ -2355,7 +2370,6 @@ function saveStaffName(id){
   if (!m) return;
   m.name = name;
   state.appointments.forEach(a => { if (a.staffId === id) a.staffName = name; });
-  state.editingStaff = null;
   saveState();
   render();
   showToast('Nombre actualizado');
@@ -2364,6 +2378,7 @@ function staffFutureAppts(id){ return state.appointments.filter(a => a.status ==
 function askRemoveStaff(id){
   if (state.staff.length <= 1) return showToast('Debe quedar al menos un trabajador configurado');
   state.confirmRemoveStaff = id;
+  state.editingStaff = null;
   render();
 }
 function cancelRemoveStaff(){ state.confirmRemoveStaff = null; render(); }
@@ -3902,57 +3917,92 @@ function renderAdminHorarios(){
         <div class="row between" style="flex-wrap:nowrap;">
           <div class="row" style="flex-wrap:nowrap;gap:12px;min-width:0;">
             <span class="avatar" style="background:#fff;" aria-hidden="true">${escapeHtml(initials(member.name))}</span>
-            ${state.editingStaff === member.id
-              ? `<div class="field" style="min-width:0;flex:1;"><label for="es-name" class="sr-only">Nombre</label><input id="es-name" value="${escapeHtml(member.name)}" aria-label="Nombre del trabajador"></div>`
-              : `<p class="card-title" style="overflow-wrap:anywhere;">${escapeHtml(member.name)}</p>`}
+            <p class="card-title" style="overflow-wrap:anywhere;">${escapeHtml(member.name)}</p>
           </div>
-          <div class="row" style="flex-wrap:nowrap;gap:0;">
-            <button class="btn-text" type="button" onclick="startEditStaff('${member.id}')">Editar</button>
-            ${state.staff.length > 1 ? `<button class="btn-text danger" type="button" onclick="askRemoveStaff('${member.id}')">Eliminar</button>` : ''}
+          <button class="btn btn-soft btn-sm" type="button" style="background:#fff;" onclick="startEditStaff('${member.id}')">Editar</button>
+        </div>
+        <div class="stack" style="gap:10px;">
+          <div>
+            <p class="label" style="margin-bottom:6px;">Horario</p>
+            ${groupSchedule(member.schedule).map(g => `<p class="staff-ro"><b>${dayGroupLabel(g.days)}</b> · ${g.ranges.map(r => `${r.start} – ${r.end}`).join(', ')}</p>`).join('') || `<p class="secondary">Sin horario configurado.</p>`}
+          </div>
+          <div>
+            <p class="label" style="margin-bottom:6px;">Ausencias</p>
+            ${(member.timeOff || []).map(o => `<p class="staff-ro"><b>${o.from === o.to ? fmtDay(o.from) : `${fmtDay(o.from)} – ${fmtDay(o.to)}`}</b>${o.note ? ' · ' + escapeHtml(o.note) : ''}</p>`).join('') || `<p class="secondary">Sin ausencias.</p>`}
           </div>
         </div>
-        ${formGate('nr-' + member.id, 'Agregar horario', `<div class="rule-form">
-          <div class="field day">
-            <span class="label">Días</span>
-            ${dayPicks(nr.days, d => `toggleRuleDay('${member.id}','${d}')`)}
-          </div>
-          <div class="field">
-            <label for="nr-start-${member.id}">Desde</label>
-            <input id="nr-start-${member.id}" type="time" value="${nr.start}" onchange="updateNewRule('start', this.value)">
-          </div>
-          <div class="field">
-            <label for="nr-end-${member.id}">Hasta</label>
-            <input id="nr-end-${member.id}" type="time" value="${nr.end}" onchange="updateNewRule('end', this.value)">
-          </div>
-          <button class="btn btn-primary" type="button" onclick="updateNewRule('staffId','${member.id}'); addRule()">Agregar</button>
-        </div>`)}
+      </div>`).join('')}
+    ${renderStaffDrawer()}`;
+}
 
-        <div class="stack" style="gap:12px;">
-          ${state.editingStaff === member.id ? `<div class="row"><button class="btn btn-primary btn-sm" type="button" onclick="saveStaffName('${member.id}')">Guardar nombre</button><button class="btn btn-soft btn-sm" type="button" style="background:#fff;" onclick="startEditStaff('${member.id}')">Cancelar</button></div>` : ''}
-        ${groupSchedule(member.schedule).map(g => `
-            <div>
-              ${groupHeader(member.id, g)}
-              <div class="row">
-                ${g.ranges.map((r, idx) => { const ok = g.days.every(d => insideRanges(state.businessHours[d], r.start, r.end)); return `<span class="rule-chip${ok ? '' : ' warn'}" ${ok ? '' : 'title="Fuera del horario del negocio: no se ofrece a los clientes"'}>${r.start} – ${r.end}<button type="button" onclick="deleteRuleGroup('${member.id}', '${g.days.join(',')}', ${idx})" aria-label="Eliminar horario ${r.start} a ${r.end}">${icon('close', 16, 2.4)}</button></span>`; }).join('')}
+function renderStaffDrawer(){
+  const member = state.staff.find(x => x.id === state.editingStaff);
+  if (!member) return '';
+  const nr = state.newRule;
+  const fresh = state.drawerAnim; state.drawerAnim = false;
+  return `
+    <div class="drawer-back${fresh ? ' fresh' : ''}" onclick="if (event.target === this) startEditStaff('${member.id}')">
+      <div class="drawer" role="dialog" aria-modal="true" aria-label="Editar a ${escapeHtml(member.name)}">
+        <div class="drawer-grip" aria-hidden="true"></div>
+        <div class="row between" style="flex-wrap:nowrap;">
+          <h2 class="title-3">Editar trabajador</h2>
+          <button class="icon-btn" type="button" onclick="startEditStaff('${member.id}')" aria-label="Cerrar">${icon('close', 20, 2.4)}</button>
+        </div>
+        <div class="drawer-body stack" style="gap:20px;">
+          <div class="stack" style="gap:10px;">
+            <p class="label">Datos</p>
+            <div class="row row-end" style="flex-wrap:nowrap;">
+              <div class="field" style="flex:1;min-width:0;"><label for="es-name">Nombre</label><input id="es-name" value="${escapeHtml(member.name)}"></div>
+              <button class="btn btn-primary" type="button" onclick="saveStaffName('${member.id}')">Guardar</button>
+            </div>
+          </div>
+
+          <div class="stack" style="gap:12px;">
+            <p class="label">Horario</p>
+            ${groupSchedule(member.schedule).map(g => `
+              <div>
+                ${groupHeader(member.id, g)}
+                <div class="row">
+                  ${g.ranges.map((r, idx) => { const ok = g.days.every(d => insideRanges(state.businessHours[d], r.start, r.end)); return `<span class="rule-chip${ok ? '' : ' warn'}" ${ok ? '' : 'title="Fuera del horario del negocio: no se ofrece a los clientes"'}>${r.start} – ${r.end}<button type="button" onclick="deleteRuleGroup('${member.id}', '${g.days.join(',')}', ${idx})" aria-label="Eliminar horario ${r.start} a ${r.end}">${icon('close', 16, 2.4)}</button></span>`; }).join('')}
+                </div>
+              </div>`).join('') || `<p class="secondary">Todavía no configuraste ningún horario para ${escapeHtml(member.name)}.</p>`}
+            ${formGate('nr-' + member.id, 'Agregar horario', `<div class="rule-form">
+              <div class="field day">
+                <span class="label">Días</span>
+                ${dayPicks(nr.days, d => `toggleRuleDay('${member.id}','${d}')`)}
               </div>
-            </div>`).join('') || `<p class="secondary">Todavía no configuraste ningún horario para ${escapeHtml(member.name)}.</p>`}
+              <div class="field">
+                <label for="nr-start-${member.id}">Desde</label>
+                <input id="nr-start-${member.id}" type="time" value="${nr.start}" onchange="updateNewRule('start', this.value)">
+              </div>
+              <div class="field">
+                <label for="nr-end-${member.id}">Hasta</label>
+                <input id="nr-end-${member.id}" type="time" value="${nr.end}" onchange="updateNewRule('end', this.value)">
+              </div>
+              <button class="btn btn-primary" type="button" onclick="updateNewRule('staffId','${member.id}'); addRule()">Agregar</button>
+            </div>`)}
+          </div>
+
+          <div class="stack" style="gap:12px;">
+            <p class="label">Ausencias (vacaciones, licencias)</p>
+            ${(member.timeOff || []).length ? `<div class="rows">${member.timeOff.map(o => {
+              const aff = offAffected(member.id, o);
+              return `<div class="card-line" style="padding:12px 14px;background:#fff;">
+                <div class="row between" style="flex-wrap:nowrap;gap:10px;"><div style="min-width:0;"><p class="row-title" style="font-size:15px;">${o.from === o.to ? fmtDay(o.from) : `${fmtDay(o.from)} – ${fmtDay(o.to)}`}</p>${o.note ? `<p class="secondary">${escapeHtml(o.note)}</p>` : ''}</div><button class="btn-text danger" type="button" onclick="deleteTimeOff('${member.id}','${o.id}')">Quitar</button></div>
+                ${aff ? `<div style="margin-top:6px;">${chip('warning', `${aff} cita${aff === 1 ? '' : 's'} afectada${aff === 1 ? '' : 's'}`)}</div>` : ''}
+              </div>`; }).join('')}</div>` : ''}
+            ${formGate('of-' + member.id, 'Agregar ausencia', `<div class="rule-form">
+              <div class="field"><label for="of-from-${member.id}">Desde</label><input id="of-from-${member.id}" type="date" min="${todayISO()}" value="${state.newOff.staffId === member.id ? state.newOff.from : ''}" placeholder="Elegir fecha" onchange="updateNewOff('staffId','${member.id}'); updateNewOff('from', this.value); render()"></div>
+              <div class="field"><label for="of-to-${member.id}">Hasta (opcional)</label><input id="of-to-${member.id}" type="date" min="${todayISO()}" value="${state.newOff.staffId === member.id ? state.newOff.to : ''}" placeholder="Elegir fecha" onchange="updateNewOff('staffId','${member.id}'); updateNewOff('to', this.value); render()"></div>
+              <div class="field day"><label for="of-note-${member.id}">Motivo (opcional)</label><input id="of-note-${member.id}" placeholder="Ej: Vacaciones" value="${state.newOff.staffId === member.id ? escapeHtml(state.newOff.note) : ''}" oninput="updateNewOff('staffId','${member.id}'); updateNewOff('note', this.value)"></div>
+              <button class="btn btn-soft" type="button" style="background:#fff;" onclick="addTimeOff('${member.id}')">Agregar ausencia</button>
+            </div>`)}
+          </div>
+
+          ${state.staff.length > 1 ? `<div class="drawer-danger"><button class="btn btn-danger btn-block" type="button" onclick="askRemoveStaff('${member.id}')">Eliminar trabajador</button></div>` : ''}
         </div>
-        <div>
-          <p class="label" style="margin-bottom:8px;">Ausencias (vacaciones, licencias)</p>
-          ${(member.timeOff || []).length ? `<div class="rows" style="margin-bottom:10px;">${member.timeOff.map(o => {
-            const aff = offAffected(member.id, o);
-            return `<div class="card-line" style="padding:12px 14px;background:#fff;">
-              <div class="row between" style="flex-wrap:nowrap;gap:10px;"><div style="min-width:0;"><p class="row-title" style="font-size:15px;">${o.from === o.to ? fmtDay(o.from) : `${fmtDay(o.from)} – ${fmtDay(o.to)}`}</p>${o.note ? `<p class="secondary">${escapeHtml(o.note)}</p>` : ''}</div><button class="btn-text danger" type="button" onclick="deleteTimeOff('${member.id}','${o.id}')">Quitar</button></div>
-              ${aff ? `<div style="margin-top:6px;">${chip('warning', `${aff} cita${aff === 1 ? '' : 's'} afectada${aff === 1 ? '' : 's'}`)}</div>` : ''}
-            </div>`; }).join('')}</div>` : ''}
-          ${formGate('of-' + member.id, 'Agregar ausencia', `<div class="rule-form">
-            <div class="field"><label for="of-from-${member.id}">Desde</label><input id="of-from-${member.id}" type="date" min="${todayISO()}" value="${state.newOff.staffId === member.id ? state.newOff.from : ''}" placeholder="Elegir fecha" onchange="updateNewOff('staffId','${member.id}'); updateNewOff('from', this.value); render()"></div>
-            <div class="field"><label for="of-to-${member.id}">Hasta (opcional)</label><input id="of-to-${member.id}" type="date" min="${todayISO()}" value="${state.newOff.staffId === member.id ? state.newOff.to : ''}" placeholder="Elegir fecha" onchange="updateNewOff('staffId','${member.id}'); updateNewOff('to', this.value); render()"></div>
-            <div class="field day"><label for="of-note-${member.id}">Motivo (opcional)</label><input id="of-note-${member.id}" placeholder="Ej: Vacaciones" value="${state.newOff.staffId === member.id ? escapeHtml(state.newOff.note) : ''}" oninput="updateNewOff('staffId','${member.id}'); updateNewOff('note', this.value)"></div>
-            <button class="btn btn-soft" type="button" style="background:#fff;" onclick="addTimeOff('${member.id}')">Agregar ausencia</button>
-          </div>`)}
-        </div>
-      </div>`).join('')}`;
+      </div>
+    </div>`;
 }
 
 function renderAdminMarca(){
@@ -4523,15 +4573,33 @@ function renderSuper(){
               ${pay ? (pay.suspended ? chip('danger', 'Detenida por falta de pago') : pay.overdue ? chip('warning', `Pago pendiente · se detiene el ${fmtDay(pay.stopOn)}`) : chip('neutral', `Próximo pago ${fmtDay(pay.next)}`)) : ''}
               ${chip(biz.enabled ? 'success' : 'danger', biz.enabled ? 'Activa' : 'Desactivada')}
             </div>
-            <div class="row-actions" style="flex-wrap:wrap;">
-              <button class="btn btn-sm btn-soft" type="button" onclick="toggleBusinessPlan('${biz.id}')">${biz.plan === 'Pro' ? 'Pasar a Prueba' : 'Pasar a Pro'}</button>
-              <button class="btn btn-sm btn-soft" type="button" onclick="toggleBusinessEnabled('${biz.id}')">${biz.enabled ? 'Desactivar' : 'Activar'}</button>
-              ${biz.plan === 'Prueba' ? `<button class="btn btn-sm btn-soft" type="button" onclick="extendTrial('${biz.id}')">Extender prueba 14 días</button>` : ''}
-              ${pay ? `<button class="btn btn-sm btn-soft" type="button" onclick="registerPayment('${biz.id}')">Registrar pago</button>` : ''}
-              <button class="btn btn-sm btn-soft" type="button" onclick="resetBusinessPassword('${biz.id}')">Restablecer contraseña</button>
-              <button class="btn btn-sm btn-primary" type="button" onclick="openBizLog('${biz.id}')">Ver registro</button>
+            <div class="sa-groups">
+              <div class="sa-group">
+                <p class="label">Acciones principales</p>
+                <div class="row">
+                  ${pay ? `<button class="btn btn-sm btn-primary" type="button" onclick="registerPayment('${biz.id}')">Registrar pago</button>` : ''}
+                  <button class="btn btn-sm ${pay ? 'btn-soft' : 'btn-primary'}" type="button" onclick="openBizLog('${biz.id}')">Ver registro</button>
+                </div>
+              </div>
+              <div class="sa-group">
+                <p class="label">Plan</p>
+                <div class="row">
+                  <button class="btn btn-sm btn-soft" type="button" onclick="toggleBusinessPlan('${biz.id}')">${biz.plan === 'Pro' ? 'Pasar a Prueba' : 'Pasar a Pro'}</button>
+                  ${biz.plan === 'Prueba' ? `<button class="btn btn-sm btn-soft" type="button" onclick="extendTrial('${biz.id}')">Extender prueba 14 días</button>` : ''}
+                </div>
+                ${pay ? `<div class="field"><label for="np-${biz.id}">Próxima fecha de pago</label><input id="np-${biz.id}" type="date" value="${pay.next}" onchange="setNextPayment('${biz.id}', this.value)"></div>` : ''}
+              </div>
+              <div class="sa-group">
+                <p class="label">Acceso</p>
+                <div class="row"><button class="btn btn-sm btn-soft" type="button" onclick="resetBusinessPassword('${biz.id}')">Restablecer contraseña</button></div>
+              </div>
+              <div class="sa-group sa-danger">
+                <p class="label">Zona de riesgo</p>
+                <div class="row">${biz.enabled
+                  ? `<button class="btn btn-sm btn-danger" type="button" onclick="toggleBusinessEnabled('${biz.id}')">Desactivar cuenta</button>`
+                  : `<button class="btn btn-sm btn-soft" type="button" onclick="toggleBusinessEnabled('${biz.id}')">Activar cuenta</button>`}</div>
+              </div>
             </div>
-            ${pay ? `<div class="field" style="margin-top:10px;"><label for="np-${biz.id}">Próxima fecha de pago</label><input id="np-${biz.id}" type="date" value="${pay.next}" onchange="setNextPayment('${biz.id}', this.value)"></div>` : ''}
           </div>`;}).join('')}
       </div>
       <p class="hint" style="margin-top:12px;">Los administradores no se registran solos: tú creas la cuenta con una contraseña temporal que deberán cambiar al ingresar.</p>
@@ -4562,7 +4630,7 @@ function render(){
   document.getElementById('reset-btn').textContent = state.confirmingReset ? '¿Seguro? Toca de nuevo' : 'Reiniciar demo';
   const act = document.activeElement;
   const keep = act && act.id && /^(INPUT|SELECT|TEXTAREA)$/.test(act.tagName) ? { id: act.id, s: act.selectionStart, e: act.selectionEnd } : null;
-  const sheetEl = document.querySelector('.sheet');
+  const sheetEl = document.querySelector('.sheet, .drawer-body');
   const sheetTop = sheetEl ? sheetEl.scrollTop : 0;
   document.getElementById('view').innerHTML =
     state.view === 'paciente' ? renderPaciente() :
@@ -4574,7 +4642,7 @@ function render(){
   }
   const tempHtml = renderTempModal();
   if (tempHtml) document.getElementById('view').insertAdjacentHTML('beforeend', tempHtml);
-  const newSheet = document.querySelector('.sheet');
+  const newSheet = document.querySelector('.sheet, .drawer-body');
   if (newSheet && sheetEl) newSheet.scrollTop = sheetTop;
   markRequired();
   renderToast();
