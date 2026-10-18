@@ -399,6 +399,8 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .tag-staff .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 .pill-opt svg { vertical-align: -3px; }
 .form-open .field input:not([type=checkbox]):not([type=file]):not([type=color]), .form-open .field select, .pay-block .field input:not([type=checkbox]):not([type=file]):not([type=color]), .pay-block .field select { background-color: var(--color-surface); border: 1.5px solid #DADADF; }
+.notice.ok-box { background: var(--color-success-bg); color: var(--color-success); }
+.field input:disabled { opacity: 1; -webkit-text-fill-color: var(--color-text-secondary); color: var(--color-text-secondary); background: #EDEDF0 !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 56px !important; }
@@ -1623,6 +1625,7 @@ function updateNewAppt(field, value){ state.newAppt[field] = value; state.newApp
 function setNewApptDocType(type){
   const n = state.newAppt;
   n.docType = type;
+  n.nombres = ''; n.apellidos = ''; n.phone = '';
   n.dni = normalizeDni(n.dni, type);
   n.known = false;
   render();
@@ -1643,7 +1646,11 @@ function lookupNewApptDni(value){
   } else if (wasKnown) {
     n.nombres = ''; n.apellidos = ''; n.phone = '';
     render();
+  } else {
+    const ok = isValidDni(n.dni, n.docType);
+    if (n._docOk !== ok) { n._docOk = ok; render(); }
   }
+  n._docOk = isValidDni(n.dni, n.docType);
   syncNewApptValidity();
 }
 function createAdminAppointment(){
@@ -4077,13 +4084,15 @@ function renderNewApptView(){
         <div class="field">
           <label for="na-dni">Número de documento</label>
           <input id="na-dni" inputmode="${n.docType === 'DNI' ? 'numeric' : 'text'}" value="${escapeHtml(n.dni)}" oninput="lookupNewApptDni(this.value)">
-          ${n.known
-            ? `<span class="hint" style="color:var(--color-success);font-weight:600;">Cliente existente: datos completados.</span>`
-            : `<span class="hint">${DOC_TYPES[n.docType].hint}. Si es un cliente nuevo, completa sus datos.</span>`}
+          ${isValidDni(n.dni, n.docType) ? '' : `<span class="hint">${DOC_TYPES[n.docType].hint}. Al completarlo buscamos al cliente.</span>`}
         </div>
-        <div class="field"><label for="na-nombres">Nombres</label><input id="na-nombres" value="${escapeHtml(n.nombres)}" oninput="updateNewAppt('nombres', this.value)"></div>
-        <div class="field"><label for="na-apellidos">Apellidos</label><input id="na-apellidos" value="${escapeHtml(n.apellidos)}" oninput="updateNewAppt('apellidos', this.value)"></div>
-        <div class="field"><label for="na-phone">Teléfono</label><input id="na-phone" type="tel" inputmode="tel" value="${escapeHtml(n.phone)}" oninput="updateNewAppt('phone', this.value)"></div>
+        ${isValidDni(n.dni, n.docType) ? (n.known
+          ? `<div class="notice ok-box" role="status"><b>Cliente existente.</b> Sus datos se completaron solos y están bloqueados. Si hay que corregirlos, hazlo desde Clientes.</div>`
+          : `<div class="notice warn" role="status"><b>Cliente nuevo.</b> Aún no está registrado. Pídele sus datos y completa los campos para registrarlo.</div>`) : ''}
+        ${isValidDni(n.dni, n.docType) ? `
+        <div class="field"><label for="na-nombres">Nombres</label><input id="na-nombres" value="${escapeHtml(n.nombres)}" ${n.known ? 'disabled' : `oninput="updateNewAppt('nombres', this.value)"`}></div>
+        <div class="field"><label for="na-apellidos">Apellidos</label><input id="na-apellidos" value="${escapeHtml(n.apellidos)}" ${n.known ? 'disabled' : `oninput="updateNewAppt('apellidos', this.value)"`}></div>
+        <div class="field"><label for="na-phone">Teléfono</label><input id="na-phone" type="tel" inputmode="tel" value="${escapeHtml(n.phone)}" ${n.known ? 'disabled' : `oninput="updateNewAppt('phone', this.value)"`}></div>` : ''}
         ${n.formError ? `<p class="error-text" role="alert">${escapeHtml(n.formError)}</p>` : ''}
       </div>`;
   return renderBookingScreen(n, {
