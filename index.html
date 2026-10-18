@@ -3926,11 +3926,9 @@ function dayPicks(selected, onclickFn){
   return `<div class="day-picks" role="group" aria-label="Días">${DAY_ORDER.map(d => `<button type="button" class="day-pick" aria-pressed="${selected.includes(d)}" aria-label="${WEEKDAYS_LONG[d]}" onclick="${onclickFn(d)}">${letters[d]}</button>`).join('')}</div>`;
 }
 function renderBusinessHoursSection(){
-  const days = ['1', '2', '3', '4', '5', '6', '0'];
   const nb = state.newBizRule;
-  const nc = state.newClosed;
   return `
-    <h2 class="title-2" style="margin-top:28px;">Horario del negocio</h2>
+    <h2 class="title-2">Horario del negocio</h2>
     <p class="secondary" style="margin-bottom:14px;">Las horas en que atiendes. Los horarios de cada trabajador deben estar dentro de este.</p>
     <div class="card stack">
       ${formGate('bh', 'Agregar horario', `<div class="rule-form">
@@ -3950,7 +3948,11 @@ function renderBusinessHoursSection(){
           </div>`).join('') || `<p class="secondary">El negocio todavía no tiene horario: nadie podrá reservar.</p>`}
       </div>
     </div>
-
+`;
+}
+function renderClosuresSection(){
+  const nc = state.newClosed;
+  return `
     <h2 class="title-2">Cierres</h2>
     <p class="secondary" style="margin-bottom:14px;">Feriados, vacaciones o un horario en que no atiendes. Pueden repetirse cada semana. No se podrá reservar en ese tiempo.</p>
     <div class="card stack">
@@ -4001,24 +4003,7 @@ function renderAdminHorarios(){
   return `
     ${adminHeader('Horarios')}
 
-    ${renderBusinessHoursSection()}
-
-    ${renderServicesSection()}
-
-    <h2 class="title-2" style="margin-top:28px;">Configuración de citas</h2>
-    <div class="card stack">
-      <div class="grid-2">
-        ${isProPlan() && activeServices().length ? `<input id="cfg-slot" type="hidden" value="${cfg.slotMinutes}"><p class="secondary">La duración de cada cita la define su servicio (ver Servicios arriba).</p>` : `<div class="field"><label for="cfg-slot">Duración de la cita (min)</label><input id="cfg-slot" type="number" inputmode="numeric" value="${cfg.slotMinutes}"></div>`}
-        <div class="field"><label for="cfg-buffer">Descanso entre citas (min)</label><input id="cfg-buffer" type="number" inputmode="numeric" value="${cfg.bufferMinutes}"></div>
-        <div class="field"><label for="cfg-notice">Anticipación mínima (horas)</label><input id="cfg-notice" type="number" inputmode="numeric" value="${cfg.minNoticeHours}"></div>
-        <div class="field"><label for="cfg-window">Reservas hasta (días a futuro)</label><input id="cfg-window" type="number" inputmode="numeric" value="${cfg.windowDays}"></div>
-        <div class="field"><label for="cfg-cancel">Cancelaciones del cliente hasta (horas antes)</label><input id="cfg-cancel" type="number" inputmode="numeric" value="${cfg.cancelNoticeHours}"><span class="hint">Después de ese plazo el cliente ya no puede cancelar en línea. 0 = sin límite.</span></div>
-      </div>
-      ${isProPlan() ? `<p class="hint">En el plan Pro, cada servicio define su propia duración. La de arriba se usa solo cuando una cita no tiene servicio.</p>` : ''}
-      <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="saveConfig()">Guardar configuración</button>
-    </div>
-
-    <h2 class="title-2">Equipo y asignación</h2>
+    <h2 class="title-2" style="margin-top:28px;">Equipo y asignación</h2>
     <div class="card stack">
       <p class="secondary">Cada trabajador tiene su propio horario. Cuando un cliente reserva, Caly asigna automáticamente al trabajador disponible siguiendo un turno rotativo (round robin), para repartir las citas de forma pareja.</p>
       ${formGate('staff', 'Agregar trabajador', `<div class="row row-end" style="flex-wrap:nowrap;">
@@ -4051,7 +4036,27 @@ function renderAdminHorarios(){
           </div>
         </div>
       </div>`).join('')}
-    ${renderStaffDrawer()}`;
+    ${renderStaffDrawer()}
+
+    ${renderServicesSection()}
+
+    ${renderClosuresSection()}
+
+    ${renderBusinessHoursSection()}
+
+    <h2 class="title-2" >Configuración de citas</h2>
+    <div class="card stack">
+      <div class="grid-2">
+        ${isProPlan() && activeServices().length ? `<input id="cfg-slot" type="hidden" value="${cfg.slotMinutes}"><p class="secondary">La duración de cada cita la define su servicio (ver Servicios arriba).</p>` : `<div class="field"><label for="cfg-slot">Duración de la cita (min)</label><input id="cfg-slot" type="number" inputmode="numeric" value="${cfg.slotMinutes}"></div>`}
+        <div class="field"><label for="cfg-buffer">Descanso entre citas (min)</label><input id="cfg-buffer" type="number" inputmode="numeric" value="${cfg.bufferMinutes}"></div>
+        <div class="field"><label for="cfg-notice">Anticipación mínima (horas)</label><input id="cfg-notice" type="number" inputmode="numeric" value="${cfg.minNoticeHours}"></div>
+        <div class="field"><label for="cfg-window">Reservas hasta (días a futuro)</label><input id="cfg-window" type="number" inputmode="numeric" value="${cfg.windowDays}"></div>
+        <div class="field"><label for="cfg-cancel">Cancelaciones del cliente hasta (horas antes)</label><input id="cfg-cancel" type="number" inputmode="numeric" value="${cfg.cancelNoticeHours}"><span class="hint">Después de ese plazo el cliente ya no puede cancelar en línea. 0 = sin límite.</span></div>
+      </div>
+      ${isProPlan() ? `<p class="hint">En el plan Pro, cada servicio define su propia duración. La de arriba se usa solo cuando una cita no tiene servicio.</p>` : ''}
+      <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="saveConfig()">Guardar configuración</button>
+    </div>
+`;
 }
 
 function renderStaffDrawer(){
