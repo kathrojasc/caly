@@ -1532,12 +1532,12 @@ function sendReminder(id){
 function goEsperando(){ goAtencion(); }
 function goAtencion(){ state.adminTab = 'citas'; state.agendaView = 'lista'; state.citasProblems = true; state.citasLimit = 15; render(); window.scrollTo(0, 0); }
 function goPendientes(){ goAtencion(); }
-function goNewAppt(){ state.adminTab = 'citas'; openNewAppt(); }
+function goNewAppt(){ openNewAppt(); }
 function openNewAppt(dateIso){
   const act = activeServices();
   const today = dateIso && dateIso >= todayISO() ? dateIso : todayISO();
   state.newAppt = {
-    admin: true, step: 'reservar', docType: 'DNI', dni: '', nombres: '', apellidos: '', name: '', phone: '', known: false, error: null, formError: null,
+    admin: true, originTab: state.adminTab, step: 'reservar', docType: 'DNI', dni: '', nombres: '', apellidos: '', name: '', phone: '', known: false, error: null, formError: null,
     selectedDate: today, calendarMonth: ymFromISO(today), selectedSlot: null, rescheduleId: null,
     serviceId: isProPlan() && act.length ? act[0].id : null, staffId: null,
   };
@@ -4096,7 +4096,7 @@ function renderNewApptView(){
         ${n.formError ? `<p class="error-text" role="alert">${escapeHtml(n.formError)}</p>` : ''}
       </div>`;
   return renderBookingScreen(n, {
-    backFn: 'closeNewAppt()', backLabel: 'Volver a Citas', title: 'Nueva cita', top,
+    backFn: 'closeNewAppt()', backLabel: ({ inicio: 'Volver al inicio', citas: 'Volver a Citas', clientes: 'Volver a Clientes', horarios: 'Volver a Horarios', cuenta: 'Volver a Cuenta' })[n.originTab] || 'Volver', title: 'Nueva cita', top,
     confirmFn: 'createAdminAppointment()', confirmLabel: 'Crear cita', continueLabel: 'Continuar',
   });
 }
