@@ -1653,6 +1653,13 @@ function sendNotice(){
   }
   render();
 }
+function newApptFor(id){
+  const a = state.appointments.find(x => x.id === id);
+  state.notify = null;
+  openNewAppt();
+  const p = a && state.patients[a.dni];
+  if (p) { state.newAppt.docType = p.docType || 'DNI'; lookupNewApptDni(a.dni); render(); }
+}
 function skipNotice(){ state.notify = null; render(); }
 
 // --- Superadministrador: alertas y cuentas de negocio ---
@@ -2209,7 +2216,7 @@ function renderRemoveStaffModal(){
     <div class="modal-back" onclick="if (event.target === this) cancelRemoveStaff()">
       <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="rm-title" aria-describedby="rm-desc">
         <h2 class="title-3" id="rm-title">¿Eliminar a ${escapeHtml(m.name)}?</h2>
-        <p class="secondary" id="rm-desc" style="margin-top:8px;">${n ? `Tiene ${n} cita${n === 1 ? '' : 's'} por venir. Quedarán <strong style="color:var(--color-text);">con problemas</strong> y tendrás que moverlas a otro trabajador o cancelarlas y avisar al cliente.` : 'No tiene citas por venir.'}${alone.length ? ` Los servicios ${alone.map(escapeHtml).join(', ')} se quedarán sin trabajador asignado.` : ''} <strong style="color:var(--color-text);">Esta acción es irreversible.</strong> Si solo se ausenta un tiempo, usa Ausencias.</p>
+        <p class="secondary" id="rm-desc" style="margin-top:8px;">${n ? `Tiene ${n} cita${n === 1 ? '' : 's'} por venir. Quedarán <strong style="color:var(--color-text);">con problemas</strong> y tendrás que cancelarlas y avisar al cliente.` : 'No tiene citas por venir.'}${alone.length ? ` Los servicios ${alone.map(escapeHtml).join(', ')} se quedarán sin trabajador asignado.` : ''} <strong style="color:var(--color-text);">Esta acción es irreversible.</strong> Si solo se ausenta un tiempo, usa Ausencias.</p>
         <div class="stack" style="margin-top:20px;gap:10px;">
           <button class="btn btn-danger-solid btn-block" type="button" onclick="removeStaffMember('${m.id}')">Sí, eliminar</button>
           <button class="btn btn-soft btn-block" type="button" autofocus onclick="cancelRemoveStaff()">Volver</button>
@@ -2874,7 +2881,6 @@ function upcomingCard(a, light, todayIso){
       <div class="hero-actions c4">
         <button type="button" onclick="togglePaid('${a.id}')">${icon('check', 20, 2.4)}<span>${a.paid ? 'Deshacer pago' : 'Marcar pagado'}</span></button>
         <button type="button" onclick="sendReminder('${a.id}')" aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}">${icon('chat', 20)}<span>Recordar</span></button>
-        <button type="button" onclick="openMove('${a.id}')">${icon('calendar', 20)}<span>Mover</span></button>
         <button type="button" onclick="askReschedule('${a.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}">${icon('refresh', 20)}<span>Reagendar</span></button>
       </div>
     </div>`;
@@ -3297,17 +3303,14 @@ function citaCard(a, now, mode){
   const btns = [];
   const B = (cls, fn, ic, label, extra) => `<button type="button" ${cls ? `class="${cls}"` : ''} onclick="${fn}" ${extra || ''}>${ic}<span>${label}</span></button>`;
   if (pend) {
-    btns.push(B('', `openMove('${a.id}')`, icon('calendar', 20), 'Mover'));
     btns.push(B('danger', `askCancel('${a.id}')`, icon('close', 20, 2.4), 'Cancelar y avisar'));
   } else if (wait) {
     btns.push(B('', `resendReschedule('${a.id}')`, icon('chat', 20), 'Recordar'));
-    btns.push(B('', `openMove('${a.id}')`, icon('calendar', 20), 'Mover'));
     btns.push(B('danger', `askCancel('${a.id}')`, icon('close', 20, 2.4), 'Cancelar'));
   } else if (!cancelled) {
     if (payOn()) btns.push(B('', `togglePaid('${a.id}')`, icon('check', 20, 2.4), a.paid ? 'Deshacer pago' : 'Marcar pagado'));
     if (upcoming) {
       btns.push(B('', `sendReminder('${a.id}')`, icon('chat', 20), 'Recordar', `aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}"`));
-      btns.push(B('', `openMove('${a.id}')`, icon('calendar', 20), 'Mover'));
       btns.push(B('danger', `askCancel('${a.id}')`, icon('close', 20, 2.4), 'Cancelar'));
     } else {
       btns.push(B(a.attendance === 'attended' ? 'emph' : '', `setAttendance('${a.id}', 'attended')`, icon('check', 20, 2.4), 'Asistió'));
@@ -3996,6 +3999,7 @@ function renderNotifyModal(){
         <div class="stack" style="margin-top:20px;gap:10px;">
           <button class="btn btn-primary btn-block" type="button" onclick="sendNotice()">${icon('chat', 18)} Avisar por WhatsApp</button>
           <button class="btn btn-soft btn-block" type="button" autofocus onclick="skipNotice()">Ahora no</button>
+          ${move ? '' : `<button class="btn-text" type="button" style="align-self:center;" onclick="newApptFor('${a.id}')">Crear una nueva cita para ${escapeHtml(firstWord(a.name))}</button>`}
         </div>
       </div>
     </div>`;
