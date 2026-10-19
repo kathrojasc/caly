@@ -837,6 +837,7 @@ function loadState(){
       parsed.newOff = Object.assign({}, def.newOff, parsed.newOff || {});
       parsed.editingService = null;
       parsed.svcDraft = null;
+      parsed.exportOpen = false;
       parsed.editingBiz = false; parsed.bizDraft = null; parsed.closureDrawer = false;
       parsed.editingStaff = null;
       parsed.staffDraft = null;
@@ -4586,25 +4587,54 @@ function downloadAppts(all){
   logEvent('admin.export', all ? `El administrador descargó todas las citas (${count}).` : `El administrador descargó las citas del ${from || 'inicio'} al ${to || 'hoy'} (${count}).`, { data: { archivo: name, citas: count } });
   saveState();
   saveFile(name, toCsv(rows));
+  return true;
 }
-function renderExportCard(){
-  const n = exportCount();
-  const nr = (state.exportFrom || state.exportTo) ? exportRows(state.exportFrom, state.exportTo).count : null;
+function openExport(){ state.exportOpen = true; state.exportMode = 'all'; state.drawerAnim = true; render(); }
+function closeExport(){ state.exportOpen = false; render(); }
+function setExportMode(m){ state.exportMode = m; render(); }
+function runExport(){
+  if (downloadAppts(state.exportMode === 'all')) { state.exportOpen = false; render(); }
+}
+function renderExportDrawer(){
+  if (!state.exportOpen) return '';
+  const all = state.exportMode !== 'range';
+  const count = all ? exportCount0() : ((state.exportFrom || state.exportTo) ? exportRows(state.exportFrom, state.exportTo).count : null);
+  const fresh = state.drawerAnim; state.drawerAnim = false;
   return `
-    <h2 class="title-2">Exportar citas</h2>
-    <div class="card stack">
-      <p class="secondary">Descarga un archivo (CSV, se abre en Excel) con todas tus citas: confirmadas, canceladas, ya realizadas o por venir, con su cliente, servicio, trabajador, asistencia y pago.</p>
-      <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="downloadAppts(true)">Descargar todas (${n})</button>
-      <div class="pay-block">
-        <p class="label">O elige un rango de fechas</p>
-        <div class="grid-2">
-          <div class="field"><label for="exp-from">Desde</label><input id="exp-from" type="date" value="${state.exportFrom}" onchange="setExport('exportFrom', this.value)"></div>
-          <div class="field"><label for="exp-to">Hasta</label><input id="exp-to" type="date" value="${state.exportTo}" onchange="setExport('exportTo', this.value)"></div>
+    <div class="drawer-back${fresh ? ' fresh' : ''}">
+      <div class="drawer" role="dialog" aria-modal="true" aria-label="Descargar citas">
+        <div class="drawer-grip" aria-hidden="true"></div>
+        <div class="row between" style="flex-wrap:nowrap;">
+          <h2 class="title-3">Descargar citas</h2>
+          <button class="icon-btn" type="button" onclick="closeExport()" aria-label="Cerrar">${icon('close', 20, 2.4)}</button>
         </div>
-        ${nr !== null ? `<p class="secondary">${nr} cita${nr === 1 ? '' : 's'} en ese rango.</p>` : ''}
-        <button class="btn btn-soft" type="button" style="align-self:flex-start;background:var(--color-surface);" onclick="downloadAppts(false)">Descargar este rango</button>
+        <div class="drawer-body stack" style="gap:20px;">
+          <div>
+            <p class="label" style="margin-bottom:8px;">¿Qué citas quieres?</p>
+            <div class="pills">
+              <button type="button" class="pill-opt" aria-pressed="${all}" onclick="setExportMode('all')">Todas</button>
+              <button type="button" class="pill-opt" aria-pressed="${!all}" onclick="setExportMode('range')">Un rango de fechas</button>
+            </div>
+          </div>
+          ${all ? '' : `<div class="grid-2">
+            <div class="field"><label for="exp-from">Desde</label><input id="exp-from" type="date" value="${state.exportFrom}" onchange="setExport('exportFrom', this.value)"></div>
+            <div class="field"><label for="exp-to">Hasta</label><input id="exp-to" type="date" value="${state.exportTo}" onchange="setExport('exportTo', this.value)"></div>
+          </div>`}
+          <p class="secondary">${count === null ? 'Elige al menos una fecha.' : `Se descargarán <b>${count}</b> cita${count === 1 ? '' : 's'}.`} Archivo CSV, se abre en Excel.</p>
+        </div>
+        <div class="drawer-foot">
+          <button class="btn btn-primary btn-block" type="button" onclick="runExport()">Descargar</button>
+        </div>
       </div>
     </div>`;
+}
+function exportCount0(){ return exportRows('', '').count; }
+function renderExportCard(){
+  return `
+    <h2 class="title-2">Exportar citas</h2>
+    <p class="secondary" style="margin-bottom:14px;">Descarga tus citas en un archivo (CSV, se abre en Excel): confirmadas, canceladas, realizadas o por venir, con cliente, servicio, trabajador, asistencia y pago.</p>
+    <button class="btn btn-primary btn-sm" type="button" style="align-self:flex-start;" onclick="openExport()">Descargar</button>
+    ${renderExportDrawer()}`;
 }
 
 /* ---------- Registro por empresa (superadmin) ---------- */
