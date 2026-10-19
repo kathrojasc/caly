@@ -4018,8 +4018,11 @@ function renderBusinessHoursSection(){
     <h2 class="title-2">Horario del negocio</h2>
     <p class="secondary" style="margin-bottom:14px;">Las horas en que atiendes. Los horarios de cada trabajador deben estar dentro de este.</p>
     <div class="card stack">
-      ${groups.map(g => `<p class="staff-ro"><b>${dayGroupLabel(g.days)}</b> · ${g.ranges.map(r => `${r.start} – ${r.end}`).join(', ')}</p>`).join('') || `<p class="secondary">El negocio todavía no tiene horario: nadie podrá reservar.</p>`}
-      <button class="btn ${groups.length ? 'btn-soft' : 'btn-primary'} btn-sm" type="button" style="align-self:flex-start;${groups.length ? 'background:#fff;' : ''}" onclick="startEditBiz()">${groups.length ? 'Editar' : icon('plus', 18, 2.6) + ' Agregar horario'}</button>
+      ${groups.length ? `<div class="row between" style="flex-wrap:nowrap;align-items:flex-start;">
+        <div class="stack" style="gap:4px;min-width:0;">${groups.map(g => `<p class="staff-ro"><b>${dayGroupLabel(g.days)}</b> · ${g.ranges.map(r => `${r.start} – ${r.end}`).join(', ')}</p>`).join('')}</div>
+        <button class="btn btn-soft btn-sm" type="button" style="background:#fff;flex-shrink:0;" onclick="startEditBiz()">Editar</button>
+      </div>` : `<p class="secondary">El negocio todavía no tiene horario: nadie podrá reservar.</p>
+      <button class="btn btn-primary btn-sm" type="button" style="align-self:flex-start;" onclick="startEditBiz()">${icon('plus', 18, 2.6)} Agregar horario</button>`}
     </div>
     ${renderBizDrawer()}`;
 }
