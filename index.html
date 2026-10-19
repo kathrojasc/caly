@@ -420,6 +420,7 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .log-detail p { margin: 0; overflow-wrap: anywhere; }
 .log-detail b { color: var(--color-text); }
 .tag-staff { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; background: var(--color-surface); color: var(--color-text); font-size: 14px; font-weight: 500; }
+.card .tag-staff { background: #fff; }
 .tag-staff .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 .pill-opt svg { vertical-align: -3px; }
 .form-open .field input:not([type=checkbox]):not([type=file]):not([type=color]), .form-open .field select, .pay-block .field input:not([type=checkbox]):not([type=file]):not([type=color]), .pay-block .field select { background-color: var(--color-surface); border: 1.5px solid #DADADF; }
@@ -2387,7 +2388,7 @@ function addStaffMember(){
   showToast('Trabajador agregado');
 }
 function startEditStaff(id){
-  const m = state.staff.find(x => x.id === id);
+  const m = id === 'new' ? { name: '', schedule: {}, timeOff: [] } : state.staff.find(x => x.id === id);
   if (!m || state.editingStaff === id) { state.editingStaff = null; state.staffDraft = null; render(); return; }
   state.editingStaff = id;
   state.drawerAnim = true;
@@ -2417,7 +2418,8 @@ function dAddOff(){ state.staffDraft.off.push({ id: 'of' + Date.now(), from: '',
 function dDelOff(i){ state.staffDraft.off.splice(i, 1); render(); }
 function saveStaffDraft(){
   const d = state.staffDraft;
-  const m = state.staff.find(x => x.id === state.editingStaff);
+  const isNew = state.editingStaff === 'new';
+  const m = isNew ? { id: 'staff' + Date.now(), name: '', schedule: {}, timeOff: [] } : state.staff.find(x => x.id === state.editingStaff);
   if (!d || !m) return;
   const name = (d.name || '').trim();
   if (name.length < 2) return showToast('Ingresa el nombre del trabajador');
@@ -2447,12 +2449,13 @@ function saveStaffDraft(){
   m.name = name;
   m.schedule = sched;
   m.timeOff = off;
+  if (isNew) state.staff.push(m);
   state.appointments.forEach(a => { if (a.staffId === m.id) a.staffName = name; });
   state.editingStaff = null;
   state.staffDraft = null;
   saveState();
   render();
-  showToast('Cambios guardados');
+  showToast(isNew ? 'Trabajador agregado' : 'Cambios guardados');
   setTimeout(() => warnNewPending(before), 1800);
 }
 function saveStaffName(id){
@@ -3862,10 +3865,10 @@ function renderServiceDrawer(){
 function renderServicesEditor(){
   return `
     <div class="rows">
-      ${state.services.length === 0 ? `<p class="secondary">Todavía no creaste ningún servicio.</p>` : state.services.map(v => {
+      ${state.services.length === 0 ? `<div class="card"><p class="secondary">Todavía no creaste ningún servicio.</p></div>` : state.services.map(v => {
         const noStaff = serviceStaff(v.id).length === 0;
         return `
-        <div class="card-line stack" style="gap:12px;">
+        <div class="card stack" style="gap:12px;">
           <div class="row between" style="flex-wrap:nowrap;">
             <div style="min-width:0;"><p class="row-title">${escapeHtml(v.name)}</p><p class="secondary">${v.minutes} min</p></div>
             <div class="row" style="flex-wrap:nowrap;gap:8px;">
@@ -3887,13 +3890,13 @@ function renderServicesEditor(){
 function renderServicesSection(){
   if (!isProPlan()) {
     return `
-      <h2 class="title-2" style="margin-top:28px;">Servicios</h2>
+      <h2 class="title-2">Servicios</h2>
       <div class="card stack">
         <div class="row">${chip('neutral', 'Plan Pro')}<span class="secondary">Crea servicios con su propia duración y asócialos a tus trabajadores.</span></div>
       </div>`;
   }
   return `
-    <h2 class="title-2" style="margin-top:28px;">Servicios</h2>
+    <h2 class="title-2">Servicios</h2>
     <p class="secondary" style="margin-bottom:14px;">Crea tus servicios y elige qué trabajadores los prestan. El cliente elegirá un servicio al agendar.</p>
     ${renderServicesEditor()}`;
 }
@@ -4021,9 +4024,9 @@ function renderBusinessHoursSection(){
       ${groups.length ? `<div class="row between" style="flex-wrap:nowrap;align-items:flex-start;">
         <div class="stack" style="gap:4px;min-width:0;">${groups.map(g => `<p class="staff-ro"><b>${dayGroupLabel(g.days)}</b> · ${g.ranges.map(r => `${r.start} – ${r.end}`).join(', ')}</p>`).join('')}</div>
         <button class="btn btn-soft btn-sm" type="button" style="background:#fff;flex-shrink:0;" onclick="startEditBiz()">Editar</button>
-      </div>` : `<p class="secondary">El negocio todavía no tiene horario: nadie podrá reservar.</p>
-      <button class="btn btn-primary btn-sm" type="button" style="align-self:flex-start;" onclick="startEditBiz()">${icon('plus', 18, 2.6)} Agregar horario</button>`}
+      </div>` : `<p class="secondary">El negocio todavía no tiene horario: nadie podrá reservar.</p>`}
     </div>
+    ${groups.length ? '' : `<button class="btn btn-primary btn-sm add-btn" type="button" style="align-self:flex-start;margin-top:14px;" onclick="startEditBiz()">${icon('plus', 18, 2.6)} Agregar horario</button>`}
     ${renderBizDrawer()}`;
 }
 function renderClosuresSection(){
@@ -4031,22 +4034,20 @@ function renderClosuresSection(){
   return `
     <h2 class="title-2">Cierres</h2>
     <p class="secondary" style="margin-bottom:14px;">Feriados, vacaciones o un horario en que no atiendes. Pueden repetirse cada semana. No se podrá reservar en ese tiempo.</p>
-    <div class="card stack">
-      <button class="btn btn-primary btn-sm add-btn" type="button" style="align-self:flex-start;" onclick="openClosureDrawer()">${icon('plus', 18, 2.6)} Agregar cierre</button>
-      ${state.closedDays.length ? `<div class="rows">${state.closedDays.map(c => {
-        const aff = closedAffected(c);
-        return `
-        <div class="card-line" style="padding:14px 16px;background:#fff;">
-          <div class="row between" style="flex-wrap:nowrap;gap:10px;">
-            <div style="min-width:0;">
-              <p class="row-title" style="font-size:16px;">${closureLabel(c)}</p>
-              ${c.note ? `<p class="secondary">${escapeHtml(c.note)}</p>` : ''}
-            </div>
-            <button class="btn-text danger" type="button" onclick="deleteClosedDay('${c.id}')">Reabrir</button>
+    ${state.closedDays.length ? `<div class="rows">${state.closedDays.map(c => {
+      const aff = closedAffected(c);
+      return `
+      <div class="card stack" style="gap:10px;">
+        <div class="row between" style="flex-wrap:nowrap;gap:10px;">
+          <div style="min-width:0;">
+            <p class="row-title">${closureLabel(c)}</p>
+            ${c.note ? `<p class="secondary">${escapeHtml(c.note)}</p>` : ''}
           </div>
-          ${aff ? `<div style="margin-top:8px;">${chip('warning', `${aff} cita${aff === 1 ? '' : 's'} afectada${aff === 1 ? '' : 's'}`)}</div>` : ''}
-        </div>`;}).join('')}</div>` : ''}
-    </div>
+          <button class="btn btn-soft btn-sm" type="button" style="background:#fff;color:var(--color-danger);flex-shrink:0;" onclick="deleteClosedDay('${c.id}')">Reabrir</button>
+        </div>
+        ${aff ? `<div>${chip('warning', `${aff} cita${aff === 1 ? '' : 's'} afectada${aff === 1 ? '' : 's'}`)}</div>` : ''}
+      </div>`;}).join('')}</div>` : `<div class="card"><p class="secondary">No tienes cierres programados.</p></div>`}
+    <button class="btn btn-primary btn-sm add-btn" type="button" style="align-self:flex-start;margin-top:14px;" onclick="openClosureDrawer()">${icon('plus', 18, 2.6)} Agregar cierre</button>
     ${renderClosureDrawer()}`;
 }
 function openClosureDrawer(){ state.closureDrawer = true; state.drawerAnim = true; render(); }
@@ -4110,20 +4111,9 @@ function renderAdminHorarios(){
     ${renderServicesSection()}
 
     <h2 class="title-2">Equipo y asignación</h2>
-    <div class="card stack">
-      <p class="secondary">Cada trabajador tiene su propio horario. Cuando un cliente reserva, Caly asigna automáticamente al trabajador disponible siguiendo un turno rotativo (round robin), para repartir las citas de forma pareja.</p>
-      ${formGate('staff', 'Agregar trabajador', `<div class="row row-end" style="flex-wrap:nowrap;">
-        <div class="field" style="flex:1;">
-          <label for="new-staff-name">Nuevo trabajador</label>
-          <input id="new-staff-name" placeholder="Nombre" value="${escapeHtml(state.newStaffName)}" oninput="updateNewStaffName(this.value)">
-        </div>
-        <button class="btn btn-primary" type="button" onclick="addStaffMember()">Agregar</button>
-      </div>`)}
-    </div>
-
-    <p class="label" style="margin:24px 0 0;">Horario de cada trabajador</p>
-    ${state.staff.map(member => `
-      <div class="card stack" style="margin-top:12px;">
+    <p class="secondary" style="margin-bottom:14px;">Cada trabajador tiene su propio horario. Cuando un cliente reserva, Caly asigna automáticamente al trabajador disponible siguiendo un turno rotativo (round robin), para repartir las citas de forma pareja.</p>
+    <div class="rows">${state.staff.map(member => `
+      <div class="card stack">
         <div class="row between" style="flex-wrap:nowrap;">
           <div class="row" style="flex-wrap:nowrap;gap:12px;min-width:0;">
             <span class="avatar" style="background:#fff;" aria-hidden="true">${escapeHtml(initials(member.name))}</span>
@@ -4141,7 +4131,8 @@ function renderAdminHorarios(){
             ${(member.timeOff || []).map(o => `<p class="staff-ro"><b>${o.from === o.to ? fmtDay(o.from) : `${fmtDay(o.from)} – ${fmtDay(o.to)}`}</b>${o.note ? ' · ' + escapeHtml(o.note) : ''}</p>`).join('') || `<p class="secondary">Sin ausencias.</p>`}
           </div>
         </div>
-      </div>`).join('')}
+      </div>`).join('')}</div>
+    <button class="btn btn-primary btn-sm add-btn" type="button" style="align-self:flex-start;margin-top:14px;" onclick="startEditStaff('new')">${icon('plus', 18, 2.6)} Agregar trabajador</button>
     ${renderStaffDrawer()}
 
     <h2 class="title-2">Configuración de citas</h2>
@@ -4160,16 +4151,17 @@ function renderAdminHorarios(){
 }
 
 function renderStaffDrawer(){
-  const member = state.staff.find(x => x.id === state.editingStaff);
+  const isNew = state.editingStaff === 'new';
+  const member = isNew ? { id: 'new', name: '' } : state.staff.find(x => x.id === state.editingStaff);
   const d = state.staffDraft;
   if (!member || !d) return '';
   const fresh = state.drawerAnim; state.drawerAnim = false;
   return `
     <div class="drawer-back${fresh ? ' fresh' : ''}">
-      <div class="drawer" role="dialog" aria-modal="true" aria-label="Editar a ${escapeHtml(member.name)}">
+      <div class="drawer" role="dialog" aria-modal="true" aria-label="${isNew ? 'Nuevo trabajador' : 'Editar a ' + escapeHtml(member.name)}">
         <div class="drawer-grip" aria-hidden="true"></div>
         <div class="row between" style="flex-wrap:nowrap;">
-          <h2 class="title-3">Editar trabajador</h2>
+          <h2 class="title-3">${isNew ? 'Nuevo trabajador' : 'Editar trabajador'}</h2>
           <button class="icon-btn" type="button" onclick="startEditStaff('${member.id}')" aria-label="Cerrar sin guardar">${icon('close', 20, 2.4)}</button>
         </div>
         <div class="drawer-body stack" style="gap:22px;">
@@ -4212,10 +4204,10 @@ function renderStaffDrawer(){
             <button class="btn-text" type="button" style="align-self:flex-start;padding:0;" onclick="dAddOff()">+ Agregar ausencia</button>
           </div>
 
-          ${state.staff.length > 1 ? `<button class="btn-text danger" type="button" style="align-self:center;" onclick="askRemoveStaff('${member.id}')">Eliminar trabajador</button>` : ''}
+          ${!isNew && state.staff.length > 1 ? `<button class="btn-text danger" type="button" style="align-self:center;" onclick="askRemoveStaff('${member.id}')">Eliminar trabajador</button>` : ''}
         </div>
         <div class="drawer-foot">
-          <button class="btn btn-primary btn-block" type="button" onclick="saveStaffDraft()">Guardar cambios</button>
+          <button class="btn btn-primary btn-block" type="button" onclick="saveStaffDraft()">${isNew ? 'Agregar trabajador' : 'Guardar cambios'}</button>
         </div>
       </div>
     </div>`;
