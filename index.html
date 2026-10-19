@@ -836,6 +836,7 @@ function loadState(){
       parsed.newOff = Object.assign({}, def.newOff, parsed.newOff || {});
       parsed.editingService = null;
       parsed.svcDraft = null;
+      parsed.editingBiz = false; parsed.bizDraft = null; parsed.closureDrawer = false;
       parsed.editingStaff = null;
       parsed.staffDraft = null;
       parsed.dayEdit = null;
@@ -2324,6 +2325,7 @@ function commitClosure(entry){
   state.newClosed = { from: '', to: '', note: '', allDay: true, startTime: keep.startTime, endTime: keep.endTime, repeat: 'none' };
   state.pendingClosure = null;
   state.openForm = null;
+  state.closureDrawer = false;
   saveState();
   render();
   const aff = closedAffected(entry);
@@ -3936,30 +3938,90 @@ function dayPicks(selected, onclickFn){
   const letters = { '1': 'L', '2': 'M', '3': 'M', '4': 'J', '5': 'V', '6': 'S', '0': 'D' };
   return `<div class="day-picks" role="group" aria-label="Días">${DAY_ORDER.map(d => `<button type="button" class="day-pick" aria-pressed="${selected.includes(d)}" aria-label="${WEEKDAYS_LONG[d]}" onclick="${onclickFn(d)}">${letters[d]}</button>`).join('')}</div>`;
 }
+function startEditBiz(){
+  if (state.editingBiz) { state.editingBiz = false; state.bizDraft = null; render(); return; }
+  state.editingBiz = true;
+  state.drawerAnim = true;
+  state.bizDraft = { sched: JSON.parse(JSON.stringify(state.businessHours || {})) };
+  render();
+}
+function bRange(day, ri, f, v){ state.bizDraft.sched[day][ri][f] = v; }
+function bAddRange(day){
+  const r = state.bizDraft.sched[day] || [];
+  const last = r[r.length - 1];
+  const start = last ? last.end : '09:00';
+  const end = start < '18:00' ? '18:00' : (start < '23:00' ? '23:00' : '23:59');
+  r.push({ start, end });
+  state.bizDraft.sched[day] = r;
+  render();
+}
+function bDelRange(day, ri){ const r = state.bizDraft.sched[day]; r.splice(ri, 1); if (!r.length) delete state.bizDraft.sched[day]; render(); }
+function saveBizDraft(){
+  const d = state.bizDraft;
+  if (!d) return;
+  const sched = {};
+  for (const day of DAY_ORDER) {
+    const rs = (d.sched[day] || []).map(r => ({ start: r.start, end: r.end }));
+    for (const r of rs) if (!r.start || !r.end || r.start >= r.end) return showToast(`${WEEKDAYS_LONG[day]}: la hora de inicio debe ser antes que la de fin`);
+    rs.sort((x, y) => x.start.localeCompare(y.start));
+    for (let i = 1; i < rs.length; i++) if (rs[i].start < rs[i - 1].end) return showToast(`${WEEKDAYS_LONG[day]}: hay horarios que se cruzan`);
+    if (rs.length) sched[day] = rs;
+  }
+  const before = pendingAppts().length;
+  state.businessHours = sched;
+  state.editingBiz = false;
+  state.bizDraft = null;
+  saveState();
+  render();
+  showToast('Horario del negocio guardado');
+  setTimeout(() => warnNewPending(before), 1800);
+}
+function renderBizDrawer(){
+  const d = state.bizDraft;
+  if (!state.editingBiz || !d) return '';
+  const fresh = state.drawerAnim; state.drawerAnim = false;
+  return `
+    <div class="drawer-back${fresh ? ' fresh' : ''}">
+      <div class="drawer" role="dialog" aria-modal="true" aria-label="Horario del negocio">
+        <div class="drawer-grip" aria-hidden="true"></div>
+        <div class="row between" style="flex-wrap:nowrap;">
+          <h2 class="title-3">Horario del negocio</h2>
+          <button class="icon-btn" type="button" onclick="startEditBiz()" aria-label="Cerrar sin guardar">${icon('close', 20, 2.4)}</button>
+        </div>
+        <div class="drawer-body stack" style="gap:6px;">
+          <p class="secondary">Las horas en que atiendes, día por día. Los horarios de cada trabajador deben estar dentro de este.</p>
+          ${DAY_ORDER.map(day => {
+            const rs = d.sched[day] || [];
+            return `
+            <div class="dr-day">
+              <p class="dr-dayname">${WEEKDAYS_LONG[day]}</p>
+              ${rs.map((r, ri) => `
+                <div class="dr-range">
+                  <input id="bh-s-${day}-${ri}" type="time" value="${r.start}" aria-label="${WEEKDAYS_LONG[day]} desde" onchange="bRange('${day}',${ri},'start',this.value)">
+                  <span>–</span>
+                  <input id="bh-e-${day}-${ri}" type="time" value="${r.end}" aria-label="${WEEKDAYS_LONG[day]} hasta" onchange="bRange('${day}',${ri},'end',this.value)">
+                  <button class="icon-x" type="button" onclick="bDelRange('${day}',${ri})" aria-label="Quitar franja del ${WEEKDAYS_LONG[day].toLowerCase()}">${icon('close', 18, 2.4)}</button>
+                </div>`).join('')}
+              ${rs.length ? '' : '<p class="secondary">Cerrado</p>'}
+              <button class="btn-text" type="button" style="align-self:flex-start;min-height:32px;padding:0;" onclick="bAddRange('${day}')">${rs.length ? '+ Otra franja' : '+ Agregar horario'}</button>
+            </div>`; }).join('')}
+        </div>
+        <div class="drawer-foot">
+          <button class="btn btn-primary btn-block" type="button" onclick="saveBizDraft()">Guardar cambios</button>
+        </div>
+      </div>
+    </div>`;
+}
 function renderBusinessHoursSection(){
-  const nb = state.newBizRule;
+  const groups = groupSchedule(state.businessHours);
   return `
     <h2 class="title-2">Horario del negocio</h2>
     <p class="secondary" style="margin-bottom:14px;">Las horas en que atiendes. Los horarios de cada trabajador deben estar dentro de este.</p>
     <div class="card stack">
-      ${formGate('bh', 'Agregar horario', `<div class="rule-form">
-        <div class="field day">
-          <span class="label">Días</span>
-          ${dayPicks(nb.days, d => `toggleBizDay('${d}')`)}
-        </div>
-        <div class="field"><label for="bh-start">Desde</label><input id="bh-start" type="time" value="${nb.start}" onchange="updateNewBizRule('start', this.value)"></div>
-        <div class="field"><label for="bh-end">Hasta</label><input id="bh-end" type="time" value="${nb.end}" onchange="updateNewBizRule('end', this.value)"></div>
-        <button class="btn btn-primary" type="button" onclick="addBizRule()">Agregar</button>
-      </div>`)}
-      <div class="stack" style="gap:12px;">
-        ${groupSchedule(state.businessHours).map(g => `
-          <div>
-            ${groupHeader('biz', g)}
-            <div class="row">${g.ranges.map((r, idx) => `<span class="rule-chip">${r.start} – ${r.end}<button type="button" onclick="deleteBizRuleGroup('${g.days.join(',')}', ${idx})" aria-label="Eliminar horario ${r.start} a ${r.end}">${icon('close', 16, 2.4)}</button></span>`).join('')}</div>
-          </div>`).join('') || `<p class="secondary">El negocio todavía no tiene horario: nadie podrá reservar.</p>`}
-      </div>
+      ${groups.map(g => `<p class="staff-ro"><b>${dayGroupLabel(g.days)}</b> · ${g.ranges.map(r => `${r.start} – ${r.end}`).join(', ')}</p>`).join('') || `<p class="secondary">El negocio todavía no tiene horario: nadie podrá reservar.</p>`}
+      <button class="btn ${groups.length ? 'btn-soft' : 'btn-primary'} btn-sm" type="button" style="align-self:flex-start;${groups.length ? 'background:#fff;' : ''}" onclick="startEditBiz()">${groups.length ? 'Editar horario' : icon('plus', 18, 2.6) + ' Agregar horario'}</button>
     </div>
-`;
+    ${renderBizDrawer()}`;
 }
 function renderClosuresSection(){
   const nc = state.newClosed;
@@ -3967,29 +4029,7 @@ function renderClosuresSection(){
     <h2 class="title-2">Cierres</h2>
     <p class="secondary" style="margin-bottom:14px;">Feriados, vacaciones o un horario en que no atiendes. Pueden repetirse cada semana. No se podrá reservar en ese tiempo.</p>
     <div class="card stack">
-      ${formGate('cd', 'Agregar cierre', `<div class="rule-form">
-        <div class="field"><label for="cd-from">${nc.repeat === 'weekly' ? 'Desde el' : 'Desde'}</label><input id="cd-from" type="date" min="${todayISO()}" value="${nc.from}" placeholder="Elegir fecha" onchange="updateNewClosed('from', this.value); render()"></div>
-        <div class="field"><label for="cd-to">Hasta (opcional)</label><input id="cd-to" type="date" min="${todayISO()}" value="${nc.to}" placeholder="Elegir fecha" onchange="updateNewClosed('to', this.value); render()"></div>
-        <div class="field day">
-          <label for="cd-kind">Qué cierras</label>
-          <select id="cd-kind" onchange="updateNewClosed('allDay', this.value === 'all'); render()">
-            <option value="all" ${nc.allDay ? 'selected' : ''}>Todo el día</option>
-            <option value="part" ${nc.allDay ? '' : 'selected'}>Solo un horario</option>
-          </select>
-        </div>
-        ${nc.allDay ? '' : `
-        <div class="field"><label for="cd-st">Desde las</label><input id="cd-st" type="time" value="${nc.startTime}" onchange="updateNewClosed('startTime', this.value)"></div>
-        <div class="field"><label for="cd-et">Hasta las</label><input id="cd-et" type="time" value="${nc.endTime}" onchange="updateNewClosed('endTime', this.value)"></div>`}
-        <div class="field day">
-          <label for="cd-rep">Repetición</label>
-          <select id="cd-rep" onchange="updateNewClosed('repeat', this.value); render()">
-            <option value="none" ${nc.repeat === 'none' ? 'selected' : ''}>No se repite</option>
-            <option value="weekly" ${nc.repeat === 'weekly' ? 'selected' : ''}>Cada semana${nc.from ? ' (los ' + WEEKDAYS_LONG[dayOfWeek(nc.from)].toLowerCase() + ')' : ''}</option>
-          </select>
-        </div>
-        <div class="field day"><label for="cd-note">Motivo (opcional)</label><input id="cd-note" placeholder="Ej: Feriado, vacaciones, reunión" value="${escapeHtml(nc.note)}" oninput="updateNewClosed('note', this.value)"></div>
-        <button class="btn btn-primary" type="button" onclick="addClosedDay()">Guardar cierre</button>
-      </div>`)}
+      <button class="btn btn-primary btn-sm add-btn" type="button" style="align-self:flex-start;" onclick="openClosureDrawer()">${icon('plus', 18, 2.6)} Agregar cierre</button>
       ${state.closedDays.length ? `<div class="rows">${state.closedDays.map(c => {
         const aff = closedAffected(c);
         return `
@@ -4003,6 +4043,52 @@ function renderClosuresSection(){
           </div>
           ${aff ? `<div style="margin-top:8px;">${chip('warning', `${aff} cita${aff === 1 ? '' : 's'} afectada${aff === 1 ? '' : 's'}`)}</div>` : ''}
         </div>`;}).join('')}</div>` : ''}
+    </div>
+    ${renderClosureDrawer()}`;
+}
+function openClosureDrawer(){ state.closureDrawer = true; state.drawerAnim = true; render(); }
+function closeClosureDrawer(){ state.closureDrawer = false; render(); }
+function renderClosureDrawer(){
+  if (!state.closureDrawer) return '';
+  const nc = state.newClosed;
+  const fresh = state.drawerAnim; state.drawerAnim = false;
+  return `
+    <div class="drawer-back${fresh ? ' fresh' : ''}">
+      <div class="drawer" role="dialog" aria-modal="true" aria-label="Agregar cierre">
+        <div class="drawer-grip" aria-hidden="true"></div>
+        <div class="row between" style="flex-wrap:nowrap;">
+          <h2 class="title-3">Agregar cierre</h2>
+          <button class="icon-btn" type="button" onclick="closeClosureDrawer()" aria-label="Cerrar sin guardar">${icon('close', 20, 2.4)}</button>
+        </div>
+        <div class="drawer-body stack" style="gap:16px;">
+          <p class="secondary">Feriados, vacaciones o un horario en que no atiendes. No se podrá reservar en ese tiempo.</p>
+          <div class="field"><label for="cd-from">${nc.repeat === 'weekly' ? 'Desde el' : 'Desde'}</label><input id="cd-from" type="date" min="${todayISO()}" value="${nc.from}" placeholder="Elegir fecha" onchange="updateNewClosed('from', this.value); render()"></div>
+          <div class="field"><label for="cd-to">Hasta (opcional)</label><input id="cd-to" type="date" min="${todayISO()}" value="${nc.to}" placeholder="Elegir fecha" onchange="updateNewClosed('to', this.value); render()"></div>
+          <div class="field">
+            <label for="cd-kind">Qué cierras</label>
+            <select id="cd-kind" onchange="updateNewClosed('allDay', this.value === 'all'); render()">
+              <option value="all" ${nc.allDay ? 'selected' : ''}>Todo el día</option>
+              <option value="part" ${nc.allDay ? '' : 'selected'}>Solo un horario</option>
+            </select>
+          </div>
+          ${nc.allDay ? '' : `
+          <div class="grid-2">
+            <div class="field"><label for="cd-st">Desde las</label><input id="cd-st" type="time" value="${nc.startTime}" onchange="updateNewClosed('startTime', this.value)"></div>
+            <div class="field"><label for="cd-et">Hasta las</label><input id="cd-et" type="time" value="${nc.endTime}" onchange="updateNewClosed('endTime', this.value)"></div>
+          </div>`}
+          <div class="field">
+            <label for="cd-rep">Repetición</label>
+            <select id="cd-rep" onchange="updateNewClosed('repeat', this.value); render()">
+              <option value="none" ${nc.repeat === 'none' ? 'selected' : ''}>No se repite</option>
+              <option value="weekly" ${nc.repeat === 'weekly' ? 'selected' : ''}>Cada semana${nc.from ? ' (los ' + WEEKDAYS_LONG[dayOfWeek(nc.from)].toLowerCase() + ')' : ''}</option>
+            </select>
+          </div>
+          <div class="field"><label for="cd-note">Motivo (opcional)</label><input id="cd-note" placeholder="Ej: Feriado, vacaciones, reunión" value="${escapeHtml(nc.note)}" oninput="updateNewClosed('note', this.value)"></div>
+        </div>
+        <div class="drawer-foot">
+          <button class="btn btn-primary btn-block" type="button" onclick="addClosedDay()">Guardar cierre</button>
+        </div>
+      </div>
     </div>`;
 }
 
