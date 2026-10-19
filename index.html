@@ -2916,7 +2916,7 @@ function renderPacientePanel(b){
     <div class="page w560">
       ${patientHeader(b.name)}
       <h1 class="title-1" style="margin-top:24px;">Hola, ${escapeHtml(firstWord(b.nombres || b.name))}</h1>
-      <p class="secondary" style="margin-top:4px;"><span class="tnum">${docLabel(b.docType)} ${b.dni}</span> · <button class="btn-text" type="button" style="min-height:32px;padding:0;font-size:15px;color:var(--color-text-secondary);" onclick="goToPerfil()">Editar mis datos</button></p>
+      <p class="secondary" style="margin-top:4px;"><span class="tnum">${docLabel(b.docType)} ${b.dni}</span> · <button class="btn-text" type="button" style="min-height:32px;padding:0;font-size:15px;color:var(--color-text-secondary);" onclick="goToPerfil()">Editar</button></p>
 
       <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:24px;" onclick="goToReservar()">Reservar</button>
 
@@ -4019,7 +4019,7 @@ function renderBusinessHoursSection(){
     <p class="secondary" style="margin-bottom:14px;">Las horas en que atiendes. Los horarios de cada trabajador deben estar dentro de este.</p>
     <div class="card stack">
       ${groups.map(g => `<p class="staff-ro"><b>${dayGroupLabel(g.days)}</b> · ${g.ranges.map(r => `${r.start} – ${r.end}`).join(', ')}</p>`).join('') || `<p class="secondary">El negocio todavía no tiene horario: nadie podrá reservar.</p>`}
-      <button class="btn ${groups.length ? 'btn-soft' : 'btn-primary'} btn-sm" type="button" style="align-self:flex-start;${groups.length ? 'background:#fff;' : ''}" onclick="startEditBiz()">${groups.length ? 'Editar horario' : icon('plus', 18, 2.6) + ' Agregar horario'}</button>
+      <button class="btn ${groups.length ? 'btn-soft' : 'btn-primary'} btn-sm" type="button" style="align-self:flex-start;${groups.length ? 'background:#fff;' : ''}" onclick="startEditBiz()">${groups.length ? 'Editar' : icon('plus', 18, 2.6) + ' Agregar horario'}</button>
     </div>
     ${renderBizDrawer()}`;
 }
