@@ -811,6 +811,11 @@ function detectRoute(){
 }
 const ROUTE = detectRoute();
 const REMOTE = ROUTE.kind !== 'demo';
+// Las horas ocupadas que llegan del servidor incluyen las citas propias: se quitan para no verlas como "doble reserva".
+function dedupeBusy(){
+  const own = state.appointments.filter(a => !a.busy && a.status === 'CONFIRMED');
+  state.appointments = state.appointments.filter(a => !a.busy || !own.some(o => o.staffId === a.staffId && o.date === a.date && o.start === a.start && o.end === a.end));
+}
 function newId(prefix){
   if (REMOTE) return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); });
   return prefix + Date.now();
@@ -834,6 +839,7 @@ const SB_ERRORS = {
   fuera_de_plazo: 'Ya no puedes cancelar en línea. Contacta al negocio.',
   solo_superadmin: 'Solo el superadmin puede hacer eso.',
   rol_incorrecto: 'Esta cuenta no corresponde a esta pantalla.',
+  telefono_no_coincide: 'Este documento ya fue registrado por el negocio con otro teléfono. Usa el mismo teléfono que le diste al negocio, o pídele que lo actualice.',
   perfil_no_encontrado: 'Esta cuenta todavía no está vinculada a un negocio. Escribe al equipo de Caly.',
 };
 function friendlyError(e){
@@ -1109,9 +1115,176 @@ async function bootRemote(){
     try { await remoteEnterAdmin(); }
     catch (e) { if (!e.offline) { sb.clear(); } else { showToast(friendlyError(e)); } }
   }
+  if (ROUTE.kind === 'client') {
+    try {
+      const ok = await loadPublicBusiness();
+      if (ok) {
+        await refreshBusy();
+        if (sb.s) { try { await loadClientData(); } catch (e) { if (!e.offline) sb.clear(); } }
+      }
+    } catch (e) { showToast(friendlyError(e)); state.currentBizId = 'unavailable'; state.businesses = [{ id: 'unavailable', name: 'Negocio', plan: 'Prueba', enabled: false }]; }
+  }
   state.booting = false;
   refreshBrandUI();
   render();
+}
+
+/* ---------- Cliente (modo servidor) ---------- */
+function clientEmail(type, doc){ return `${String(type || 'DNI').toLowerCase()}-${String(doc).toLowerCase()}.${ROUTE.slug}@clientes.caly.pe`; }
+async function loadPublicBusiness(){
+  const d = await sb.rpc('public_business', { p_slug: ROUTE.slug }, true);
+  state.bizSlug = ROUTE.slug;
+  if (!d || d.status !== 'ok') {
+    state.currentBizId = 'unavailable';
+    state.businesses = [{ id: 'unavailable', name: (d && d.name) || 'Negocio', plan: 'Prueba', enabled: false, trialEndsAt: null }];
+    if (d && d.brand) state.brand = { name: d.brand.name || d.name, color: d.brand.color || '#0B0B0C', logo: d.brand.logo || null };
+    return false;
+  }
+  state.currentBizId = d.id;
+  state.businesses = [{ id: d.id, name: d.name, plan: d.plan, enabled: true, trialEndsAt: null, nextPaymentDate: null }];
+  const br = d.brand || {};
+  state.brand = { name: br.name || d.name, color: br.color || '#0B0B0C', logo: br.logo || null };
+  state.config = Object.assign({ slotMinutes: 45, bufferMinutes: 0, minNoticeHours: 2, windowDays: 21, cancelNoticeHours: 12 }, d.config || {});
+  state.businessHours = d.business_hours || {};
+  state.allowClientStaffPick = !!d.show_staff;
+  state.trackPayments = false;
+  state.staff = (d.staff || []).map(x => ({ id: x.id, name: x.name, schedule: x.schedule || {}, timeOff: x.time_off || [] }));
+  state.services = (d.services || []).map(x => ({ id: x.id, name: x.name, minutes: x.minutes, staffIds: x.staff_ids || [] }));
+  state.closedDays = (d.closures || []).map((c, i) => {
+    const o = { id: 'cl' + i, from: c.from, to: c.to || '', note: '', repeat: c.repeat };
+    if (c.start) { o.startTime = hhmm(c.start); o.endTime = hhmm(c.end); }
+    return o;
+  });
+  return true;
+}
+async function refreshBusy(){
+  const from = todayISO(), to = addDaysISO(from, (state.config.windowDays || 21) + 1);
+  const rows = await sb.rpc('public_busy', { p_slug: ROUTE.slug, p_from: from, p_to: to }, true);
+  state.appointments = state.appointments.filter(a => !a.busy).concat((rows || []).map((r, i) => ({ id: 'busy-' + i, busy: true, dni: '', name: '', phone: '', date: r.date,
+    start: hhmm(r.start_time), end: hhmm(r.end_time), status: 'CONFIRMED', paid: false, staffId: r.staff_id, staffName: '', serviceId: null, serviceName: null, rescheduleRequested: false })));
+  dedupeBusy();
+}
+async function loadClientData(){
+  const clients = await sb.select('clients', 'select=*');
+  const c = clients[0];
+  if (!c) return false;
+  const p = { id: c.id, docType: c.doc_type, nombres: c.nombres, apellidos: c.apellidos, name: fullName(c.nombres, c.apellidos), phone: c.phone || '', passHash: 'cuenta', mustChange: false, createdBy: c.created_by };
+  state.patients = { [c.doc]: p };
+  const appts = await sb.selectAll('appointments', 'select=*&order=date.asc');
+  const staffById = {}; state.staff.forEach(x => { staffById[x.id] = x; });
+  const svcById = {}; state.services.forEach(x => { svcById[x.id] = x; });
+  const mine = appts.map(a => ({ id: a.id, dni: c.doc, name: p.name, phone: p.phone, date: a.date, start: hhmm(a.start_time), end: hhmm(a.end_time), status: a.status, paid: !!a.paid,
+    staffId: a.staff_id, staffName: (staffById[a.staff_id] || {}).name || '', serviceId: a.service_id || null, serviceName: a.service_id ? (svcById[a.service_id] || {}).name || null : null,
+    attendance: a.attendance || undefined, cancelledBy: a.cancelled_by || undefined, createdAt: Date.parse(a.created_at), createdBy: a.created_by, rescheduleRequested: false }));
+  state.appointments = state.appointments.filter(a => a.busy).concat(mine);
+  dedupeBusy();
+  state.session.client = c.doc;
+  loadClientIntoBooking(c.doc);
+  return true;
+}
+async function remoteClientLogin(){
+  const b = state.booking;
+  const type = $('login-type').value;
+  const rawDoc = $('login-doc').value;
+  const doc = normalizeDni(rawDoc, type);
+  const pw = $('login-pw').value;
+  b.login = { type, doc: rawDoc };
+  const fail = msg => { b.error = msg; render(); };
+  if (!isValidDni(doc, type)) return fail(docErrorText(type));
+  if (!pw) return fail('Ingresa tu contraseña.');
+  try { await sb.signIn(clientEmail(type, doc), pw); }
+  catch (e) { return fail(e.offline ? friendlyError(e) : 'Documento o contraseña incorrectos. Si es tu primera vez, toca "Crear cuenta".'); }
+  try {
+    const ok = await loadClientData();
+    if (!ok) { sb.clear(); return fail('Completa tu registro con "Crear cuenta".'); }
+  } catch (e) { sb.clear(); return fail(friendlyError(e)); }
+  b.error = null;
+  await refreshBusy().catch(() => {});
+  render(); window.scrollTo(0, 0);
+}
+async function remoteClientRegister(){
+  const b = state.booking;
+  const r = b.reg;
+  const pw = $('reg-pw').value;
+  const pw2 = $('reg-pw2').value;
+  const doc = normalizeDni(r.doc, r.type);
+  const fail = msg => { b.error = msg; render(); };
+  if ((r.nombres || '').trim().length < 2) return fail('Ingresa tus nombres.');
+  if ((r.apellidos || '').trim().length < 2) return fail('Ingresa tus apellidos.');
+  if (!isValidDni(doc, r.type)) return fail(docErrorText(r.type));
+  if (!isValidPhone(r.phone)) return fail('Ingresa un teléfono válido.');
+  if (pw.length < 6) return fail('La contraseña debe tener al menos 6 caracteres.');
+  if (pw !== pw2) return fail('Las contraseñas no coinciden.');
+  const email = clientEmail(r.type, doc);
+  try {
+    try { await sb.signUp(email, pw); }
+    catch (e) {
+      if (e.code === 'user_already_exists' || /already registered/i.test(e.message || '')) {
+        try { await sb.signIn(email, pw); } catch (e2) { return fail('Ya existe una cuenta con este documento. Ingresa con tu contraseña.'); }
+      } else if (e.code === 'confirm_email') { return fail('No pudimos crear tu cuenta ahora. Inténtalo más tarde.'); }
+      else throw e;
+    }
+    await sb.rpc('register_client', { p_slug: ROUTE.slug, p_doc_type: r.type, p_doc: doc, p_nombres: r.nombres.trim(), p_apellidos: r.apellidos.trim(), p_phone: r.phone.trim() });
+    await loadClientData();
+  } catch (e) { return fail(friendlyError(e)); }
+  b.error = null;
+  await refreshBusy().catch(() => {});
+  render(); window.scrollTo(0, 0);
+  showToast('Cuenta creada');
+}
+async function remoteConfirmBooking(){
+  const b = state.booking;
+  const { selectedDate, selectedSlot } = b;
+  if (!selectedSlot) return;
+  const pickId = pickIdFor(b), svcId = bookingServiceId(b);
+  try {
+    const id = await sb.rpc('book_appointment', { p_slug: ROUTE.slug, p_service: svcId || null, p_staff: pickId || null, p_date: selectedDate, p_start: selectedSlot.start });
+    await loadClientData(); await refreshBusy();
+    state.booking.lastApptId = id;
+    state.booking.step = 'panel';
+    render(); window.scrollTo(0, 0);
+    showToast('Cita confirmada');
+  } catch (e) {
+    await refreshBusy().catch(() => {});
+    b.error = friendlyError(e); b.selectedSlot = null; b.step = 'reservar';
+    render();
+  }
+}
+async function remoteClientCancel(id){
+  state.confirmCancelId = null;
+  try {
+    await sb.rpc('cancel_my_appointment', { p_id: id });
+    await loadClientData(); await refreshBusy();
+    render(); showToast('Cita cancelada');
+  } catch (e) { render(); showToast(friendlyError(e)); }
+}
+async function remoteClientSaveProfile(nombres, apellidos, phone){
+  try {
+    await sb.rest('PATCH', `clients?user_id=eq.${sb.s.uid}`, { nombres, apellidos, phone }, { Prefer: 'return=minimal' });
+    await loadClientData();
+    state.booking.error = null; state.booking.step = 'panel';
+    render(); window.scrollTo(0, 0); showToast('Datos actualizados');
+  } catch (e) { state.booking.error = friendlyError(e); render(); }
+}
+async function remoteClientPassword(){
+  const cur = $('pw-cur-client').value, nw = $('pw-new-client').value, cf = $('pw-conf-client').value;
+  const fail = msg => { state.pwError = { role: 'client', msg }; render(); };
+  const doc = state.session.client, p = state.patients[doc];
+  if (!cur) return fail('Ingresa tu contraseña actual.');
+  if (nw.length < 6) return fail('La nueva contraseña debe tener al menos 6 caracteres.');
+  if (nw === cur) return fail('La nueva contraseña debe ser distinta de la actual.');
+  if (nw !== cf) return fail('Las contraseñas no coinciden.');
+  try { await sb.signIn(clientEmail(p.docType, doc), cur); } catch (e) { return fail(e.offline ? friendlyError(e) : 'La contraseña actual no es correcta.'); }
+  try { await sb.setPassword(nw); } catch (e) { return fail(friendlyError(e)); }
+  state.pwError = null; state.booking.step = 'perfil';
+  render(); showToast('Contraseña actualizada');
+}
+async function remoteClientLogout(){
+  sb.clear();
+  state.session.client = null; state.booking = newBookingObj(); state.patients = {};
+  state.appointments = state.appointments.filter(a => a.busy);
+  state.authError = null;
+  render(); window.scrollTo(0, 0);
 }
 
 function buildRemoteState(){
@@ -1596,6 +1769,7 @@ function goToRegistro(){ state.booking.error = null; state.booking.step = 'regis
 function goToLogin(){ state.booking.error = null; state.booking.step = 'login'; render(); window.scrollTo(0, 0); }
 
 function clientLogin(){
+  if (REMOTE) return remoteClientLogin();
   const b = state.booking;
   const type = $('login-type').value;
   const rawDoc = $('login-doc').value;
@@ -1623,6 +1797,7 @@ function syncClientAppointments(doc, p){
   state.appointments.forEach(a => { if (a.dni === doc) { a.name = p.name; a.phone = p.phone; } });
 }
 function clientRegister(){
+  if (REMOTE) return remoteClientRegister();
   const b = state.booking;
   const r = b.reg;
   const pw = $('reg-pw').value;
@@ -1671,6 +1846,7 @@ function saveProfile(){
   if (nombres.length < 2) return fail('Ingresa tus nombres.');
   if (apellidos.length < 2) return fail('Ingresa tus apellidos.');
   if (!isValidPhone(phone)) return fail('Ingresa un teléfono válido.');
+  if (REMOTE) return remoteClientSaveProfile(nombres, apellidos, phone);
   Object.assign(p, { nombres, apellidos, name: fullName(nombres, apellidos), phone });
   Object.assign(b, { nombres, apellidos, name: p.name, phone, error: null });
   syncClientAppointments(b.dni, p);   // el admin ve los cambios al instante
@@ -1710,6 +1886,7 @@ function pickSlot(start, end){
   render();
 }
 function confirmBooking(){
+  if (REMOTE) return remoteConfirmBooking();
   const { dni, name, phone, selectedDate, selectedSlot, rescheduleId } = state.booking;
   if (!selectedSlot) return;
   const pickId = pickIdFor(state.booking);
@@ -1817,6 +1994,7 @@ function closeResumen(){
   render();
 }
 function clientLogout(){
+  if (REMOTE) return remoteClientLogout();
   state.session.client = null;
   state.booking = newBookingObj();
   state.authError = null;
@@ -2163,6 +2341,7 @@ function askCancel(id){
 function dismissCancel(){ state.confirmCancelId = null; render(); }
 function doCancel(id){
   state.apptView = null;
+  if (REMOTE && state.view === 'paciente') return remoteClientCancel(id);
   const appt = state.appointments.find(a => a.id === id);
   if (!appt) return;
   const wasPending = state.view === 'admin' && !!apptPendingReason(appt);
@@ -2309,6 +2488,7 @@ function copyTempPassword(){
 function pwTarget(role){ return role === 'client' ? state.patients[state.session.client] : role === 'admin' ? currentBusiness() : state.superAccount; }
 function changePasswordFor(role){
   if (REMOTE && role === 'admin') return remoteChangePassword(role);
+  if (REMOTE && role === 'client') return remoteClientPassword();
   const t = pwTarget(role);
   if (!t) return;
   const key = role === 'admin' ? 'adminPassHash' : 'passHash';
