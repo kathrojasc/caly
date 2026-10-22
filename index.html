@@ -372,6 +372,7 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .cal-cell.selday { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 .modal .hero.light { border: 0; padding: 0; background: transparent; min-height: 0; border-radius: 0; gap: 16px; }
 .remote .demo-bar { display: none; }
+.legal-layer { position: fixed; inset: 0; z-index: 90; background: var(--color-bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .consent { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; line-height: 22px; cursor: pointer; }
 .consent input { width: 22px; height: 22px; margin: 0; flex-shrink: 0; accent-color: var(--color-primary, #0B0B0C); }
 .modal.sheet { position: relative; }
@@ -1117,10 +1118,13 @@ async function remoteChangePassword(role){
   if (nw.length < 6) return fail('La nueva contraseña debe tener al menos 6 caracteres.');
   if (nw === cur) return fail('La nueva contraseña debe ser distinta de la actual.');
   if (nw !== cf) return fail('Las contraseñas no coinciden.');
+  const needTerms = role === 'admin' && state.termsOk === false;
+  if (needTerms && !state.termsCheck) return fail('Debes aceptar los términos de uso y la política de privacidad para continuar.');
   try { await sb.signIn(sb.s.email, cur); } catch (e) { return fail(e.offline ? friendlyError(e) : 'La contraseña actual no es correcta.'); }
   try {
     await sb.setPassword(nw);
     await sb.rest('PATCH', `profiles?user_id=eq.${sb.s.uid}`, { must_change: false }, { Prefer: 'return=minimal' });
+    if (needTerms) { await sb.rpc('accept_terms', { p_version: LEGAL_VERSION }); state.termsOk = true; }
   } catch (e) { return fail(friendlyError(e)); }
   if (biz) biz.mustChange = false;
   state.pwError = null;
@@ -1346,8 +1350,20 @@ const LEGAL_TEXTS = {
     ],
   },
 };
-function openLegal(kind){ state.legalView = kind; render(); window.scrollTo(0, 0); }
-function closeLegal(){ state.legalView = null; render(); window.scrollTo(0, 0); }
+function openLegal(kind){
+  state.legalView = kind;
+  let el = document.getElementById('legal-root');
+  if (!el) { el = document.createElement('div'); el.id = 'legal-root'; el.className = 'legal-layer'; document.body.appendChild(el); }
+  el.innerHTML = renderLegal();
+  el.scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+}
+function closeLegal(){
+  state.legalView = null;
+  const el = document.getElementById('legal-root');
+  if (el) el.remove();
+  document.body.style.overflow = '';
+}
 function renderLegal(){
   const t = LEGAL_TEXTS[state.legalView];
   if (!t) return '';
@@ -3550,8 +3566,12 @@ function renderPasswordCard(role){
       ${pwInput('pw-cur-' + role, t.mustChange ? 'Contraseña temporal' : 'Contraseña actual')}
       ${pwInput('pw-new-' + role, 'Nueva contraseña', 'new-password')}
       ${pwInput('pw-conf-' + role, 'Confirmar nueva contraseña', 'new-password')}
+      ${REMOTE && role === 'admin' && t.mustChange && state.termsOk === false ? `<label class="consent" for="terms-ok-pw">
+        <input id="terms-ok-pw" type="checkbox" ${state.termsCheck ? 'checked' : ''} onchange="state.termsCheck = this.checked">
+        <span>Leí y acepto los <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('terminos')">términos de uso</button> y la <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('privacidad')">política de privacidad</button>. Entiendo que soy responsable del manejo de los datos de mis clientes.</span>
+      </label>` : ''}
       ${err ? `<p class="error-text" role="alert">${escapeHtml(err)}</p>` : ''}
-      <button class="btn btn-primary" type="submit" style="align-self:flex-start;">Actualizar contraseña</button>
+      <button class="btn btn-primary" type="submit" style="align-self:flex-start;">${REMOTE && role === 'admin' && t.mustChange && state.termsOk === false ? 'Crear contraseña y continuar' : 'Actualizar contraseña'}</button>
     </form>`;
 }
 function renderForcedPassword(role){
@@ -5599,7 +5619,6 @@ function renderSuper(){
 
 function render(){
   document.body.classList.toggle('has-tabbar', state.view === 'admin' && !!state.session.admin);
-  if (state.legalView) { document.getElementById('view').innerHTML = renderLegal(); markRequired(); return; }
   if (REMOTE && ROUTE.kind === 'home') { document.getElementById('view').innerHTML = '<div class="page w456"><div class="hdr" style="margin-top:64px;">' + brandBlock() + '</div><h1 class="title-1" style="margin-top:32px;">Reserva de citas</h1><p class="secondary" style="margin-top:8px;">Para reservar, usa el enlace que te compartió tu negocio.</p></div>'; return; }
   if (REMOTE && state.booting) { document.getElementById('view').innerHTML = '<div class="page"><p class="secondary" style="margin-top:64px;text-align:center;">Cargando…</p></div>'; return; }
   ['paciente', 'admin', 'super'].forEach(v => {
