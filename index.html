@@ -929,6 +929,8 @@ function stable(v){
   return JSON.stringify(v === undefined ? null : v);
 }
 const hhmm = t => (t || '').slice(0, 5);
+const limaDate = ts => ts ? new Date(Date.parse(ts) - 5 * 3600 * 1000).toISOString().slice(0, 10) : null;
+const limaEnd = d => d ? `${d}T23:59:59-05:00` : null;
 const tsIso = ms => ms ? new Date(ms).toISOString() : null;
 
 /* Servidor → pantalla */
@@ -953,7 +955,7 @@ async function loadAdminData(){
   state.currentBizId = b.id;
   state.bizSlug = b.slug;
   state.businesses = [{ id: b.id, name: b.name, adminUser: sb.s.email, mustChange: !!prof.must_change, plan: b.plan, enabled: !!b.enabled,
-    trialEndsAt: b.trial_ends_at ? b.trial_ends_at.slice(0, 10) : null, nextPaymentDate: b.next_pay_at || null, lastPaidAt: b.last_paid_at || null }];
+    trialEndsAt: limaDate(b.trial_ends_at), nextPaymentDate: b.next_pay_at || null, lastPaidAt: b.last_paid_at || null }];
   const br = b.brand || {};
   state.brand = { name: br.name || b.name, color: br.color || '#0B0B0C', logo: br.logo || null };
   state.config = Object.assign({ slotMinutes: 45, bufferMinutes: 0, minNoticeHours: 2, windowDays: 21, cancelNoticeHours: 12 }, b.config || {});
@@ -1037,6 +1039,7 @@ function diffRows(base, cur){
 }
 let syncChain = Promise.resolve(), syncTimer = null, syncErrorHandler = null;
 function queueSync(){
+  if (REMOTE && ROUTE.kind === 'super' && superBase && state.session.super) { clearTimeout(syncTimer); syncTimer = setTimeout(() => { syncChain = syncChain.then(runSuperSync).catch(() => {}); }, 30); return; }
   if (!REMOTE || ROUTE.kind !== 'admin' || !remoteBase || !state.session.admin) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(() => { syncChain = syncChain.then(runSync).catch(() => {}); }, 30);
@@ -1092,7 +1095,7 @@ function remoteLogout(){
 async function remoteChangePassword(role){
   const cur = $('pw-cur-' + role).value, nw = $('pw-new-' + role).value, cf = $('pw-conf-' + role).value;
   const fail = msg => { state.pwError = { role, msg }; render(); };
-  const biz = currentBusiness();
+  const biz = role === 'super' ? state.superAccount : currentBusiness();
   if (!cur) return fail(biz && biz.mustChange ? 'Ingresa la contraseña temporal.' : 'Ingresa tu contraseña actual.');
   if (nw.length < 6) return fail('La nueva contraseña debe tener al menos 6 caracteres.');
   if (nw === cur) return fail('La nueva contraseña debe ser distinta de la actual.');
@@ -1113,6 +1116,10 @@ async function bootRemote(){
   sb.load();
   if (ROUTE.kind === 'admin' && sb.s) {
     try { await remoteEnterAdmin(); }
+    catch (e) { if (!e.offline) { sb.clear(); } else { showToast(friendlyError(e)); } }
+  }
+  if (ROUTE.kind === 'super' && sb.s) {
+    try { await loadSuperData(); state.session.super = true; }
     catch (e) { if (!e.offline) { sb.clear(); } else { showToast(friendlyError(e)); } }
   }
   if (ROUTE.kind === 'client') {
@@ -1285,6 +1292,77 @@ async function remoteClientLogout(){
   state.appointments = state.appointments.filter(a => a.busy);
   state.authError = null;
   render(); window.scrollTo(0, 0);
+}
+
+/* ---------- Superadmin (modo servidor) ---------- */
+let superBase = null;
+const bizRow = b => ({ plan: b.plan, enabled: !!b.enabled, trial_ends_at: limaEnd(b.trialEndsAt), last_paid_at: b.lastPaidAt || null, next_pay_at: b.nextPaymentDate || null });
+async function loadSuperData(){
+  const prof = (await sb.select('profiles', `select=*&user_id=eq.${sb.s.uid}`))[0];
+  if (!prof) throw new Error('perfil_no_encontrado');
+  if (prof.role !== 'super') throw new Error('rol_incorrecto');
+  const [biz, admins] = await Promise.all([sb.selectAll('businesses', 'select=*&order=created_at.asc'), sb.selectAll('profiles', 'select=*&role=eq.admin')]);
+  const mc = {}; admins.forEach(a => { mc[a.business_id] = !!a.must_change; });
+  state.businesses = biz.map(b => ({ id: b.id, name: b.name, slug: b.slug, adminUser: b.admin_email || '', mustChange: !!mc[b.id], plan: b.plan, enabled: !!b.enabled,
+    trialEndsAt: limaDate(b.trial_ends_at), nextPaymentDate: b.next_pay_at || null, lastPaidAt: b.last_paid_at || null }));
+  state.superAccount = { name: 'Soporte Caly', email: sb.s.email, passHash: null, mustChange: !!prof.must_change };
+  superBase = {}; state.businesses.forEach(b => { superBase[b.id] = bizRow(b); });
+}
+async function runSuperSync(){
+  if (!superBase || !sb.s) return;
+  const cur = {}; state.businesses.forEach(b => { cur[b.id] = bizRow(b); });
+  try {
+    for (const id of Object.keys(cur)) {
+      if (superBase[id] && stable(superBase[id]) !== stable(cur[id])) await sb.update('businesses', id, cur[id]);
+    }
+    superBase = cur;
+  } catch (e) {
+    showToast(friendlyError(e));
+    try { await loadSuperData(); } catch (e2) { if (!e2.offline) { sb.clear(); state.session.super = false; } }
+    render();
+  }
+}
+async function remoteSuperLogin(){
+  const email = $('auth-email').value.trim();
+  const pw = $('auth-pw').value;
+  state.authDraft = email;
+  const fail = msg => { state.authError = { role: 'super', msg }; render(); };
+  if (!email || !pw) return fail('Ingresa tu correo y contraseña.');
+  try { await sb.signIn(email, pw); await loadSuperData(); }
+  catch (e) { sb.clear(); return fail(friendlyError(e)); }
+  state.session.super = true; state.authError = null; state.authDraft = '';
+  render(); window.scrollTo(0, 0);
+}
+async function remoteCreateBusiness(){
+  const { name, adminUser, adminPass } = state.newBusiness;
+  if (!name.trim() || !adminUser.trim() || !adminPass.trim()) return showToast('Completa negocio, usuario y contraseña');
+  if (!/^\S+@\S+\.\S+$/.test(adminUser.trim())) return showToast('El usuario debe ser un correo válido');
+  if (adminPass.trim().length < 6) return showToast('La contraseña temporal debe tener al menos 6 caracteres');
+  const email = adminUser.trim().toLowerCase();
+  try {
+    try { await sb.raw('/auth/v1/signup', { method: 'POST', body: { email, password: adminPass.trim() } }); }
+    catch (e) { if (!(e.code === 'user_already_exists' || /already registered/i.test(e.message || ''))) throw e; }
+    let slug = bookingSlugOf(name), done = false;
+    for (let i = 0; i < 6 && !done; i++) {
+      try { await sb.rpc('create_business', { p_name: name.trim(), p_slug: i ? `${slug}-${i + 1}` : slug, p_admin_email: email }); done = true; }
+      catch (e) { if (e.code !== '23505' || /profiles_pkey|user_id/.test(e.message || '')) throw e; }
+    }
+    if (!done) throw new Error('slug');
+    await loadSuperData();
+  } catch (e) { return showToast(friendlyError(e)); }
+  state.newBusiness = { name: '', adminUser: '', adminPass: '' };
+  render();
+  showToast('Cuenta de negocio creada');
+}
+async function remoteOpenBizLog(id){
+  state.logView = id; state.logQuery = ''; state.logFrom = ''; state.logTo = ''; state.logRole = ''; state.logLimit = 40; state.logOpen = null;
+  state.auditLog = [];
+  render(); window.scrollTo(0, 0);
+  try {
+    const rows = await sb.selectAll('audit_log', `select=*&business_id=eq.${id}&order=id.desc`);
+    state.auditLog = rows.map(r => ({ id: 'lg' + r.id, ts: Date.parse(r.ts), bizId: r.business_id, role: r.role, actor: ROLE_LABEL[r.role] || r.role, action: r.action, text: r.text, apptId: r.appt_id || null, doc: r.doc || null, data: r.data || null }));
+  } catch (e) { showToast(friendlyError(e)); }
+  render();
 }
 
 function buildRemoteState(){
@@ -2487,7 +2565,7 @@ function copyTempPassword(){
 }
 function pwTarget(role){ return role === 'client' ? state.patients[state.session.client] : role === 'admin' ? currentBusiness() : state.superAccount; }
 function changePasswordFor(role){
-  if (REMOTE && role === 'admin') return remoteChangePassword(role);
+  if (REMOTE && (role === 'admin' || role === 'super')) return remoteChangePassword(role);
   if (REMOTE && role === 'client') return remoteClientPassword();
   const t = pwTarget(role);
   if (!t) return;
@@ -2531,6 +2609,7 @@ function adminLogin(){
   window.scrollTo(0, 0);
 }
 function superLogin(){
+  if (REMOTE) return remoteSuperLogin();
   const email = $('auth-email').value.trim();
   const pw = $('auth-pw').value;
   state.authDraft = email;
@@ -2550,9 +2629,10 @@ function superLogin(){
   window.scrollTo(0, 0);
 }
 function adminLogout(){ if (REMOTE) return remoteLogout(); state.session.admin = false; state.adminTab = 'inicio'; state.newAppt = null; state.pwError = null; saveState(); render(); window.scrollTo(0, 0); }
-function superLogout(){ state.session.super = false; state.pwError = null; saveState(); render(); window.scrollTo(0, 0); }
+function superLogout(){ if (REMOTE) return remoteLogout(); state.session.super = false; state.pwError = null; saveState(); render(); window.scrollTo(0, 0); }
 function updateNewBusiness(field, value){ state.newBusiness[field] = value; }
 function createBusinessAccount(){
+  if (REMOTE) return remoteCreateBusiness();
   const { name, adminUser, adminPass } = state.newBusiness;
   if (!name.trim() || !adminUser.trim() || !adminPass.trim()) {
     showToast('Completa negocio, usuario y contraseña');
@@ -5156,7 +5236,7 @@ function renderExportCard(){
 }
 
 /* ---------- Registro por empresa (superadmin) ---------- */
-function openBizLog(id){ state.logView = id; state.logQuery = ''; state.logFrom = ''; state.logTo = ''; state.logRole = ''; state.logLimit = 40; state.logOpen = null; render(); window.scrollTo(0, 0); }
+function openBizLog(id){ if (REMOTE) return remoteOpenBizLog(id); state.logView = id; state.logQuery = ''; state.logFrom = ''; state.logTo = ''; state.logRole = ''; state.logLimit = 40; state.logOpen = null; render(); window.scrollTo(0, 0); }
 function closeBizLog(){ state.logView = null; render(); window.scrollTo(0, 0); }
 function setLogQuery(v){ state.logQuery = v; state.logLimit = 40; render(); }
 function setLogFilter(k, v){ state[k] = v; state.logLimit = 40; render(); }
@@ -5204,7 +5284,7 @@ async function downloadLogPdf(){
     `Generado por Caly el ${tsFull(Date.now())}`,
     `Filtros: ${state.logRole ? ROLE_LABEL[state.logRole] : 'todos los roles'}${state.logFrom ? ' · desde ' + state.logFrom : ''}${state.logTo ? ' · hasta ' + state.logTo : ''}${state.logQuery ? ' · búsqueda "' + state.logQuery + '"' : ''}`,
     `Entradas: ${list.length}  (de la más antigua a la más reciente; la hora es la del dispositivo)`,
-    'Aviso: en el prototipo este registro se guarda en el navegador y no sirve como prueba. En producción lo guarda el servidor de Caly.',
+    REMOTE ? 'Registro generado por el servidor de Caly. Se guarda al momento de cada acción y no se puede modificar ni borrar.' : 'Aviso: en el prototipo este registro se guarda en el navegador y no sirve como prueba. En producción lo guarda el servidor de Caly.',
   ];
   meta.forEach(l => doc.splitTextToSize(pdfText(l), W - 2 * M).forEach(t => { ensure(14); doc.text(t, M, y); y += 13; }));
   y += 6; doc.setDrawColor(200); doc.line(M, y, W - M, y); y += 14;
@@ -5236,7 +5316,7 @@ function renderBizLog(){
       </div>
       <p class="eyebrow" style="font-size:14px;line-height:20px;margin-top:12px;">Registro de actividad</p>
       <h1 class="title-1" style="margin-top:2px;">${escapeHtml(logBizName())}</h1>
-      <div class="notice" style="margin-top:12px;">Demo: este registro se guarda solo en este navegador. Para que sirva como respaldo real, debe guardarlo el servidor de Caly, donde el administrador no pueda modificarlo ni borrarlo.</div>
+      <div class="notice" style="margin-top:12px;">${REMOTE ? 'Este registro lo guarda el servidor de Caly en el momento de cada acción. El administrador no puede verlo, modificarlo ni borrarlo.' : 'Demo: este registro se guarda solo en este navegador. Para que sirva como respaldo real, debe guardarlo el servidor de Caly, donde el administrador no pueda modificarlo ni borrarlo.'}</div>
 
       <div class="search" style="margin-top:16px;">
         <span class="ic" aria-hidden="true">${icon('search', 20)}</span>
@@ -5304,11 +5384,11 @@ function renderSuper(){
       </div>
       <p class="secondary" style="margin-top:6px;">Gestiona las cuentas de negocios y revisa alertas de la plataforma.</p>
 
-      <h2 class="title-2">Herramientas de demo</h2>
+      ${REMOTE ? '' : `<h2 class="title-2">Herramientas de demo</h2>
       <div class="card stack">
         <p class="secondary">Las dobles reservas ya no llegan aquí: se avisan al administrador del negocio, y a ti te queda su registro en "Ver registro". Esto crea una doble reserva de prueba en el negocio de demo para ver cómo se ve.</p>
         <button class="btn btn-soft btn-sm" type="button" style="align-self:flex-start;background:#fff;" onclick="simulateDoubleBookingAlert()">Crear doble reserva de prueba</button>
-      </div>
+      </div>`}
 
       <h2 class="title-2">Cuentas de negocios</h2>
       <div class="rows">
@@ -5345,10 +5425,10 @@ function renderSuper(){
                 </div>
                 ${pay ? `<div class="field"><label for="np-${biz.id}">Próxima fecha de pago</label><input id="np-${biz.id}" type="date" value="${pay.next}" onchange="setNextPayment('${biz.id}', this.value)"></div>` : ''}
               </div>
-              <div class="sa-group">
+              ${REMOTE ? `<div class="sa-group"><p class="label">Acceso</p><p class="hint">Enlace de reservas: <b>${escapeHtml(location.host || 'caly.app')}/reservar/${escapeHtml(biz.slug || '')}</b></p></div>` : `<div class="sa-group">
                 <p class="label">Acceso</p>
                 <div class="row"><button class="btn btn-sm btn-soft" type="button" onclick="resetBusinessPassword('${biz.id}')">Restablecer contraseña</button></div>
-              </div>
+              </div>`}
               <div class="sa-group sa-danger">
                 <p class="label">Zona de riesgo</p>
                 <div class="row">${biz.enabled
