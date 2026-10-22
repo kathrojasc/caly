@@ -27,9 +27,10 @@ revoke execute on function public.register_client(text, text, text, text, text, 
 grant execute on function public.register_client(text, text, text, text, text, text) to authenticated;
 
 -- El cliente puede editar sus datos de contacto, pero no su documento ni a qué negocio pertenece.
+drop policy if exists cli_self_upd on public.clients;
 create policy cli_self_upd on public.clients for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 
-create function public.protect_client() returns trigger language plpgsql as $$
+create or replace function public.protect_client() returns trigger language plpgsql as $$
 begin
   -- Solo aplica a ediciones directas del cliente (rol authenticated); las funciones del sistema sí pueden vincular la ficha.
   if current_user in ('authenticated', 'anon') and coalesce(public.my_role(), 'client') = 'client'
@@ -39,4 +40,5 @@ begin
   end if;
   return new;
 end $$;
+drop trigger if exists protect_client on public.clients;
 create trigger protect_client before update on public.clients for each row execute function public.protect_client();
