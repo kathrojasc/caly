@@ -861,6 +861,8 @@ function friendlyError(e){
   if (e.offline) return 'No hay conexión. Revisa tu internet e inténtalo de nuevo.';
   const m = String(e.message || '');
   for (const k of Object.keys(SB_ERRORS)) if (m.indexOf(k) !== -1 || e.code === k) return SB_ERRORS[k];
+  if (e.code === 'PGRST202' || e.code === '42883') return 'La base de datos todavía no está actualizada. Avisa al equipo de Caly.';
+  if (e.code === 'PGRST204' || e.code === '42703') return 'La base de datos todavía no está actualizada. Avisa al equipo de Caly.';
   if (e.code === '23P01') return SB_ERRORS.horario_ocupado;
   if (e.code === '23505') return 'Ya existe un registro con esos datos.';
   if (e.code === '42501' || e.status === 403) return 'No tienes permiso para esa acción.';
