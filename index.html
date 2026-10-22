@@ -852,6 +852,8 @@ function friendlyError(e){
   if (e.code === '42501' || e.status === 403) return 'No tienes permiso para esa acción.';
   if (/invalid login credentials/i.test(m)) return 'Correo o contraseña incorrectos.';
   if (/already registered|user_already_exists/i.test(m) || e.code === 'user_already_exists') return 'Ese correo ya tiene una cuenta.';
+  if (/email_address_invalid|invalid email|is invalid/i.test(m + ' ' + (e.code || ''))) return 'No pudimos crear la cuenta con esos datos. Escribe al negocio para que te ayude.';
+  if (/signup.*disabled|signups not allowed/i.test(m)) return 'El registro de cuentas está desactivado por ahora.';
   if (e.status === 429) return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
   return 'Algo salió mal. Inténtalo de nuevo.';
 }
@@ -865,7 +867,7 @@ const sb = {
   async raw(path, o){
     o = o || {};
     const headers = Object.assign({ apikey: SB.key, 'Content-Type': 'application/json' }, o.headers || {});
-    headers.Authorization = 'Bearer ' + (o.token || SB.key);
+    if (o.token) headers.Authorization = 'Bearer ' + o.token;   // sin sesión solo se envía la clave pública (apikey)
     let res;
     try { res = await fetch(SB.url + path, { method: o.method || 'GET', headers, body: o.body === undefined ? undefined : JSON.stringify(o.body) }); }
     catch (err) { const e = new Error('offline'); e.offline = true; throw e; }
