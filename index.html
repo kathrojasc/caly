@@ -52,7 +52,9 @@ body {
   margin: 0; background: var(--color-bg); color: var(--color-text);
   font-family: "Figtree", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
   font-size: 16px; line-height: 22px; font-weight: 400; -webkit-font-smoothing: antialiased;
+  display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh;
 }
+main#view { flex: 1 0 auto; width: 100%; }
 h1, h2, h3, p { margin: 0; }
 h1, h2, h3 { text-wrap: balance; }
 button, input, select { font: inherit; color: inherit; }
@@ -583,7 +585,8 @@ input[type=time]::-webkit-datetime-edit-fields-wrapper, input[type=date]::-webki
 .modal.sheet { max-width: 480px; max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow-y: auto; }
 .modal { width: 100%; max-width: 400px; background: #fff; border-radius: var(--radius-l); padding: 24px; box-shadow: var(--shadow-dark-tile); }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(104px + env(safe-area-inset-bottom, 0px)); z-index: 80; background: var(--color-primary); color: var(--color-on-primary); padding: 12px 20px; border-radius: var(--radius-pill); font-weight: 600; font-size: 14px; box-shadow: var(--shadow-dock); max-width: calc(100% - 32px); text-align: center; }
-footer.foot { text-align: center; color: var(--color-text-secondary); font-size: 13px; padding: 8px 20px 24px; }
+footer.foot { text-align: center; color: var(--color-text-secondary); font-size: 13px; padding: 8px 20px max(10px, env(safe-area-inset-bottom)); margin-top: auto; }
+.has-tabbar footer.foot { display: none; }
 @media (max-width: 520px) { .hdr { padding: 0 -4px; } .media .day { font-size: 80px; } }
 </style>
 </head>
@@ -3646,7 +3649,6 @@ function renderPacientePanel(b){
     <div class="page w560">
       ${patientHeader(b.name)}
       <h1 class="title-1" style="margin-top:24px;">Hola, ${escapeHtml(firstWord(b.nombres || b.name))}</h1>
-      <p class="secondary" style="margin-top:4px;"><span class="tnum">${docLabel(b.docType)} ${b.dni}</span> · <button class="btn-text" type="button" style="min-height:32px;padding:0;font-size:15px;color:var(--color-text-secondary);" onclick="goToPerfil()">Editar</button></p>
 
       <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:24px;" onclick="goToReservar()">Reservar</button>
 
@@ -3673,9 +3675,6 @@ function renderPacientePanel(b){
           </div>` : ''}
       </div>
 
-      <div style="display:flex;justify-content:center;margin-top:28px;">
-        <button class="btn-text" type="button" onclick="clientLogout()">Cerrar sesión</button>
-      </div>
     </div>
     ${renderCancelModal()}`;
 }
@@ -5589,6 +5588,7 @@ function renderSuper(){
 }
 
 function render(){
+  document.body.classList.toggle('has-tabbar', state.view === 'admin' && !!state.session.admin);
   if (state.legalView) { document.getElementById('view').innerHTML = renderLegal(); markRequired(); return; }
   if (REMOTE && ROUTE.kind === 'home') { document.getElementById('view').innerHTML = '<div class="page w456"><div class="hdr" style="margin-top:64px;">' + brandBlock() + '</div><h1 class="title-1" style="margin-top:32px;">Reserva de citas</h1><p class="secondary" style="margin-top:8px;">Para reservar, usa el enlace que te compartió tu negocio.</p></div>'; return; }
   if (REMOTE && state.booting) { document.getElementById('view').innerHTML = '<div class="page"><p class="secondary" style="margin-top:64px;text-align:center;">Cargando…</p></div>'; return; }
