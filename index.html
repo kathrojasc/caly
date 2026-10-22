@@ -365,6 +365,7 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .mini-select { height: 40px; border: 0; border-radius: var(--radius-pill); background: var(--color-surface); padding: 0 14px; font: inherit; font-size: 14px; font-weight: 600; max-width: 62%; }
 .cal-cell.selday { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 .modal .hero.light { border: 0; padding: 0; background: transparent; min-height: 0; border-radius: 0; gap: 16px; }
+.remote .demo-bar { display: none; }
 .modal.sheet { position: relative; }
 .staff-ro { font-size: 15px; line-height: 22px; color: var(--color-text-secondary); }
 .staff-ro b { color: var(--color-text); font-weight: 600; }
@@ -792,7 +793,341 @@ function buildDefaultState(){
   };
 }
 
+/* ---------- Modo servidor (Supabase) ----------
+   Rutas: /admin, /super y /reservar/<enlace> usan datos reales. Cualquier otra ruta es el prototipo de demostración. */
+const SB = Object.assign({
+  url: 'https://zmxdshmrdaewmzmprmmq.supabase.co',
+  key: 'sb_publishable_MQXvcR7vm2d8Ze6zrlYXNA__TE85ZbG',
+}, window.__CALY_SB || {});
+function detectRoute(){
+  let p = window.__CALY_ROUTE || location.pathname.replace(/\/index\.html$/, '');
+  const h = (location.hash || '').replace(/^#\/?/, '');
+  if (!window.__CALY_ROUTE && /^(admin|super|reservar)/.test(h)) p = '/' + h;
+  const parts = p.split('/').filter(Boolean);
+  if (parts[0] === 'admin') return { kind: 'admin' };
+  if (parts[0] === 'super') return { kind: 'super' };
+  if (parts[0] === 'reservar' && parts[1]) return { kind: 'client', slug: parts[1].toLowerCase() };
+  return { kind: 'demo' };
+}
+const ROUTE = detectRoute();
+const REMOTE = ROUTE.kind !== 'demo';
+function newId(prefix){
+  if (REMOTE) return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); });
+  return prefix + Date.now();
+}
+
+const SB_ERRORS = {
+  fuera_horario_negocio: 'Ese horario está fuera del horario del negocio.',
+  negocio_cerrado: 'El negocio está cerrado en ese día u horario.',
+  trabajador_ausente: 'El trabajador no atiende ese día.',
+  fuera_horario_trabajador: 'Ese horario está fuera del horario del trabajador.',
+  trabajador_no_disponible: 'Ese trabajador ya no está disponible.',
+  servicio_no_disponible: 'Ese servicio no está disponible con ese trabajador.',
+  horario_ocupado: 'Ese horario se acaba de ocupar. Elige otro.',
+  sin_anticipacion: 'Ya no hay tiempo para reservar esa hora. Elige otra.',
+  fuera_de_ventana: 'Todavía no se puede reservar tan adelante.',
+  sin_sesion: 'Tu sesión terminó. Ingresa de nuevo.',
+  negocio_no_disponible: 'Este negocio no está disponible por ahora.',
+  documento_ya_registrado: 'Ese documento ya tiene una cuenta. Ingresa con tu contraseña.',
+  cliente_sin_ficha: 'Completa tus datos para reservar.',
+  cita_no_encontrada: 'No encontramos esa cita.',
+  fuera_de_plazo: 'Ya no puedes cancelar en línea. Contacta al negocio.',
+  solo_superadmin: 'Solo el superadmin puede hacer eso.',
+  rol_incorrecto: 'Esta cuenta no corresponde a esta pantalla.',
+  perfil_no_encontrado: 'Esta cuenta todavía no está vinculada a un negocio. Escribe al equipo de Caly.',
+};
+function friendlyError(e){
+  if (!e) return 'Algo salió mal. Inténtalo de nuevo.';
+  if (e.offline) return 'No hay conexión. Revisa tu internet e inténtalo de nuevo.';
+  const m = String(e.message || '');
+  for (const k of Object.keys(SB_ERRORS)) if (m.indexOf(k) !== -1 || e.code === k) return SB_ERRORS[k];
+  if (e.code === '23P01') return SB_ERRORS.horario_ocupado;
+  if (e.code === '23505') return 'Ya existe un registro con esos datos.';
+  if (e.code === '42501' || e.status === 403) return 'No tienes permiso para esa acción.';
+  if (/invalid login credentials/i.test(m)) return 'Correo o contraseña incorrectos.';
+  if (/already registered|user_already_exists/i.test(m) || e.code === 'user_already_exists') return 'Ese correo ya tiene una cuenta.';
+  if (e.status === 429) return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
+  return 'Algo salió mal. Inténtalo de nuevo.';
+}
+
+const sb = {
+  s: null,
+  key(){ return 'caly_sb_session_' + ROUTE.kind + (ROUTE.slug ? '_' + ROUTE.slug : ''); },
+  load(){ try { const r = localStorage.getItem(this.key()); this.s = r ? JSON.parse(r) : null; } catch (e) { this.s = null; } },
+  save(){ try { if (this.s) localStorage.setItem(this.key(), JSON.stringify(this.s)); else localStorage.removeItem(this.key()); } catch (e) {} },
+  clear(){ this.s = null; this.save(); },
+  async raw(path, o){
+    o = o || {};
+    const headers = Object.assign({ apikey: SB.key, 'Content-Type': 'application/json' }, o.headers || {});
+    headers.Authorization = 'Bearer ' + (o.token || SB.key);
+    let res;
+    try { res = await fetch(SB.url + path, { method: o.method || 'GET', headers, body: o.body === undefined ? undefined : JSON.stringify(o.body) }); }
+    catch (err) { const e = new Error('offline'); e.offline = true; throw e; }
+    let data = null;
+    const text = await res.text();
+    if (text) { try { data = JSON.parse(text); } catch (err) { data = text; } }
+    if (!res.ok) {
+      const e = new Error((data && (data.message || data.msg || data.error_description || data.error)) || ('HTTP ' + res.status));
+      e.status = res.status; e.code = data && (data.code || data.error_code); throw e;
+    }
+    return data;
+  },
+  async token(){
+    if (!this.s) return null;
+    if (this.s.exp && Date.now() > this.s.exp - 60000) {
+      try {
+        const d = await this.raw('/auth/v1/token?grant_type=refresh_token', { method: 'POST', body: { refresh_token: this.s.refresh } });
+        this.setSession(d);
+      } catch (e) { if (!e.offline) { this.clear(); } throw e; }
+    }
+    return this.s && this.s.access;
+  },
+  setSession(d){
+    this.s = { access: d.access_token, refresh: d.refresh_token, exp: Date.now() + (d.expires_in || 3600) * 1000, uid: d.user.id, email: d.user.email };
+    this.save();
+  },
+  async signIn(email, password){
+    const d = await this.raw('/auth/v1/token?grant_type=password', { method: 'POST', body: { email, password } });
+    this.setSession(d);
+  },
+  async signUp(email, password){
+    const d = await this.raw('/auth/v1/signup', { method: 'POST', body: { email, password } });
+    if (!d.access_token) { const e = new Error('confirm_email'); e.code = 'confirm_email'; throw e; }
+    this.setSession(d);
+  },
+  async setPassword(password){
+    await this.raw('/auth/v1/user', { method: 'PUT', token: await this.token(), body: { password } });
+  },
+  async rest(method, path, body, extra){
+    return this.raw('/rest/v1/' + path, { method, token: await this.token(), body, headers: extra });
+  },
+  select(table, qs){ return this.rest('GET', table + '?' + qs); },
+  async selectAll(table, qs){
+    const out = []; let off = 0;
+    for (;;) {
+      const page = await this.rest('GET', `${table}?${qs}&limit=1000&offset=${off}`);
+      out.push(...page);
+      if (page.length < 1000) return out;
+      off += 1000;
+    }
+  },
+  insert(table, row){ return this.rest('POST', table, row, { Prefer: 'return=minimal' }); },
+  update(table, id, fields){ return this.rest('PATCH', `${table}?id=eq.${id}`, fields, { Prefer: 'return=minimal' }); },
+  remove(table, id){ return this.rest('DELETE', `${table}?id=eq.${id}`); },
+  async rpc(fn, args, anon){ return this.raw('/rest/v1/rpc/' + fn, { method: 'POST', body: args || {}, token: anon ? null : await this.token() }); },
+};
+
+function stable(v){
+  if (Array.isArray(v)) return '[' + v.map(stable).join(',') + ']';
+  if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + stable(v[k])).join(',') + '}';
+  return JSON.stringify(v === undefined ? null : v);
+}
+const hhmm = t => (t || '').slice(0, 5);
+const tsIso = ms => ms ? new Date(ms).toISOString() : null;
+
+/* Servidor → pantalla */
+let remoteBase = null;
+async function loadAdminData(){
+  const uid = sb.s.uid;
+  const prof = (await sb.select('profiles', `select=*&user_id=eq.${uid}`))[0];
+  if (!prof) { const e = new Error('perfil_no_encontrado'); throw e; }
+  if (prof.role !== 'admin') { const e = new Error('rol_incorrecto'); throw e; }
+  const bid = prof.business_id;
+  const [biz, staff, services, closures, clients, appts] = await Promise.all([
+    sb.select('businesses', `select=*&id=eq.${bid}`),
+    sb.selectAll('staff', `select=*&business_id=eq.${bid}&order=name.asc`),
+    sb.selectAll('services', `select=*&business_id=eq.${bid}&order=name.asc`),
+    sb.selectAll('closures', `select=*&business_id=eq.${bid}&order=from_date.asc`),
+    sb.selectAll('clients', `select=*&business_id=eq.${bid}`),
+    sb.selectAll('appointments', `select=*&business_id=eq.${bid}&order=date.asc`),
+  ]);
+  const b = biz[0];
+  if (!b) throw new Error('perfil_no_encontrado');
+  const keep = { session: state.session, view: state.view };
+  state.currentBizId = b.id;
+  state.bizSlug = b.slug;
+  state.businesses = [{ id: b.id, name: b.name, adminUser: sb.s.email, mustChange: !!prof.must_change, plan: b.plan, enabled: !!b.enabled,
+    trialEndsAt: b.trial_ends_at ? b.trial_ends_at.slice(0, 10) : null, nextPaymentDate: b.next_pay_at || null, lastPaidAt: b.last_paid_at || null }];
+  const br = b.brand || {};
+  state.brand = { name: br.name || b.name, color: br.color || '#0B0B0C', logo: br.logo || null };
+  state.config = Object.assign({ slotMinutes: 45, bufferMinutes: 0, minNoticeHours: 2, windowDays: 21, cancelNoticeHours: 12 }, b.config || {});
+  state.businessHours = b.business_hours || {};
+  state.trackPayments = !!b.track_payments;
+  state.allowClientStaffPick = !!b.show_staff;
+  const nm = sb.s.email.split('@')[0].replace(/[._-]+/g, ' ');
+  state.account = { name: prof.display_name || (nm.charAt(0).toUpperCase() + nm.slice(1)), email: sb.s.email, phone: prof.phone || '' };
+  const staffById = {}; staff.forEach(x => { staffById[x.id] = x; });
+  const svcById = {}; services.forEach(x => { svcById[x.id] = x; });
+  state.staff = staff.filter(x => !x.deleted_at).map(x => ({ id: x.id, name: x.name, schedule: x.schedule || {}, timeOff: x.time_off || [] }));
+  state.services = services.filter(x => !x.deleted_at).map(x => ({ id: x.id, name: x.name, minutes: x.minutes, staffIds: x.staff_ids || [], paused: !!x.paused }));
+  state.closedDays = closures.map(c => {
+    const o = { id: c.id, from: c.from_date, to: c.to_date || '', note: c.note || '', repeat: c.repeat };
+    if (c.start_time) { o.startTime = hhmm(c.start_time); o.endTime = hhmm(c.end_time); }
+    return o;
+  });
+  state.patients = {};
+  const clientById = {};
+  clients.forEach(c => {
+    clientById[c.id] = c;
+    state.patients[c.doc] = { id: c.id, docType: c.doc_type, nombres: c.nombres, apellidos: c.apellidos, name: fullName(c.nombres, c.apellidos),
+      phone: c.phone || '', passHash: c.user_id ? 'cuenta' : null, mustChange: false, createdBy: c.created_by };
+  });
+  state.appointments = appts.map(a => {
+    const c = clientById[a.client_id] || {};
+    const st = staffById[a.staff_id] || {};
+    const sv = a.service_id ? svcById[a.service_id] : null;
+    return { id: a.id, dni: c.doc || '', name: c.doc ? fullName(c.nombres, c.apellidos) : 'Cliente', phone: c.phone || '', date: a.date, start: hhmm(a.start_time), end: hhmm(a.end_time),
+      status: a.status, paid: !!a.paid, staffId: a.staff_id, staffName: st.name || '', serviceId: a.service_id || null, serviceName: sv ? sv.name : null,
+      attendance: a.attendance || undefined, cancelledBy: a.cancelled_by || undefined, cancelledAt: a.cancelled_at ? Date.parse(a.cancelled_at) : undefined,
+      createdAt: Date.parse(a.created_at), createdBy: a.created_by, rescheduleRequested: false, manual: false };
+  });
+  state.session = keep.session; state.view = keep.view;
+  remoteBase = toRows();
+}
+
+/* Pantalla → servidor: se compara lo guardado con lo actual y se envía solo la diferencia */
+function toRows(){
+  const bid = state.currentBizId;
+  const r = { biz: null, staff: {}, services: {}, closures: {}, clients: {}, appts: {} };
+  r.biz = { name: state.brand.name || (state.businesses[0] && state.businesses[0].name) || '', brand: { name: state.brand.name, color: state.brand.color, logo: state.brand.logo || null },
+    config: state.config, business_hours: state.businessHours, track_payments: state.trackPayments !== false, show_staff: !!state.allowClientStaffPick };
+  r.profile = { display_name: state.account.name || '', phone: state.account.phone || '' };
+  state.staff.forEach(s => { r.staff[s.id] = { id: s.id, business_id: bid, name: s.name, schedule: s.schedule || {}, time_off: s.timeOff || [] }; });
+  state.services.forEach(v => { r.services[v.id] = { id: v.id, business_id: bid, name: v.name, minutes: v.minutes, paused: !!v.paused, staff_ids: v.staffIds || [] }; });
+  state.closedDays.forEach(c => { r.closures[c.id] = { id: c.id, business_id: bid, from_date: c.from, to_date: c.to || null, note: c.note || '', repeat: c.repeat || 'none', start_time: c.startTime || null, end_time: c.endTime || null }; });
+  Object.keys(state.patients).forEach(doc => {
+    const p = state.patients[doc];
+    if (!p.id) p.id = newId('c');
+    r.clients[p.id] = { id: p.id, business_id: bid, doc_type: p.docType || 'DNI', doc, nombres: p.nombres, apellidos: p.apellidos, phone: p.phone || '', created_by: p.createdBy || 'admin' };
+  });
+  state.appointments.forEach(a => {
+    const p = state.patients[a.dni];
+    r.appts[a.id] = { id: a.id, business_id: bid, client_id: p ? p.id : null, staff_id: a.staffId, service_id: a.serviceId || null, date: a.date, start_time: a.start, end_time: a.end,
+      status: a.status, paid: !!a.paid, attendance: a.attendance || null, cancelled_by: a.cancelledBy || null, cancelled_at: tsIso(a.cancelledAt), created_by: a.createdBy || 'admin' };
+  });
+  return JSON.parse(JSON.stringify(r));
+}
+function diffRows(base, cur){
+  const ops = [];
+  const same = (a, b) => stable(a) === stable(b);
+  const INSERT_ONLY = ['id', 'business_id', 'created_by'];
+  const pickUpd = row => { const o = {}; Object.keys(row).forEach(k => { if (INSERT_ONLY.indexOf(k) === -1) o[k] = row[k]; }); return o; };
+  if (!same(base.profile, cur.profile)) ops.push({ t: 'patch', table: 'profiles', filter: `user_id=eq.${sb.s.uid}`, fields: cur.profile, order: 0 });
+  if (!same(base.biz, cur.biz)) ops.push({ t: 'update', table: 'businesses', id: state.currentBizId, fields: cur.biz });
+  const phase = (table, key, o) => {
+    Object.keys(cur[key]).forEach(id => {
+      if (!base[key][id]) ops.push({ t: 'insert', table, row: cur[key][id], order: o });
+      else if (!same(base[key][id], cur[key][id])) ops.push({ t: 'update', table, id, fields: pickUpd(cur[key][id]), order: o });
+    });
+  };
+  phase('clients', 'clients', 1);
+  phase('staff', 'staff', 2); phase('services', 'services', 2); phase('closures', 'closures', 2);
+  phase('appointments', 'appts', 3);
+  Object.keys(base.closures).forEach(id => { if (!cur.closures[id]) ops.push({ t: 'delete', table: 'closures', id, order: 4 }); });
+  Object.keys(base.staff).forEach(id => { if (!cur.staff[id]) ops.push({ t: 'update', table: 'staff', id, fields: { deleted_at: new Date().toISOString() }, order: 4 }); });
+  Object.keys(base.services).forEach(id => { if (!cur.services[id]) ops.push({ t: 'update', table: 'services', id, fields: { deleted_at: new Date().toISOString() }, order: 4 }); });
+  Object.keys(base.clients).forEach(id => { if (!cur.clients[id]) ops.push({ t: 'delete', table: 'clients', id, order: 5 }); });
+  return ops.sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+let syncChain = Promise.resolve(), syncTimer = null, syncErrorHandler = null;
+function queueSync(){
+  if (!REMOTE || ROUTE.kind !== 'admin' || !remoteBase || !state.session.admin) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => { syncChain = syncChain.then(runSync).catch(() => {}); }, 30);
+}
+async function runSync(){
+  if (!remoteBase || !sb.s || !state.currentBizId) return;
+  const cur = toRows();
+  const ops = diffRows(remoteBase, cur);
+  if (!ops.length) return;
+  try {
+    for (const op of ops) {
+      if (op.t === 'patch') await sb.rest('PATCH', `${op.table}?${op.filter}`, op.fields, { Prefer: 'return=minimal' });
+      else if (op.t === 'insert') await sb.insert(op.table, op.row);
+      else if (op.t === 'update') await sb.update(op.table, op.id, op.fields);
+      else await sb.remove(op.table, op.id);
+    }
+    remoteBase = cur;
+  } catch (e) {
+    showToast(friendlyError(e));
+    try { await loadAdminData(); } catch (e2) { if (!e2.offline) { sb.clear(); state.session.admin = false; } }
+    render();
+  }
+}
+
+/* Acceso del administrador */
+async function remoteEnterAdmin(){
+  await loadAdminData();
+  state.session.admin = true;
+}
+async function remoteAdminLogin(){
+  const email = $('auth-email').value.trim();
+  const pw = $('auth-pw').value;
+  state.authDraft = email;
+  const fail = msg => { state.authError = { role: 'admin', msg }; render(); };
+  if (!email || !pw) return fail('Ingresa tu correo y contraseña.');
+  try {
+    await sb.signIn(email, pw);
+    await remoteEnterAdmin();
+  } catch (e) {
+    const leaving = sb.s; sb.clear();
+    return fail(friendlyError(e));
+  }
+  state.authError = null; state.authDraft = '';
+  render();
+  window.scrollTo(0, 0);
+}
+function remoteLogout(){
+  sb.clear(); remoteBase = null; clearTimeout(syncTimer);
+  const view = state.view;
+  state = buildRemoteState(); state.booting = false;
+  render(); window.scrollTo(0, 0);
+}
+async function remoteChangePassword(role){
+  const cur = $('pw-cur-' + role).value, nw = $('pw-new-' + role).value, cf = $('pw-conf-' + role).value;
+  const fail = msg => { state.pwError = { role, msg }; render(); };
+  const biz = currentBusiness();
+  if (!cur) return fail(biz && biz.mustChange ? 'Ingresa la contraseña temporal.' : 'Ingresa tu contraseña actual.');
+  if (nw.length < 6) return fail('La nueva contraseña debe tener al menos 6 caracteres.');
+  if (nw === cur) return fail('La nueva contraseña debe ser distinta de la actual.');
+  if (nw !== cf) return fail('Las contraseñas no coinciden.');
+  try { await sb.signIn(sb.s.email, cur); } catch (e) { return fail(e.offline ? friendlyError(e) : 'La contraseña actual no es correcta.'); }
+  try {
+    await sb.setPassword(nw);
+    await sb.rest('PATCH', `profiles?user_id=eq.${sb.s.uid}`, { must_change: false }, { Prefer: 'return=minimal' });
+  } catch (e) { return fail(friendlyError(e)); }
+  if (biz) biz.mustChange = false;
+  state.pwError = null;
+  render();
+  showToast('Contraseña actualizada');
+}
+async function bootRemote(){
+  document.body.classList.add('remote');
+  const fb = document.getElementById('footer-brand'); if (fb && fb.parentNode) fb.parentNode.innerHTML = '<span id="footer-brand">Caly</span>';
+  sb.load();
+  if (ROUTE.kind === 'admin' && sb.s) {
+    try { await remoteEnterAdmin(); }
+    catch (e) { if (!e.offline) { sb.clear(); } else { showToast(friendlyError(e)); } }
+  }
+  state.booting = false;
+  refreshBrandUI();
+  render();
+}
+
+function buildRemoteState(){
+  const s = buildDefaultState();
+  s.view = ROUTE.kind === 'admin' ? 'admin' : ROUTE.kind === 'super' ? 'super' : 'paciente';
+  s.staff = []; s.services = []; s.patients = {}; s.appointments = []; s.businessHours = {}; s.closedDays = [];
+  s.businesses = []; s.session = { client: null, admin: false, super: false }; s.auditLog = []; s.activity = []; s.superAlerts = [];
+  s.brand = { name: '', color: '#0B0B0C', logo: null };
+  s.account = { name: '', email: '', phone: '' };
+  s.superAccount = { name: '', email: '', passHash: null, mustChange: false };
+  s.trackPayments = false; s.allowClientStaffPick = false; s.currentBizId = null; s.booting = true;
+  return s;
+}
+
 function loadState(){
+  if (REMOTE) return buildRemoteState();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -889,7 +1224,7 @@ function loadState(){
   } catch (e) {}
   return buildDefaultState();
 }
-function saveState(){ try { checkDoubles(); } catch (e) {} try { auditPass(); } catch (e) {} try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {} }
+function saveState(){ if (REMOTE) { queueSync(); return; } try { checkDoubles(); } catch (e) {} try { auditPass(); } catch (e) {} try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {} }
 
 let state = loadState();
 
@@ -907,7 +1242,7 @@ function auditActor(){
 }
 function logEvent(action, text, o){
   o = o || {};
-  state.auditLog.unshift({ id: 'lg' + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), bizId: o.biz || 'biz-1', role: o.role || auditRole(), actor: o.actor || auditActor(), action, text, doc: o.doc || null, apptId: o.apptId || null, data: o.data || null });
+  state.auditLog.unshift({ id: 'lg' + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), bizId: o.biz || state.currentBizId || 'biz-1', role: o.role || auditRole(), actor: o.actor || auditActor(), action, text, doc: o.doc || null, apptId: o.apptId || null, data: o.data || null });
   if (state.auditLog.length > 5000) state.auditLog.length = 5000;
 }
 function auditSnap(){
@@ -1210,6 +1545,7 @@ function loadClientIntoBooking(doc){
   });
 }
 function setView(v){
+  if (REMOTE) return;
   state.view = v;
   state.authError = null;
   state.pwError = null;
@@ -1418,7 +1754,7 @@ function confirmBooking(){
       state.booking.lastApptId = appt.id;
     }
   } else {
-    const id = 'a' + Date.now();
+    const id = newId('a');
     state.appointments.push({
       id,
       dni, name, phone,
@@ -1759,12 +2095,12 @@ function createAdminAppointment(){
   };
   syncClientAppointments(n.dni, state.patients[n.dni]);
   state.appointments.push({
-    id: 'a' + Date.now(),
+    id: newId('a'),
     dni: n.dni, name, phone,
     date: n.selectedDate, start: n.selectedSlot.start, end: n.selectedSlot.end,
     status: 'CONFIRMED', paid: false,
     staffId: assigned.id, staffName: assigned.name,
-    rescheduleRequested: false,
+    rescheduleRequested: false, createdAt: Date.now(), createdBy: 'admin',
     serviceId: svcId, serviceName: svcId ? findService(svcId).name : null, manual: !!n.selectedSlot.manual,
   });
   state.newAppt = null;
@@ -1777,7 +2113,7 @@ function bookingSlug(){
   const base = (state.brand.name || 'negocio').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   return base || 'negocio';
 }
-function bookingLink(){ return `caly.app/reservar/${bookingSlug()}`; }
+function bookingLink(){ return REMOTE ? `${location.host || 'caly.app'}/reservar/${state.bizSlug || bookingSlug()}` : `caly.app/reservar/${bookingSlug()}`; }
 function copyBookingLink(){
   const url = 'https://' + bookingLink();
   const done = () => showToast('Enlace copiado');
@@ -1877,7 +2213,7 @@ function simulateDoubleBookingAlert(){
   const other = Object.keys(state.patients).find(d => d !== base.dni);
   const p = other ? state.patients[other] : null;
   state.appointments.push({
-    id: 'a' + Date.now(), dni: other || '00000000', name: p ? p.name : 'Cliente de prueba', phone: p ? p.phone : '',
+    id: newId('a'), dni: other || '00000000', name: p ? p.name : 'Cliente de prueba', phone: p ? p.phone : '',
     date: base.date, start: base.start, end: base.end, status: 'CONFIRMED', paid: false,
     staffId: base.staffId, staffName: base.staffName, serviceId: base.serviceId, serviceName: base.serviceName, manual: true, createdAt: nowTs, createdBy: 'client',
   });
@@ -1972,6 +2308,7 @@ function copyTempPassword(){
 }
 function pwTarget(role){ return role === 'client' ? state.patients[state.session.client] : role === 'admin' ? currentBusiness() : state.superAccount; }
 function changePasswordFor(role){
+  if (REMOTE && role === 'admin') return remoteChangePassword(role);
   const t = pwTarget(role);
   if (!t) return;
   const key = role === 'admin' ? 'adminPassHash' : 'passHash';
@@ -1993,6 +2330,7 @@ function changePasswordFor(role){
   showToast('Contraseña actualizada');
 }
 function adminLogin(){
+  if (REMOTE) return remoteAdminLogin();
   const email = $('auth-email').value.trim();
   const pw = $('auth-pw').value;
   state.authDraft = email;
@@ -2031,7 +2369,7 @@ function superLogin(){
   render();
   window.scrollTo(0, 0);
 }
-function adminLogout(){ state.session.admin = false; state.adminTab = 'inicio'; state.newAppt = null; state.pwError = null; saveState(); render(); window.scrollTo(0, 0); }
+function adminLogout(){ if (REMOTE) return remoteLogout(); state.session.admin = false; state.adminTab = 'inicio'; state.newAppt = null; state.pwError = null; saveState(); render(); window.scrollTo(0, 0); }
 function superLogout(){ state.session.super = false; state.pwError = null; saveState(); render(); window.scrollTo(0, 0); }
 function updateNewBusiness(field, value){ state.newBusiness[field] = value; }
 function createBusinessAccount(){
@@ -2087,10 +2425,10 @@ function saveAccount(){
   const phone = document.getElementById('acc-phone').value.trim();
   if (phone && !isValidPhone(phone)) { showToast('Revisa el teléfono del negocio'); return; }
   state.account.name = name;
-  state.account.email = email;
+  if (!REMOTE) state.account.email = email;
   state.account.phone = phone;
   const biz = currentBusiness();
-  if (biz) biz.adminUser = email;
+  if (biz && !REMOTE) biz.adminUser = email;
   saveState();
   render();
   showToast('Perfil actualizado');
@@ -2268,7 +2606,7 @@ function addTimeOff(staffId){
   const to = mine.to || mine.from;
   if (to < mine.from) return showToast('La fecha final no puede ser antes que la inicial');
   if (to < todayISO()) return showToast('Elige fechas de hoy en adelante');
-  const entry = { id: 'of' + Date.now(), from: mine.from, to, note: (mine.note || '').trim() };
+  const entry = { id: newId('of'), from: mine.from, to, note: (mine.note || '').trim() };
   const aff = offAffected(staffId, entry);
   if (aff) { state.pendingClosure = { kind: 'off', staffId, entry, aff }; render(); return; }
   commitTimeOff(staffId, entry);
@@ -2314,7 +2652,7 @@ function addClosedDay(){
   if (from < todayISO() && !(weekly && to && to >= todayISO())) return showToast('Elige fechas de hoy en adelante');
   if (to && to < from) return showToast('La fecha final no puede ser antes que la inicial');
   if (!n.allDay && n.startTime >= n.endTime) return showToast('La hora de inicio debe ser antes que la de fin');
-  const entry = { id: 'cd' + Date.now(), from, to, note: (n.note || '').trim(), repeat: weekly ? 'weekly' : 'none' };
+  const entry = { id: newId('cd'), from, to, note: (n.note || '').trim(), repeat: weekly ? 'weekly' : 'none' };
   if (!n.allDay) { entry.startTime = n.startTime; entry.endTime = n.endTime; }
   const aff = closedAffected(entry);
   if (aff) { state.pendingClosure = { kind: 'closure', entry, aff }; render(); return; }
@@ -2381,7 +2719,7 @@ function addStaffMember(){
     showToast('Ingresa el nombre del trabajador');
     return;
   }
-  state.staff.push({ id: 'staff' + Date.now(), name, schedule: {} });
+  state.staff.push({ id: newId('staff'), name, schedule: {} });
   state.newStaffName = '';
   state.openForm = null;
   saveState();
@@ -2415,12 +2753,12 @@ function dAddRange(day){
 }
 function dDelRange(day, ri){ const r = state.staffDraft.sched[day]; r.splice(ri, 1); if (!r.length) delete state.staffDraft.sched[day]; render(); }
 function dOff(i, f, v){ state.staffDraft.off[i][f] = v; }
-function dAddOff(){ state.staffDraft.off.push({ id: 'of' + Date.now(), from: '', to: '', note: '' }); render(); }
+function dAddOff(){ state.staffDraft.off.push({ id: newId('of'), from: '', to: '', note: '' }); render(); }
 function dDelOff(i){ state.staffDraft.off.splice(i, 1); render(); }
 function saveStaffDraft(){
   const d = state.staffDraft;
   const isNew = state.editingStaff === 'new';
-  const m = isNew ? { id: 'staff' + Date.now(), name: '', schedule: {}, timeOff: [] } : state.staff.find(x => x.id === state.editingStaff);
+  const m = isNew ? { id: newId('staff'), name: '', schedule: {}, timeOff: [] } : state.staff.find(x => x.id === state.editingStaff);
   if (!d || !m) return;
   const name = (d.name || '').trim();
   if (name.length < 2) return showToast('Ingresa el nombre del trabajador');
@@ -2529,7 +2867,7 @@ function addService(){
   if (name.length < 2) return showToast('Ingresa el nombre del servicio');
   if (!(minutes >= 5 && minutes <= 480)) return showToast('La duración debe estar entre 5 y 480 min');
   if (!n.staffIds.length) return showToast('Asocia al menos un trabajador al servicio');
-  state.services.push({ id: 'svc' + Date.now(), name, minutes: Math.round(minutes), staffIds: n.staffIds.slice() });
+  state.services.push({ id: newId('svc'), name, minutes: Math.round(minutes), staffIds: n.staffIds.slice() });
   state.newService = { name: '', minutes: 45, staffIds: [] };
   state.openForm = null;
   saveState();
@@ -2567,7 +2905,7 @@ function saveServiceAssign(){
   render();
   showToast('Servicios asignados');
 }
-function currentBusiness(){ return state.businesses.find(b => b.id === 'biz-1'); }
+function currentBusiness(){ return state.businesses.find(b => b.id === (state.currentBizId || 'biz-1')); }
 function isProPlan(){ const b = currentBusiness(); return !!b && b.plan === 'Pro'; }
 function bookingServiceId(b){
   b = b || state.booking;
@@ -2619,7 +2957,7 @@ function toggleBusinessPlan(id){
   if (biz.plan === 'Pro') { biz.lastPaidAt = todayISO(); biz.nextPaymentDate = addDaysISO(todayISO(), 30); }
   saveState();
   render();
-  const pend = biz.id === 'biz-1' && biz.plan === 'Pro' ? pendingServiceAppts().length : 0;
+  const pend = biz.id === (state.currentBizId || 'biz-1') && biz.plan === 'Pro' ? pendingServiceAppts().length : 0;
   showToast(pend ? `Plan Pro activado: el admin debe asignar servicio a ${pend} cita(s)` : `${biz.name}: plan ${biz.plan}`);
 }
 function toggleAllowClientStaffPick(){
@@ -2773,7 +3111,7 @@ function renderAuth(role){
         <button class="btn-text" type="button" style="align-self:center;" onclick="toggleForgot()" aria-expanded="${state.showForgot}">¿Olvidaste tu contraseña?</button>
         ${state.showForgot ? `<div class="notice">${copy.forgot}</div>` : ''}
       </form>
-      <div class="notice demo" style="margin-top:18px;">${copy.demo}</div>
+      ${REMOTE ? '' : `<div class="notice demo" style="margin-top:18px;">${copy.demo}</div>`}
     </div>`;
 }
 function renderRegistro(){
@@ -3802,7 +4140,7 @@ function saveServiceDraft(){
   if (!d.staffIds.length) return showToast('Elige al menos un trabajador que lo preste');
   const isNew = state.editingService === 'new';
   if (isNew) {
-    state.services.push({ id: 'svc' + Date.now(), name, minutes: Math.round(minutes), staffIds: d.staffIds.slice() });
+    state.services.push({ id: newId('svc'), name, minutes: Math.round(minutes), staffIds: d.staffIds.slice() });
   } else {
     const v = findService(state.editingService);
     if (!v) return;
@@ -4276,7 +4614,7 @@ function renderAdminCuenta(){
     <h2 class="title-2">Perfil</h2>
     <div class="card stack">
       <div class="field"><label for="acc-name">Nombre</label><input id="acc-name" value="${escapeHtml(acc.name)}"></div>
-      <div class="field"><label for="acc-email">Email de acceso</label><input id="acc-email" type="email" value="${escapeHtml(acc.email)}"></div>
+      <div class="field"><label for="acc-email">Email de acceso</label><input id="acc-email" type="email" value="${escapeHtml(acc.email)}" ${REMOTE ? "disabled" : ""}></div>
       <div class="field"><label for="acc-phone">WhatsApp del negocio</label><input id="acc-phone" type="tel" inputmode="tel" value="${escapeHtml(acc.phone || '')}"><span class="hint">Lo ven tus clientes cuando necesitan pedirte un cambio, como corregir su documento.</span></div>
       <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="saveAccount()">Guardar perfil</button>
     </div>
@@ -4860,6 +5198,7 @@ function renderSuper(){
 }
 
 function render(){
+  if (REMOTE && state.booting) { document.getElementById('view').innerHTML = '<div class="page"><p class="secondary" style="margin-top:64px;text-align:center;">Cargando…</p></div>'; return; }
   ['paciente', 'admin', 'super'].forEach(v => {
     const el = document.getElementById('tab-' + v);
     el.classList.toggle('active', state.view === v);
@@ -4887,7 +5226,7 @@ function render(){
 }
 
 refreshBrandUI();
-render();
+if (REMOTE) bootRemote(); else render();
 
 // Accesibilidad: Escape cierra el modal (equivale a la opción segura) y el foco queda dentro
 document.addEventListener('keydown', e => {
