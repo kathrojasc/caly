@@ -1,7 +1,20 @@
 {
   "rewrites": [
-    { "source": "/admin", "destination": "/index.html" },
-    { "source": "/super", "destination": "/index.html" },
-    { "source": "/reservar/:slug", "destination": "/index.html" }
+    {
+      "source": "/admin",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/super",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/reservar/:slug",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/demo",
+      "destination": "/index.html"
+    }
   ]
 }
