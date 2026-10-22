@@ -1382,6 +1382,40 @@ async function acceptTerms(){
   render(); window.scrollTo(0, 0);
 }
 
+function askPurge(id){ state.purgeConfirm = { id, typed: '' }; render(); }
+function cancelPurge(){ state.purgeConfirm = null; render(); }
+function renderPurgeModal(){
+  const pc = state.purgeConfirm;
+  const biz = pc && state.businesses.find(b => b.id === pc.id);
+  if (!biz) return '';
+  return `
+    <div class="modal-back" onclick="if (event.target === this) cancelPurge()">
+      <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="pg-title">
+        <h2 class="title-3" id="pg-title">¿Eliminar los datos de ${escapeHtml(biz.name)}?</h2>
+        <p class="secondary" style="margin-top:8px;">Se borran todas las citas, clientes (y sus cuentas de acceso), trabajadores, servicios y cierres. La cuenta del negocio queda desactivada. Esto no se puede deshacer. El registro de actividad se conserva sin datos personales.</p>
+        <div class="field" style="margin-top:16px;">
+          <label for="pg-name">Para confirmar, escribe el nombre del negocio</label>
+          <input id="pg-name" placeholder="${escapeHtml(biz.name)}" value="${escapeHtml(pc.typed)}" oninput="state.purgeConfirm.typed = this.value" autocomplete="off">
+        </div>
+        <div class="stack" style="margin-top:20px;gap:10px;">
+          <button class="btn btn-danger-solid btn-block" type="button" onclick="confirmPurge()">Sí, eliminar los datos</button>
+          <button class="btn btn-soft btn-block" type="button" data-close onclick="cancelPurge()">Cancelar</button>
+        </div>
+      </div>
+    </div>`;
+}
+async function confirmPurge(){
+  const pc = state.purgeConfirm;
+  const biz = pc && state.businesses.find(b => b.id === pc.id);
+  if (!biz) return;
+  if ((pc.typed || '').trim().toLowerCase() !== biz.name.trim().toLowerCase()) return showToast('Escribe el nombre exacto del negocio para confirmar');
+  try { await sb.rpc('purge_business', { p_business: biz.id }); await loadSuperData(); }
+  catch (e) { return showToast(friendlyError(e)); }
+  state.purgeConfirm = null;
+  render();
+  showToast('Datos eliminados y cuenta desactivada');
+}
+
 /* ---------- Superadmin (modo servidor) ---------- */
 let superBase = null;
 const bizRow = b => ({ plan: b.plan, enabled: !!b.enabled, trial_ends_at: limaEnd(b.trialEndsAt), last_paid_at: b.lastPaidAt || null, next_pay_at: b.nextPaymentDate || null });
@@ -1515,7 +1549,7 @@ function loadState(){
       parsed.editingBiz = false; parsed.bizDraft = null; parsed.closureDrawer = false;
       parsed.editingStaff = null;
       parsed.staffDraft = null;
-      parsed.legalView = null; parsed.termsCheck = false;
+      parsed.legalView = null; parsed.termsCheck = false; parsed.purgeConfirm = null;
       parsed.dayEdit = null;
       if (!Array.isArray(parsed.dblSeen)) parsed.dblSeen = [];
       if (!Array.isArray(parsed.auditLog)) parsed.auditLog = [];
@@ -5528,7 +5562,8 @@ function renderSuper(){
                 <p class="label">Zona de riesgo</p>
                 <div class="row">${biz.enabled
                   ? `<button class="btn btn-sm btn-danger" type="button" onclick="toggleBusinessEnabled('${biz.id}')">Desactivar cuenta</button>`
-                  : `<button class="btn btn-sm btn-soft" type="button" onclick="toggleBusinessEnabled('${biz.id}')">Activar cuenta</button>`}</div>
+                  : `<button class="btn btn-sm btn-soft" type="button" onclick="toggleBusinessEnabled('${biz.id}')">Activar cuenta</button>`}
+                  ${REMOTE ? `<button class="btn btn-sm btn-danger" type="button" onclick="askPurge('${biz.id}')">Eliminar datos</button>` : ''}</div>
               </div>
             </div>
           </div>`;}).join('')}
@@ -5549,7 +5584,8 @@ function renderSuper(){
       ${renderPasswordCard('super')}
 
       <div style="display:flex;justify-content:center;margin-top:28px;"><button class="btn-text" type="button" onclick="superLogout()">Cerrar sesión</button></div>
-    </div>`;
+    </div>
+    ${renderPurgeModal()}`;
 }
 
 function render(){
