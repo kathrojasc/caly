@@ -597,6 +597,7 @@ input[type=time]::-webkit-datetime-edit-fields-wrapper, input[type=date]::-webki
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(104px + env(safe-area-inset-bottom, 0px)); z-index: 80; background: var(--color-primary); color: var(--color-on-primary); padding: 12px 20px; border-radius: var(--radius-pill); font-weight: 600; font-size: 14px; box-shadow: var(--shadow-dock); max-width: calc(100% - 32px); text-align: center; }
 footer.foot { text-align: center; color: var(--color-text-secondary); font-size: 13px; padding: 8px 20px max(10px, env(safe-area-inset-bottom)); margin-top: auto; }
 .has-tabbar footer.foot { display: none; }
+.has-tabbar main#view { padding-bottom: 104px; }
 @media (max-width: 520px) { .hdr { padding: 0 -4px; } .media .day { font-size: 80px; } }
 </style>
 </head>
@@ -3744,9 +3745,19 @@ function renderPacientePanel(b){
           <button class="btn btn-primary btn-block btn-xl" type="button" onclick="goToReservar()">Reservar cita</button>
         </div>`}
     </div>
-    ${renderCancelModal()}`;
+    ${renderCancelModal()}${renderClientTabbar('panel')}`;
 }
 
+function clientNavVisible(){
+  if (state.view !== 'paciente' || !state.session.client) return false;
+  const b = state.booking, p = state.patients[state.session.client];
+  if (p && p.mustChange) return false;
+  return ['panel', 'citas', 'perfil'].indexOf(b.step) !== -1;
+}
+function renderClientTabbar(active){
+  const items = [['panel', 'Inicio', 'home', 'goToPanel()'], ['citas', 'Mis citas', 'calendar', "goToMisCitas('proximas')"], ['perfil', 'Mi cuenta', 'user', 'goToPerfil()']];
+  return `<nav class="tabbar" aria-label="Secciones">${items.map(([id, label, ic, fn]) => `<button class="tab" type="button" ${active === id ? 'aria-current="page"' : ''} onclick="${fn}">${icon(ic, 24, 2)}<span>${label}</span></button>`).join('')}</nav>`;
+}
 function goToMisCitas(tab){ state.booking.step = 'citas'; state.booking.misTab = tab || 'proximas'; render(); window.scrollTo(0, 0); }
 function setMisTab(t){ state.booking.misTab = t; render(); }
 function emptyApptsCard(title, text, withButton){
@@ -3782,10 +3793,7 @@ function renderMisCitas(b){
   const tab = b.misTab === 'historial' ? 'historial' : 'proximas';
   return `
     <div class="page w560">
-      <div style="display:flex;align-items:center;min-height:48px;">
-        <button class="icon-btn" type="button" onclick="goToPanel()" aria-label="Volver">${icon('left', 22, 2.4)}</button>
-      </div>
-      <h1 class="title-1" style="margin:12px 0 18px;">Mis citas</h1>
+      <h1 class="title-1" style="margin:28px 0 18px;">Mis citas</h1>
       <div class="seg full" role="tablist" aria-label="Mis citas">
         <button type="button" role="tab" aria-pressed="${tab === 'proximas'}" onclick="setMisTab('proximas')">Próximas citas</button>
         <button type="button" role="tab" aria-pressed="${tab === 'historial'}" onclick="setMisTab('historial')">Historial</button>
@@ -3796,7 +3804,7 @@ function renderMisCitas(b){
           : (history.length ? history.map(histCard).join('') : emptyApptsCard('Todavía no tuviste citas', 'Aquí verás tus citas realizadas y canceladas.', false))}
       </div>
     </div>
-    ${renderCancelModal()}`;
+    ${renderCancelModal()}${renderClientTabbar('citas')}`;
 }
 
 function renderResumen(b, cfg){
@@ -3908,10 +3916,8 @@ function renderPerfil(b){
   const forced = !!(p && p.mustChange);
   return `
     <div class="page w456">
-      <div style="display:flex;align-items:center;min-height:48px;">
-        ${forced ? '' : `<button class="icon-btn" type="button" onclick="goToPanel()" aria-label="Volver a mis citas">${icon('left', 22, 2.4)}</button>`}
-      </div>
-      <h1 class="title-1" style="margin:20px 0 4px;">${forced ? 'Crea tu nueva contraseña' : 'Mis datos'}</h1>
+      <div style="display:flex;align-items:center;min-height:${forced ? '48' : '16'}px;"></div>
+      <h1 class="title-1" style="margin:${forced ? '20px' : '12px'} 0 4px;">${forced ? 'Crea tu nueva contraseña' : 'Mi cuenta'}</h1>
       <p class="secondary">${forced ? 'Por seguridad, cambia la contraseña temporal para continuar.' : 'Si cambias tus datos, el negocio los verá actualizados al instante.'}</p>
       ${forced ? `<div style="margin-top:20px;">${renderPasswordCard('client')}</div>` : `
       <form class="stack" style="margin-top:24px;gap:18px;" onsubmit="event.preventDefault(); saveProfile()">
@@ -3929,7 +3935,9 @@ function renderPerfil(b){
       <h2 class="title-2">Contraseña</h2>
       ${renderPasswordCard('client')}`}
       <div style="display:flex;justify-content:center;margin-top:28px;"><button class="btn-text" type="button" onclick="clientLogout()">Cerrar sesión</button></div>
-    </div>`;
+      ${forced ? '' : `<p class="secondary" style="text-align:center;margin-top:18px;font-size:13px;"><button class="btn-text" type="button" style="min-height:0;padding:0;font-size:inherit;" onclick="openLegal('privacidad')">Privacidad</button> · <button class="btn-text" type="button" style="min-height:0;padding:0;font-size:inherit;" onclick="openLegal('terminos')">Términos</button></p>`}
+    </div>
+    ${forced ? '' : renderClientTabbar('perfil')}`;
 }
 function renderPaciente(){
   const b = state.booking;
@@ -5704,7 +5712,7 @@ function renderSuper(){
 
 function render(){
   document.body.classList.toggle('brand-on', state.view === 'paciente');
-  document.body.classList.toggle('has-tabbar', state.view === 'admin' && !!state.session.admin);
+  document.body.classList.toggle('has-tabbar', (state.view === 'admin' && !!state.session.admin) || clientNavVisible());
   if (REMOTE && ROUTE.kind === 'home') { document.getElementById('view').innerHTML = '<div class="page w456"><div class="hdr" style="margin-top:64px;">' + brandBlock() + '</div><h1 class="title-1" style="margin-top:32px;">Reserva de citas</h1><p class="secondary" style="margin-top:8px;">Para reservar, usa el enlace que te compartió tu negocio.</p></div>'; return; }
   if (REMOTE && state.booting) { document.getElementById('view').innerHTML = '<div class="page"><p class="secondary" style="margin-top:64px;text-align:center;">Cargando…</p></div>'; return; }
   ['paciente', 'admin', 'super'].forEach(v => {
