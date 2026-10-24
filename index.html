@@ -2549,7 +2549,7 @@ function sendReminder(id){
   saveState();
 }
 function goEsperando(){ goAtencion(); }
-function goAtencion(){ const first = state.appointments.filter(isProblem).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start))[0]; if (first) state.agendaDate = first.date; state.adminTab = 'citas'; state.agendaView = 'lista'; state.citasProblems = true; state.citasLimit = 15; render(); window.scrollTo(0, 0); }
+function goAtencion(){ const first = state.appointments.filter(isProblem).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start))[0]; if (first) state.agendaDate = first.date; state.adminTab = 'citas'; state.citasTab = 'proximas'; state.agendaView = 'lista'; state.citasProblems = true; state.citasLimit = 15; render(); window.scrollTo(0, 0); }
 function goPendientes(){ goAtencion(); }
 function goNewAppt(){ openNewAppt(); }
 function openNewAppt(dateIso){
@@ -4259,7 +4259,7 @@ function dayAppts(iso, staffId){
 }
 function calAppts(iso){ return dayAppts(iso, state.calStaff); }
 function goHoy(){ const el = document.getElementById('hoy-anchor'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }
-function goAgenda(){ state.adminTab = 'citas'; state.agendaView = 'calendario'; state.citasProblems = false; state.agendaDate = todayISO(); state.openAppt = null; render(); window.scrollTo(0, 0); }
+function goAgenda(){ state.adminTab = 'citas'; state.citasTab = 'proximas'; state.citasLimit = 15; state.agendaView = 'calendario'; state.citasProblems = false; state.agendaDate = todayISO(); state.openAppt = null; render(); window.scrollTo(0, 0); }
 function setCitasMode(m){ render(); }
 function pickAgendaDay(iso){ state.agendaDate = iso; state.openAppt = null; state.agendaMonth = false; render(); }
 function shiftAgendaWeek(n){ state.agendaDate = addDaysISO(state.agendaDate || todayISO(), 7 * n); state.openAppt = null; render(); }
@@ -4327,54 +4327,38 @@ function shiftAgendaMonth(n){
   render();
 }
 function citaMode(a){ return apptPendingReason(a) ? 'pend' : (a.rescheduleRequested ? 'wait' : false); }
+function setCitasTab(t){ state.citasTab = t; state.citasLimit = 15; render(); }
 function renderAgendaView(){
   const now = todayISO();
-  const view = 'calendario';
-  const probCount = state.appointments.filter(a => isProblem(a) && (!state.calStaff || a.staffId === state.calStaff)).length;
+  const tab = state.citasTab === 'historial' ? 'historial' : 'proximas';
+  const q = state.citasQuery || '';
+  const staffOk = a => !state.calStaff || a.staffId === state.calStaff;
+  const isNext = a => a.status === 'CONFIRMED' && !isPastAppt(a);
+  const probCount = state.appointments.filter(a => isProblem(a) && staffOk(a)).length;
   const staffSel = state.staff.length > 1 ? `
     <select class="mini-select" aria-label="Filtrar por trabajador" onchange="setCalStaff(this.value || null)">
       <option value="">Todos los trabajadores</option>
       ${state.staff.map(m => `<option value="${m.id}" ${state.calStaff === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
     </select>` : '';
-  const q = state.citasQuery || '';
-  const controls = `
-    <div class="row" style="margin-top:14px;gap:8px;">
-      <button type="button" class="pill-opt prob${state.citasProblems ? ' on' : ''}" aria-pressed="${state.citasProblems}" onclick="toggleProblems()"><i class="dot" style="background:var(--color-danger)"></i>Con problemas${probCount ? ` (${probCount})` : ''}</button>
-      ${staffSel}
-    </div>`;
-  if (view === 'lista') {
-    const base = state.appointments.filter(a => (!state.calStaff || a.staffId === state.calStaff) && (!state.citasProblems || isProblem(a)) && citaMatches(a, q));
-    const next = base.filter(a => a.status === 'CONFIRMED' && a.date >= now).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
-    const prev = base.filter(a => !(a.status === 'CONFIRMED' && a.date >= now)).sort((x, y) => (y.date + y.start).localeCompare(x.date + x.start));
-    const all = next.concat(prev);
-    const shown = all.slice(0, state.citasLimit);
-    const sn = shown.filter(a => next.includes(a)), sp = shown.filter(a => !next.includes(a));
-    const sec = (t, n, arr) => arr.length ? `<div class="row between" style="flex-wrap:nowrap;margin-top:22px;"><p class="card-title" style="font-size:17px;">${t}</p><span class="caption">${n}</span></div><div class="rows" style="margin-top:10px;">${arr.map(a => citaCard(a, now, citaMode(a))).join('')}</div>` : '';
-    return `${controls}
-    <div class="search" style="margin-top:12px;">
+  const base = state.appointments.filter(a => staffOk(a) && citaMatches(a, q) && (tab === 'proximas' ? isNext(a) && (!state.citasProblems || isProblem(a)) : !isNext(a)));
+  const sorted = base.sort((x, y) => tab === 'proximas' ? (x.date + x.start).localeCompare(y.date + y.start) : (y.date + y.start).localeCompare(x.date + x.start));
+  const shown = sorted.slice(0, state.citasLimit);
+  const empty = q ? 'No encontramos citas con esa búsqueda.' : tab === 'historial' ? 'Todavía no hay citas en el historial.' : (state.citasProblems ? 'No hay citas con problemas.' : 'No hay citas próximas.');
+  return `
+    <div class="seg full" role="tablist" aria-label="Citas" style="margin-top:20px;">
+      <button type="button" role="tab" aria-pressed="${tab === 'proximas'}" onclick="setCitasTab('proximas')">Próximas citas</button>
+      <button type="button" role="tab" aria-pressed="${tab === 'historial'}" onclick="setCitasTab('historial')">Historial</button>
+    </div>
+    <div class="search" style="margin-top:14px;">
       <span class="ic" aria-hidden="true">${icon('search', 20)}</span>
       <input id="citas-q" type="search" placeholder="Buscar nombre, DNI o teléfono" aria-label="Buscar citas" value="${escapeHtml(q)}" oninput="setCitasQuery(this.value)">
     </div>
-    ${all.length ? `${sec('Próximas', next.length, sn)}${sec('Anteriores y canceladas', prev.length, sp)}
-    ${all.length > shown.length ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:14px;" onclick="state.citasLimit += 15; render()">Ver más (${all.length - shown.length})</button>` : ''}` : `<p class="secondary" style="margin-top:24px;">${q ? 'No encontramos citas con esa búsqueda.' : (state.citasProblems ? 'No hay citas con problemas.' : 'Todavía no hay citas.')}</p>`}`;
-  }
-  const sel = state.agendaDate || now;
-  const biz = state.businessHours[String(dayOfWeek(sel))] || [];
-  const closures = state.closedDays.filter(c => closureAppliesOn(c, sel));
-  const fullClosed = closures.filter(c => !c.startTime);
-  const list = agendaAppts(sel);
-  return `<div class="agenda-split"><div class="as-cal">${controls}
-    <div style="margin-top:14px;">${renderMonthPicker(sel, now)}</div></div>
-    <div class="as-day">
-    <div class="row between" style="margin-top:18px;flex-wrap:nowrap;gap:10px;">
-      <div class="row" style="gap:8px;min-width:0;">
-      ${(() => { const dl = `${WEEKDAYS_LONG[dayOfWeek(sel)]} ${dayNum(sel)}`; return fullClosed.length ? chip('danger', `${dl} · Cerrado${fullClosed[0].note ? ': ' + escapeHtml(fullClosed[0].note) : ''}`) : (biz.length ? chip('neutral', `${dl} · Atención ${biz.map(r => r.start + '–' + r.end).join(', ')}`) : chip('neutral', `${dl} · Sin atención`)); })()}
-      ${closures.filter(c => c.startTime).map(c => chip('warning', `Cierre ${c.startTime}–${c.endTime}`)).join('')}
-    </div>
-      ${sel !== now ? `<button class="btn-text" type="button" style="white-space:nowrap;min-height:36px;flex-shrink:0;" onclick="pickAgendaDay('${now}')">Ir a hoy</button>` : ''}
-    </div>
-    ${list.length ? `<div style="margin-top:14px;">${citaList(list, now, citaMode)}</div>` : `<p class="secondary" style="margin-top:16px;">No hay citas este día.</p>`}
-    </div></div>`;
+    ${tab === 'proximas' || staffSel ? `<div class="row" style="margin-top:12px;gap:8px;">
+      ${tab === 'proximas' ? `<button type="button" class="pill-opt prob${state.citasProblems ? ' on' : ''}" aria-pressed="${!!state.citasProblems}" onclick="toggleProblems()"><i class="dot" style="background:var(--color-danger)"></i>Con problemas${probCount ? ` (${probCount})` : ''}</button>` : ''}
+      ${staffSel}
+    </div>` : ''}
+    ${shown.length ? `<div style="margin-top:14px;">${citaList(shown, now, citaMode)}</div>
+    ${sorted.length > shown.length ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:14px;" onclick="state.citasLimit += 15; render()">Ver más (${sorted.length - shown.length})</button>` : ''}` : `<p class="secondary" style="margin-top:24px;">${empty}</p>`}`;
 }
 function calLayout(list){
   const out = []; let cluster = []; let clusterEnd = -1;
@@ -4747,9 +4731,9 @@ function confirmMerge(){
 function viewClientAppts(doc){
   const p = state.patients[doc];
   state.adminTab = 'citas';
-  state.citasMode = 'historial';
-  state.citasFilter = 'todas';
   state.citasQuery = p ? p.name : '';
+  state.citasProblems = false;
+  state.citasTab = state.appointments.some(a => a.dni === doc && a.status === 'CONFIRMED' && !isPastAppt(a)) ? 'proximas' : 'historial';
   state.citasLimit = 15;
   render();
   window.scrollTo(0, 0);
