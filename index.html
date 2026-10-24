@@ -4866,8 +4866,6 @@ function renderAdminHorarios(){
 
     ${renderClosuresSection()}
 
-    ${renderServicesSection()}
-
     <h2 class="title-2">Equipo y asignación</h2>
     <p class="secondary" style="margin-bottom:14px;">Cada trabajador tiene su propio horario. Cuando un cliente reserva, Caly asigna automáticamente al trabajador disponible siguiendo un turno rotativo (round robin), para repartir las citas de forma pareja.</p>
     <div class="rows">${state.staff.map(member => `
@@ -4892,6 +4890,8 @@ function renderAdminHorarios(){
       </div>`).join('')}</div>
     <button class="btn btn-primary btn-sm add-btn" type="button" style="align-self:flex-start;margin-top:14px;" onclick="startEditStaff('new')">${icon('plus', 18, 2.6)} Agregar trabajador</button>
     ${renderStaffDrawer()}
+
+    ${renderServicesSection()}
 
     <h2 class="title-2">Configuración de citas</h2>
     <div class="card stack">
