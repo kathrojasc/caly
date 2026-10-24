@@ -3899,11 +3899,13 @@ function renderPasswordCard(role){
       ${pwInput('pw-new-' + role, 'Nueva contraseña', 'new-password')}
       ${pwInput('pw-conf-' + role, 'Confirmar nueva contraseña', 'new-password')}
       ${REMOTE && role === 'admin' && t.mustChange && state.termsOk === false ? `<label class="consent" for="terms-ok-pw">
-        <input id="terms-ok-pw" type="checkbox" ${state.termsCheck ? 'checked' : ''} onchange="state.termsCheck = this.checked">
+        <input id="terms-ok-pw" type="checkbox" ${state.termsCheck ? 'checked' : ''} onchange="state.termsCheck = this.checked; const sb = document.getElementById('terms-submit'); if (sb) sb.disabled = !this.checked;">
         <span>Leí y acepto los <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('terminos')">términos de uso</button> y la <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('privacidad')">política de privacidad</button>. Entiendo que soy responsable del manejo de los datos de mis clientes.</span>
       </label>` : ''}
       ${err ? `<p class="error-text" role="alert">${escapeHtml(err)}</p>` : ''}
-      <button class="btn btn-primary" type="submit" data-save style="align-self:flex-start;">${REMOTE && role === 'admin' && t.mustChange && state.termsOk === false ? 'Crear contraseña y continuar' : 'Actualizar contraseña'}</button>
+      ${REMOTE && role === 'admin' && t.mustChange && state.termsOk === false
+        ? `<button id="terms-submit" class="btn btn-primary" type="submit" style="align-self:flex-start;" ${state.termsCheck ? '' : 'disabled'}>Crear contraseña y continuar</button>`
+        : `<button class="btn btn-primary" type="submit" data-save style="align-self:flex-start;">Actualizar contraseña</button>`}
     </form>`;
 }
 function renderForcedPassword(role){
