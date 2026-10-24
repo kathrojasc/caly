@@ -1760,7 +1760,7 @@ function lightenColor(hex, weight){ return mixColor(hex, '#ffffff', weight); }
 function darkenColor(hex, weight){ return mixColor(hex, '#000000', weight); }
 
 function applyBrandTheme(){
-  const c = state.brand.color;
+  const c = '#0B0B0C';   // Sin color de marca configurable: la interfaz usa siempre el negro de Caly
   const { r, g, b } = hexToRgb(c);
   const lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
   const lum = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
@@ -2859,11 +2859,8 @@ function createBusinessAccount(){
 
 function saveBrand(){
   const name = document.getElementById('brand-name').value.trim() || 'Caly';
-  const colorInput = document.getElementById('brand-color-hex').value.trim();
-  const color = /^#[0-9a-fA-F]{6}$/.test(colorInput) ? colorInput : document.getElementById('brand-color').value;
 
   state.brand.name = name;
-  state.brand.color = color;
   saveState();
   refreshBrandUI();
   render();
@@ -5029,7 +5026,7 @@ function renderStaffDrawer(){
 function renderAdminMarca(){
   return `
     <h2 class="title-2">Marca</h2>
-    <p class="secondary" style="margin:-8px 0 14px;">Nombre, color y logo que ven tus clientes.</p>
+    <p class="secondary" style="margin:-8px 0 14px;">Nombre y logo que ven tus clientes.</p>
     <div class="card stack">
       <div class="field">
         <label for="brand-name">Nombre del negocio</label>
@@ -5044,16 +5041,6 @@ function renderAdminMarca(){
           ${state.brand.logo ? `<button class="btn-text" type="button" onclick="removeLogo()">Quitar</button>` : ''}
         </div>
         <span class="hint">PNG o JPG, hasta ~900 KB.</span>
-      </div>
-
-      <div class="field">
-        <label for="brand-color-hex">Color principal</label>
-        <div class="row">
-          <input id="brand-color" type="color" value="${state.brand.color}" aria-label="Elegir color"
-            oninput="document.getElementById('brand-color-hex').value = this.value">
-          <input id="brand-color-hex" class="tnum" style="max-width:140px;" value="${state.brand.color}"
-            oninput="if (/^#[0-9a-fA-F]{6}$/.test(this.value)) document.getElementById('brand-color').value = this.value;">
-        </div>
       </div>
 
       <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="saveBrand()">Guardar marca</button>
