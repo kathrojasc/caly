@@ -177,6 +177,8 @@ button.chip { cursor: pointer; }
   .appt-actions.confirm { display: flex; align-items: center; }
   .appt-actions.confirm > span { margin-right: 4px; }
 }
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 36px 0 14px; }
+.sec-head .title-2 { margin: 0; }
 .hist-head { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 16px; border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: var(--color-bg); text-align: left; }
 .hist-title { flex: 1; font-size: 16px; font-weight: 700; }
 .hist-count { min-width: 26px; height: 26px; padding: 0 8px; border-radius: var(--radius-pill); background: var(--color-surface); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--color-text-secondary); }
@@ -3726,7 +3728,10 @@ function renderPacientePanel(b){
 
       ${next ? `<button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:24px;" onclick="goToReservar()">Reservar</button>` : ''}
 
-      <h2 class="title-2">${upcoming.length > 1 ? 'Próximas citas' : 'Próxima cita'}</h2>
+      <div class="sec-head">
+        <h2 class="title-2">${upcoming.length > 1 ? 'Próximas citas' : 'Próxima cita'}</h2>
+        <button class="btn-text" type="button" style="min-height:32px;padding:0;white-space:nowrap;" aria-expanded="${!!b.historyOpen}" aria-controls="hist-list" onclick="toggleHistory()">${b.historyOpen ? 'Ocultar historial' : 'Ver historial'}</button>
+      </div>
       ${next ? `
         ${patientCard(next, true)}
         ${rest.length ? `<div class="rows" style="margin-top:12px;">${rest.map(a => patientCard(a, true)).join('')}</div>` : ''}` : `
@@ -3737,13 +3742,9 @@ function renderPacientePanel(b){
           <button class="btn btn-primary btn-block btn-xl" type="button" onclick="goToReservar()">Reservar cita</button>
         </div>`}
 
-      <div class="hist" style="margin-top:36px;">
-        <button class="hist-head" type="button" aria-expanded="${!!b.historyOpen}" aria-controls="hist-list" onclick="toggleHistory()">
-          <span class="hist-title">Historial</span>
-          <span class="hist-count">${history.length}</span>
-          <span class="hist-chev ${b.historyOpen ? 'open' : ''}">${icon('right', 20, 2.4)}</span>
-        </button>
+      <div class="hist" style="margin-top:28px;">
         ${b.historyOpen ? `
+          <h2 class="title-2" style="margin-top:0;">Historial</h2>
           <div id="hist-list" class="hist-list">
             ${history.length === 0
               ? `<p class="secondary" style="padding:8px 4px;">Todavía no tuviste citas.</p>`
