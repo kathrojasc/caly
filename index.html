@@ -3749,6 +3749,15 @@ function renderPacientePanel(b){
 
 function goToMisCitas(tab){ state.booking.step = 'citas'; state.booking.misTab = tab || 'proximas'; render(); window.scrollTo(0, 0); }
 function setMisTab(t){ state.booking.misTab = t; render(); }
+function emptyApptsCard(title, text, withButton){
+  return `
+    <div class="no-appts">
+      <span class="na-ic" aria-hidden="true">${icon('calendar', 40, 1.8)}</span>
+      <p class="na-title">${title}</p>
+      <p class="secondary">${text}</p>
+      ${withButton ? `<button class="btn btn-primary btn-block btn-xl" type="button" onclick="goToReservar()">Reservar cita</button>` : ''}
+    </div>`;
+}
 function histCard(a){
   const cancelled = a.status === 'CANCELLED';
   const noShow = a.attendance === 'no_show';
@@ -3783,8 +3792,8 @@ function renderMisCitas(b){
       </div>
       <div class="rows" style="margin-top:20px;">
         ${tab === 'proximas'
-          ? (upcoming.length ? upcoming.map(a => patientCard(a, true)).join('') : `<p class="secondary">No tienes citas próximas.</p>`)
-          : (history.length ? history.map(histCard).join('') : `<p class="secondary">Todavía no tuviste citas.</p>`)}
+          ? (upcoming.length ? upcoming.map(a => patientCard(a, true)).join('') : emptyApptsCard('No tienes citas agendadas', 'Agenda una cita fácilmente desde aquí.', true))
+          : (history.length ? history.map(histCard).join('') : emptyApptsCard('Todavía no tuviste citas', 'Aquí verás tus citas realizadas y canceladas.', false))}
       </div>
     </div>
     ${renderCancelModal()}`;
