@@ -3596,8 +3596,8 @@ function goSlotDuration(){
   state.adminTab = 'horarios'; render(); window.scrollTo(0, 0);
   setTimeout(() => { const el = $('cfg-slot'); if (!el) return; el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.focus({ preventScroll: true }); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 2200); }, 80);
 }
-// Citas creadas mientras el plan era Pro (tienen servicio) conservan trabajador y servicio; las nuevas del plan básico no los muestran.
-function staffShown(a){ return (isProPlan() || a.serviceId) ? (a.staffName || '') : ''; }
+// Cada cita conserva lo que tenía al crearse: las del plan Pro tienen servicio y trabajador; las del plan básico, ninguno (aunque luego cambie el plan).
+function staffShown(a){ return a.serviceId ? (a.staffName || '') : ''; }
 let citaShowStaff = true;
 function isProPlan(){ const b = currentBusiness(); return !!b && b.plan === 'Pro'; }
 function bookingServiceId(b){
@@ -3650,8 +3650,7 @@ function toggleBusinessPlan(id){
   if (biz.plan === 'Pro') { biz.lastPaidAt = todayISO(); biz.nextPaymentDate = addDaysISO(todayISO(), 30); }
   saveState();
   render();
-  const pend = biz.id === (state.currentBizId || 'biz-1') && biz.plan === 'Pro' ? pendingServiceAppts().length : 0;
-  showToast(pend ? `Plan Pro activado: el admin debe asignar servicio a ${pend} cita(s)` : `${biz.name}: plan ${biz.plan}`);
+  showToast(`${biz.name}: plan ${biz.plan}`);
 }
 function toggleAllowClientStaffPick(){
   state.allowClientStaffPick = !state.allowClientStaffPick;
@@ -4703,7 +4702,7 @@ function renderAdminInicio(){
 }
 
 function citaList(list, now, modeFn){
-  citaShowStaff = isProPlan() || list.some(a => a.serviceId && a.staffName);
+  citaShowStaff = list.some(a => a.serviceId && a.staffName);
   return `<div class="rows cards-only">${list.map(x => citaCard(x, now, modeFn(x))).join('')}</div>
     <div class="table-only"><table class="ctable"><thead><tr><th>Fecha y hora</th><th>Cliente</th><th>Servicio</th>${citaShowStaff ? '<th>Trabajador</th>' : ''}<th>Estado</th><th><span class="sr-only">Acciones</span></th></tr></thead><tbody>${list.map(x => citaCard(x, now, modeFn(x), true)).join('')}</tbody></table></div>`;
 }
@@ -5294,6 +5293,7 @@ function renderAdminHorarios(){
 
     ${isProPlan() ? `
     <h2 class="title-2">Equipo y asignación</h2>
+    ${state.staff.some(m => m.name === 'Atención') ? `<div class="plan-snack" style="margin:0 0 14px;"><span class="ic">${icon('sparkles', 22, 1.8)}</span><div style="min-width:0;flex:1;"><p class="card-title">Ya estás en el plan Pro</p><p class="secondary" style="margin-top:2px;">"Atención" es el trabajador interno de tu plan básico. Edítalo con el nombre de tu profesional y agrega al resto de tu equipo. Tus citas anteriores se mantienen como estaban.</p></div></div>` : ''}
     <p class="secondary" style="margin-bottom:14px;">Cada trabajador tiene su propio horario. Cuando un cliente reserva, Caly asigna automáticamente al trabajador disponible siguiendo un turno rotativo (round robin), para repartir las citas de forma pareja.</p>
     <div class="rows staff-rows">${state.staff.map(member => `
       <div class="card stack">
@@ -5675,9 +5675,6 @@ function renderAdmin(){
       </div>`;
   }
   if (state.newAppt) return renderNewApptView();
-  if (isProPlan() && pendingServiceAppts().length) {
-    return renderServiceMigration(pendingServiceAppts());
-  }
   return `
     <div class="page w880 admin-page"><div class="hdr admin-brand">${brandBlock()}</div>${renderAdminContent()}</div>
     ${renderApptDetail()}${renderRescheduleModal()}${renderCancelModal()}${renderClosureModal()}${renderNotifyModal()}${renderMergeModal()}${renderRemoveStaffModal()}
