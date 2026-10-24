@@ -2167,7 +2167,7 @@ function setView(v){
   saveState();
   render();
 }
-function setAdminTab(t){ state.adminTab = t; state.apptView = null; render(); }
+function setAdminTab(t){ state.adminTab = t; state.apptView = null; render(); window.scrollTo(0, 0); }
 
 function resetDemo(){
   if (state.confirmingReset) {
@@ -2492,6 +2492,7 @@ function goToPanel(){
   state.booking.historyOpen = false;
   state.booking.rescheduleId = null;
   render();
+  window.scrollTo(0, 0);
 }
 function goToReservar(){
   state.booking.step = 'reservar';
@@ -2500,6 +2501,7 @@ function goToReservar(){
   state.booking.calendarMonth = ymFromISO(todayISO());
   state.booking.rescheduleId = null;
   render();
+  window.scrollTo(0, 0);
 }
 function hoursUntil(a){ return (combineDateTime(a.date, a.start) - new Date()) / 3600000; }
 function clientCanChange(a){
