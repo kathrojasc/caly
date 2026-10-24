@@ -3728,7 +3728,7 @@ function renderPacientePanel(b){
 
       <h2 class="title-2">${upcoming.length > 1 ? 'Próximas citas' : 'Próxima cita'}</h2>
       ${next ? `
-        ${patientCard(next, false)}
+        ${patientCard(next, true)}
         ${rest.length ? `<div class="rows" style="margin-top:12px;">${rest.map(a => patientCard(a, true)).join('')}</div>` : ''}` : `
         <div class="no-appts">
           <span class="na-ic" aria-hidden="true">${icon('calendar', 40, 1.8)}</span>
