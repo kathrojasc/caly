@@ -677,16 +677,16 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
   .as-day .table-only { margin-top: 0; }
   .dash-cols { grid-template-columns: minmax(0, 1fr) 340px; }
 }
-.date-pill { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: var(--radius-pill); background: var(--color-surface); font-size: 14px; font-weight: 600; overflow: hidden; }
-.date-pill input[type=date] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; cursor: pointer; }
-#login-loader { position: fixed; inset: 0; z-index: 200; background: #fff; display: flex; align-items: center; justify-content: center; animation: drawerFade .15s ease; }
-.ll-box { display: flex; flex-direction: column; align-items: center; gap: 22px; }
-.ll-box p { font-size: 16px; font-weight: 600; color: var(--color-text); }
-.ll-mark { position: relative; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; animation: llPulse 1.4s ease-in-out infinite; }
-.ll-ring { position: absolute; inset: -14px; border-radius: 50%; border: 3px solid var(--color-surface-active, #e8e8ea); border-top-color: #0B0B0C; animation: llSpin .9s linear infinite; }
-@keyframes llSpin { to { transform: rotate(360deg); } }
-@keyframes llPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(.92); } }
-@media (prefers-reduced-motion: reduce) { .ll-mark, .ll-ring { animation-duration: 3s !important; } }
+.fbar { display: flex; flex-wrap: nowrap; gap: 8px; margin: 12px -20px 0; padding: 0 20px; overflow-x: auto; scrollbar-width: none; }
+.fbar::-webkit-scrollbar { display: none; }
+.fchip { position: relative; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border: 0; border-radius: var(--radius-pill); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.fchip input[type=date], .fchip select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; cursor: pointer; }
+.fchip.on { background: var(--color-primary); color: var(--color-on-primary); }
+.fchip .fx { position: relative; z-index: 2; width: 24px; height: 24px; margin: 0 -6px 0 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.2); color: inherit; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.fchip.prob .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--color-danger); }
+.fchip.prob.on { background: var(--color-danger); color: #fff; }
+.fchip.prob.on .dot { background: #fff; }
+@media (min-width: 1024px) { .fbar { margin: 12px 0 0; padding: 0; flex-wrap: wrap; overflow: visible; } }
 </style>
 </head>
 <body>
@@ -4395,11 +4395,6 @@ function renderAgendaView(){
   const staffOk = a => !state.calStaff || a.staffId === state.calStaff;
   const isNext = a => a.status === 'CONFIRMED' && !isPastAppt(a);
   const probCount = state.appointments.filter(a => isProblem(a) && staffOk(a)).length;
-  const staffSel = state.staff.length > 1 ? `
-    <select class="mini-select" aria-label="Filtrar por trabajador" onchange="setCalStaff(this.value || null)">
-      <option value="">Todos los trabajadores</option>
-      ${state.staff.map(m => `<option value="${m.id}" ${state.calStaff === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
-    </select>` : '';
   const base = state.appointments.filter(a => staffOk(a) && citaMatches(a, q) && (!dateF || a.date === dateF) && (tab === 'todas' ? (!state.citasProblems || isProblem(a)) : tab === 'proximas' ? isNext(a) && (!state.citasProblems || isProblem(a)) : !isNext(a)));
   const sorted = base.sort((x, y) => tab === 'proximas' ? (x.date + x.start).localeCompare(y.date + y.start) : (y.date + y.start).localeCompare(x.date + x.start));
   const shown = sorted.slice(0, state.citasLimit);
@@ -4414,14 +4409,15 @@ function renderAgendaView(){
       <span class="ic" aria-hidden="true">${icon('search', 20)}</span>
       <input id="citas-q" type="search" placeholder="Buscar nombre, DNI o teléfono" aria-label="Buscar citas" value="${escapeHtml(q)}" oninput="setCitasQuery(this.value)">
     </div>
-    <div class="row date-filter" style="margin-top:12px;gap:8px;flex-wrap:nowrap;">
-      <label class="date-pill" for="citas-date">${icon('calendar', 18, 2)}<span>${dateF ? escapeHtml(cap(displayDateShort(dateF))) : 'Todas las fechas'}</span><input id="citas-date" type="date" value="${dateF}" aria-label="Filtrar por fecha" onclick="try { this.showPicker(); } catch (e) {}" onchange="setCitasDate(this.value)"></label>
-      ${dateF ? `<button class="btn-text" type="button" style="min-height:36px;" onclick="setCitasDate('')">Quitar fecha</button>` : ''}
+    <div class="fbar" role="group" aria-label="Filtros">
+      <label class="fchip${dateF ? ' on' : ''}" for="citas-date">${icon('calendar', 18, 2)}<span>${dateF ? escapeHtml(cap(displayDateShort(dateF))) : 'Fecha'}</span><input id="citas-date" type="date" value="${dateF}" aria-label="Filtrar por fecha" onclick="try { this.showPicker(); } catch (e) {}" onchange="setCitasDate(this.value)">${dateF ? `<button class="fx" type="button" aria-label="Quitar fecha" onclick="event.preventDefault(); setCitasDate('')">${icon('close', 14, 2.6)}</button>` : ''}</label>
+      ${state.staff.length > 1 ? `<label class="fchip${state.calStaff ? ' on' : ''}" for="citas-staff">${icon('users', 18, 2)}<span>${state.calStaff ? escapeHtml((state.staff.find(m => m.id === state.calStaff) || {}).name || 'Trabajador') : 'Trabajador'}</span>
+        <select id="citas-staff" aria-label="Filtrar por trabajador" onchange="setCalStaff(this.value || null)">
+          <option value="">Todos los trabajadores</option>
+          ${state.staff.map(m => `<option value="${m.id}" ${state.calStaff === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
+        </select></label>` : ''}
+      ${tab !== 'historial' ? `<button type="button" class="fchip prob${state.citasProblems ? ' on' : ''}" aria-pressed="${!!state.citasProblems}" onclick="toggleProblems()"><i class="dot"></i><span>Con problemas${probCount ? ` (${probCount})` : ''}</span></button>` : ''}
     </div>
-    ${tab !== 'historial' || staffSel ? `<div class="row" style="margin-top:12px;gap:8px;">
-      ${tab !== 'historial' ? `<button type="button" class="pill-opt prob${state.citasProblems ? ' on' : ''}" aria-pressed="${!!state.citasProblems}" onclick="toggleProblems()"><i class="dot" style="background:var(--color-danger)"></i>Con problemas${probCount ? ` (${probCount})` : ''}</button>` : ''}
-      ${staffSel}
-    </div>` : ''}
     ${shown.length ? `<div style="margin-top:14px;">${citaList(shown, now, citaMode)}</div>
     ${sorted.length > shown.length ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:14px;" onclick="state.citasLimit += 15; render()">Ver más (${sorted.length - shown.length})</button>` : ''}` : `<p class="secondary" style="margin-top:24px;">${empty}</p>`}`;
 }
