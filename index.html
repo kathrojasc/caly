@@ -1458,7 +1458,7 @@ function drawerDirty(){
 function syncDrawerSave(){ const b = document.getElementById('drawer-save'); if (b) b.disabled = !drawerDirty(); }
 
 /* ---------- Textos legales y consentimiento ---------- */
-const LEGAL_VERSION = '2026-10-v1';
+const LEGAL_VERSION = '2026-10-v2';
 const LEGAL_CONTACT = 'kxrojascisneros@gmail.com';
 const LEGAL_TEXTS = {
   privacidad: {
@@ -1466,13 +1466,14 @@ const LEGAL_TEXTS = {
     intro: 'Para clientes que se registran y reservan citas.',
     sections: [
       ['Qué es Caly', 'Caly es una plataforma que permite a negocios de servicios recibir y gestionar reservas de citas. Está en proceso de creación y se encuentra en etapa de prueba. Agradecemos tu comprensión si encuentras errores o interrupciones.'],
-      ['Qué datos guardamos', 'Tus nombres y apellidos, tu tipo y número de documento, tu teléfono y los datos de tus citas (fecha, hora, servicio y trabajador).'],
-      ['Para qué los usamos', 'Solo para agendar y gestionar tus citas, y para que el negocio donde reservas pueda contactarte, por ejemplo por WhatsApp o llamada, en todo lo que concierne a tu cita: confirmarla, recordártela, cancelarla o ayudarte a reservar de nuevo.'],
-      ['Quién es responsable del manejo', 'El negocio donde reservas decide cómo usa tus datos y es el responsable de su manejo. Caly y los miembros de su equipo solo ponen la plataforma a disposición y no se hacen responsables por el uso que el negocio haga de tus datos.'],
+      ['Qué datos guardamos', 'Tus nombres y apellidos, tu tipo y número de documento, tu teléfono, tu contraseña (almacenada de forma cifrada) y los datos de tus citas (fecha, hora, servicio y trabajador).'],
+      ['Para qué los usamos', 'Solo para agendar y gestionar tus citas, y para que el negocio donde reservas pueda contactarte, por ejemplo por WhatsApp o llamada, en todo lo que concierne a tu cita: confirmarla, recordártela, cancelarla o ayudarte a reservar de nuevo. Tu documento se usa como identificador y tu contraseña solo para acceder a tu cuenta en Caly.'],
+      ['Tu consentimiento', 'Al marcar la casilla de aceptación y crear tu cuenta, confirmas que entregas tus datos de forma voluntaria, que leíste esta política y que entiendes que Caly está en etapa de prueba. Guardamos la fecha y hora de tu aceptación.'],
+      ['Quién es responsable del manejo', 'El negocio donde reservas decide cómo usa tus datos y es el responsable de su manejo. Caly y los miembros de su equipo solo ponen la plataforma a disposición y, en la medida que la ley lo permita, no se hacen responsables por el uso que el negocio haga de tus datos.'],
       ['Caly no obtiene ganancias por ahora', 'En esta etapa de prueba Caly no obtiene ganancia con la plataforma. No vendemos tus datos ni los compartimos con terceros para publicidad.'],
-      ['Cuánto tiempo los guardamos', 'Tus datos serán eliminados o dados de baja cuando termine el periodo de prueba del negocio donde te registraste.'],
-      ['Tus derechos', 'Puedes pedir acceder a tus datos, corregirlos, cancelarlos u oponerte a su uso, según la Ley N.º 29733, Ley de Protección de Datos Personales del Perú. Escríbenos a ' + LEGAL_CONTACT + ' o pídeselo directamente al negocio.'],
-      ['Seguridad', 'Usamos conexiones cifradas y accesos restringidos para cuidar tus datos. Ningún sistema es infalible, por lo que no podemos garantizar una seguridad absoluta.'],
+      ['Cuánto tiempo los guardamos', 'Tus datos serán eliminados o dados de baja cuando termine el periodo de prueba del negocio donde te registraste. También puedes pedir que los eliminemos antes, escribiéndonos.'],
+      ['Tus derechos', 'Puedes pedir acceder a tus datos, corregirlos, cancelarlos u oponerte a su uso, según la Ley N.º 29733, Ley de Protección de Datos Personales del Perú. Escríbenos a ' + LEGAL_CONTACT + ' o pídeselo directamente al negocio. Si no estás conforme con la respuesta, puedes presentar un reclamo ante la Autoridad Nacional de Protección de Datos Personales.'],
+      ['Seguridad', 'Usamos conexiones cifradas y accesos restringidos para cuidar tus datos. Ningún sistema es infalible, por lo que no podemos garantizar una seguridad absoluta. Si ocurre un incidente que afecte tus datos, te lo informaremos.'],
       ['Cambios', 'Si cambiamos esta política, te lo avisaremos y volveremos a pedir tu aceptación.'],
     ],
   },
@@ -1480,17 +1481,19 @@ const LEGAL_TEXTS = {
     title: 'Términos de uso para negocios',
     intro: 'Para negocios que usan Caly para recibir reservas.',
     sections: [
-      ['Etapa de prueba', 'Caly está en proceso de creación y se ofrece en etapa de prueba. Puede tener errores, cambios o interrupciones, y no garantizamos su disponibilidad continua. Agradecemos tu comprensión.'],
+      ['Etapa de prueba', 'Caly está en proceso de creación y se ofrece en etapa de prueba. Puede tener errores, cambios o interrupciones, y no garantizamos su disponibilidad continua. Agradecemos tu comprensión. Tu participación es voluntaria.'],
       ['Sin costo por ahora', 'En esta etapa Caly no obtiene ganancia con la plataforma. Si más adelante se cobra por el servicio, te lo informaremos antes y podrás decidir si continúas.'],
+      ['Tus datos de acceso', 'Para tu cuenta guardamos tu correo electrónico, que se usa únicamente como usuario para que accedas a tu cuenta, y tu contraseña, almacenada de forma cifrada. No usamos tu correo para enviarte publicidad ni para otro fin.'],
       ['Datos de tus clientes', 'Los datos que registres o que tus clientes te den en Caly se usan únicamente para agendar citas y para contactar a esos clientes en todo lo que concierne a su cita. Tú eres responsable del manejo que le des a esos datos y de contar con la autorización de tus clientes. No los uses para otros fines ni los compartas sin su permiso.'],
-      ['Responsabilidad', 'Caly y los miembros de su equipo no se hacen responsables por el manejo que cada negocio dé a los datos de sus clientes, ni por las consecuencias de errores o interrupciones durante la etapa de prueba.'],
+      ['Responsabilidad', 'En la medida que la ley lo permita, Caly y los miembros de su equipo no se hacen responsables por el manejo que cada negocio dé a los datos de sus clientes, ni por las consecuencias de errores o interrupciones durante la etapa de prueba. Haremos esfuerzos razonables para evitar problemas y, si ocurre un incidente de seguridad que afecte tus datos o los de tus clientes, te lo informaremos.'],
       ['Fin del periodo de prueba', 'Los datos de tu negocio y de tus clientes serán eliminados o dados de baja cuando termine tu periodo de prueba. Antes de esa fecha puedes descargar tus citas desde Cuenta, en Exportar citas.'],
       ['Registro de actividad', 'Caly guarda un registro de las acciones realizadas en tu cuenta (quién hizo qué y cuándo). Solo lo ve el equipo de Caly y se usa para resolver reclamos y cuidar el servicio.'],
       ['Tu cuenta', 'Guarda tu contraseña con cuidado. Eres responsable de lo que ocurra desde tu cuenta.'],
-      ['Contacto y derechos', 'Para consultas o para ejercer tus derechos de acceso, rectificación, cancelación y oposición (Ley N.º 29733), escribe a ' + LEGAL_CONTACT + '.'],
+      ['Contacto y derechos', 'Para consultas o para ejercer tus derechos de acceso, rectificación, cancelación y oposición (Ley N.º 29733), escribe a ' + LEGAL_CONTACT + '. Si no estás conforme con la respuesta, puedes presentar un reclamo ante la Autoridad Nacional de Protección de Datos Personales.'],
     ],
   },
 };
+
 function openLegal(kind){
   state.legalView = kind;
   let el = document.getElementById('legal-root');
@@ -3798,11 +3801,11 @@ function renderClientAuth(){
         ${pwInput('reg-pw2', 'Confirmar contraseña', 'new-password')}
         <span class="hint" style="margin-top:-8px;">Mínimo 6 caracteres.</span>
         <label class="consent" for="reg-consent">
-          <input id="reg-consent" type="checkbox" ${r.consent ? 'checked' : ''} onchange="state.booking.reg.consent = this.checked">
-          <span>Acepto que <b>${escapeHtml((currentBusiness() && currentBusiness().name) || 'el negocio')}</b> y Caly guarden mis datos para agendar mis citas y contactarme sobre ellas. Leí la <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('privacidad')">política de privacidad</button>.</span>
+          <input id="reg-consent" type="checkbox" ${r.consent ? 'checked' : ''} onchange="state.booking.reg.consent = this.checked; const sb = document.getElementById('auth-submit'); if (sb) sb.disabled = !this.checked;">
+          <span>Acepto que <b>${escapeHtml((currentBusiness() && currentBusiness().name) || 'el negocio')}</b> y Caly guarden mis datos para agendar mis citas y contactarme sobre ellas. Leí la <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('privacidad')">política de privacidad</button> y entiendo que Caly está en etapa de prueba.</span>
         </label>` : ''}
         ${err ? `<p class="error-text" role="alert">${escapeHtml(err)}</p>` : ''}
-        <button class="btn btn-primary btn-block" type="submit">${stage === 'doc' ? 'Continuar' : reg ? 'Crear cuenta' : 'Ingresar'}</button>
+        <button id="auth-submit" class="btn btn-primary btn-block" type="submit" ${reg && !r.consent ? 'disabled' : ''}>${stage === 'doc' ? 'Continuar' : reg ? 'Crear cuenta' : 'Ingresar'}</button>
         ${stage === 'login' ? `<button class="btn-text" type="button" style="align-self:center;" onclick="toggleForgot()" aria-expanded="${state.showForgot}">¿Olvidaste tu contraseña?</button>
         ${state.showForgot ? `<div class="notice">Pídele al negocio que restablezca tu contraseña. Te entregará una contraseña temporal para ingresar.</div>` : ''}` : ''}
       </form>
@@ -3879,7 +3882,7 @@ function renderRegistro(){
         <span class="hint" style="margin-top:-8px;">Mínimo 6 caracteres.</span>
         <label class="consent" for="reg-consent">
           <input id="reg-consent" type="checkbox" ${r.consent ? 'checked' : ''} onchange="state.booking.reg.consent = this.checked">
-          <span>Acepto que <b>${escapeHtml((currentBusiness() && currentBusiness().name) || 'el negocio')}</b> y Caly guarden mis datos para agendar mis citas y contactarme sobre ellas. Leí la <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('privacidad')">política de privacidad</button>.</span>
+          <span>Acepto que <b>${escapeHtml((currentBusiness() && currentBusiness().name) || 'el negocio')}</b> y Caly guarden mis datos para agendar mis citas y contactarme sobre ellas. Leí la <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('privacidad')">política de privacidad</button> y entiendo que Caly está en etapa de prueba.</span>
         </label>
         ${err ? `<p class="error-text" role="alert">${escapeHtml(err)}</p>` : ''}
         <button class="btn btn-primary btn-block" type="submit">Crear cuenta</button>
