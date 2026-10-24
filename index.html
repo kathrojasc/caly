@@ -679,6 +679,14 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
 }
 .date-pill { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: var(--radius-pill); background: var(--color-surface); font-size: 14px; font-weight: 600; overflow: hidden; }
 .date-pill input[type=date] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; cursor: pointer; }
+#login-loader { position: fixed; inset: 0; z-index: 200; background: #fff; display: flex; align-items: center; justify-content: center; animation: drawerFade .15s ease; }
+.ll-box { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.ll-box p { font-size: 16px; font-weight: 600; color: var(--color-text); }
+.ll-mark { position: relative; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; animation: llPulse 1.4s ease-in-out infinite; }
+.ll-ring { position: absolute; inset: -14px; border-radius: 50%; border: 3px solid var(--color-surface-active, #e8e8ea); border-top-color: #0B0B0C; animation: llSpin .9s linear infinite; }
+@keyframes llSpin { to { transform: rotate(360deg); } }
+@keyframes llPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(.92); } }
+@media (prefers-reduced-motion: reduce) { .ll-mark, .ll-ring { animation-duration: 3s !important; } }
 </style>
 </head>
 <body>
@@ -2187,6 +2195,25 @@ function setReg(field, value){ state.booking.reg[field] = value; }
 function goToRegistro(){ state.booking.error = null; state.booking.step = 'registro'; state.showForgot = false; render(); window.scrollTo(0, 0); }
 function goToLogin(){ state.booking.error = null; state.booking.authStage = 'doc'; state.booking.step = 'login'; render(); window.scrollTo(0, 0); }
 
+let loaderTimer = null;
+function showLoader(msg){
+  hideLoader();
+  loaderTimer = setTimeout(() => {
+    loaderTimer = null;
+    const el = document.createElement('div');
+    el.id = 'login-loader'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
+    el.innerHTML = `<div class="ll-box"><div class="ll-mark">${brandMark(56)}<span class="ll-ring" aria-hidden="true"></span></div><p>${msg || 'Ingresando a tu sesión…'}</p></div>`;
+    document.body.appendChild(el);
+  }, 150);
+}
+function hideLoader(){
+  if (loaderTimer) { clearTimeout(loaderTimer); loaderTimer = null; }
+  const el = document.getElementById('login-loader'); if (el) el.remove();
+}
+async function withLoader(fn, msg){
+  showLoader(msg);
+  try { await fn(); } finally { hideLoader(); }
+}
 async function clientContinue(){
   const b = state.booking;
   const type = $('login-type').value;
@@ -2210,7 +2237,7 @@ async function clientContinue(){
 }
 function changeDoc(){ const b = state.booking; b.error = null; b.authStage = 'doc'; render(); }
 function clientLogin(){
-  if (REMOTE) return remoteClientLogin();
+  if (REMOTE) return withLoader(remoteClientLogin);
   const b = state.booking;
   const type = $('login-type').value;
   const rawDoc = $('login-doc').value;
@@ -2238,7 +2265,7 @@ function syncClientAppointments(doc, p){
   state.appointments.forEach(a => { if (a.dni === doc) { a.name = p.name; a.phone = p.phone; } });
 }
 function clientRegister(){
-  if (REMOTE) return remoteClientRegister();
+  if (REMOTE) return withLoader(remoteClientRegister, 'Creando tu cuenta…');
   const b = state.booking;
   const r = b.reg;
   const pw = $('reg-pw').value;
@@ -2956,7 +2983,7 @@ function changePasswordFor(role){
   showToast('Contraseña actualizada');
 }
 function adminLogin(){
-  if (REMOTE) return remoteAdminLogin();
+  if (REMOTE) return withLoader(remoteAdminLogin);
   const email = $('auth-email').value.trim();
   const pw = $('auth-pw').value;
   state.authDraft = email;
@@ -2977,7 +3004,7 @@ function adminLogin(){
   window.scrollTo(0, 0);
 }
 function superLogin(){
-  if (REMOTE) return remoteSuperLogin();
+  if (REMOTE) return withLoader(remoteSuperLogin);
   const email = $('auth-email').value.trim();
   const pw = $('auth-pw').value;
   state.authDraft = email;
@@ -3724,7 +3751,7 @@ function renderClientAuth(){
       <div class="hdr" style="margin-top:8px;">${brandBlock()}</div>
       <h1 class="title-1" style="margin-top:32px;">${reg ? 'Crea tu cuenta' : 'Reserva tu cita'}</h1>
       <p class="secondary" style="margin-top:6px;">${stage === 'doc' ? 'Ingresa tu documento para continuar.' : reg ? 'No encontramos una cuenta con este documento. Completa tus datos una sola vez; después reservas solo con tu documento y contraseña.' : 'Ya tienes una cuenta. Ingresa tu contraseña.'}</p>
-      <form class="stack" style="margin-top:24px;gap:16px;" onsubmit="event.preventDefault(); ${stage === 'doc' ? 'clientContinue()' : reg ? 'clientRegister()' : 'clientLogin()'}">
+      <form class="stack" style="margin-top:24px;gap:16px;" onsubmit="event.preventDefault(); ${stage === 'doc' ? `withLoader(clientContinue, 'Verificando tu documento…')` : reg ? 'clientRegister()' : 'clientLogin()'}">
         <div class="field">
           <label for="login-type">Tipo de documento</label>
           <select id="login-type" ${locked ? 'disabled' : ''} onchange="setLogin('type', this.value); render()">${docOptions(b.login.type)}</select>
