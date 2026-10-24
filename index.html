@@ -4333,7 +4333,7 @@ function setCitasTab(t){ state.citasTab = t; state.citasLimit = 15; render(); }
 function setCitasDate(v){ if (!state.citasDates) state.citasDates = {}; state.citasDates[state.citasTab || 'proximas'] = v || ''; state.citasLimit = 15; render(); }
 function renderAgendaView(){
   const now = todayISO();
-  const tab = ['historial', 'todas'].includes(state.citasTab) ? state.citasTab : 'proximas';
+  const tab = ['historial', 'proximas'].includes(state.citasTab) ? state.citasTab : 'todas';
   const dateF = (state.citasDates && state.citasDates[tab]) || '';
   const q = state.citasQuery || '';
   const staffOk = a => !state.calStaff || a.staffId === state.calStaff;
@@ -4350,9 +4350,9 @@ function renderAgendaView(){
   const empty = (q || dateF) ? 'No encontramos citas con esa búsqueda o fecha.' : tab === 'todas' ? 'Todavía no hay citas.' : tab === 'historial' ? 'Todavía no hay citas en el historial.' : (state.citasProblems ? 'No hay citas con problemas.' : 'No hay citas próximas.');
   return `
     <div class="seg full" role="tablist" aria-label="Citas" style="margin-top:20px;">
+      <button type="button" role="tab" aria-pressed="${tab === 'todas'}" onclick="setCitasTab('todas')">Todas</button>
       <button type="button" role="tab" aria-pressed="${tab === 'proximas'}" onclick="setCitasTab('proximas')">Próximas citas</button>
       <button type="button" role="tab" aria-pressed="${tab === 'historial'}" onclick="setCitasTab('historial')">Historial</button>
-      <button type="button" role="tab" aria-pressed="${tab === 'todas'}" onclick="setCitasTab('todas')">Todas</button>
     </div>
     <div class="search" style="margin-top:14px;">
       <span class="ic" aria-hidden="true">${icon('search', 20)}</span>
