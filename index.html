@@ -1060,7 +1060,7 @@ async function loadAdminData(){
   state.currentBizId = b.id;
   state.bizSlug = b.slug;
   state.businesses = [{ id: b.id, name: b.name, adminUser: sb.s.email, mustChange: !!prof.must_change, plan: b.plan, enabled: !!b.enabled,
-    trialEndsAt: limaDate(b.trial_ends_at), nextPaymentDate: b.next_pay_at || null, lastPaidAt: b.last_paid_at || null }];
+    trialEndsAt: limaDate(b.trial_ends_at), activatedAt: b.activated_at ? limaDate(b.activated_at) : null, nextPaymentDate: b.next_pay_at || null, lastPaidAt: b.last_paid_at || null }];
   const br = b.brand || {};
   state.brand = { name: br.name || b.name, color: br.color || '#0B0B0C', logo: br.logo || null };
   state.config = Object.assign({ slotMinutes: 45, bufferMinutes: 0, minNoticeHours: 2, windowDays: 21, cancelNoticeHours: 12 }, b.config || {});
@@ -1215,7 +1215,7 @@ async function remoteChangePassword(role){
     await sb.rest('PATCH', `profiles?user_id=eq.${sb.s.uid}`, { must_change: false }, { Prefer: 'return=minimal' });
     if (needTerms) { await sb.rpc('accept_terms', { p_version: LEGAL_VERSION }); state.termsOk = true; }
   } catch (e) { return fail(friendlyError(e)); }
-  if (biz) biz.mustChange = false;
+  if (biz) { biz.mustChange = false; if (biz.activatedAt === null) { biz.activatedAt = todayISO(); if (biz.plan === 'Prueba') biz.trialEndsAt = addDaysISO(todayISO(), 14); } }
   state.pwError = null;
   render();
   showToast('Contraseña actualizada');
@@ -1591,7 +1591,7 @@ async function loadSuperData(){
   const [biz, admins] = await Promise.all([sb.selectAll('businesses', 'select=*&order=created_at.asc'), sb.selectAll('profiles', 'select=*&role=eq.admin')]);
   const mc = {}; admins.forEach(a => { mc[a.business_id] = !!a.must_change; });
   state.businesses = biz.map(b => ({ id: b.id, name: b.name, slug: b.slug, adminUser: b.admin_email || '', mustChange: !!mc[b.id], plan: b.plan, enabled: !!b.enabled,
-    trialEndsAt: limaDate(b.trial_ends_at), nextPaymentDate: b.next_pay_at || null, lastPaidAt: b.last_paid_at || null }));
+    trialEndsAt: limaDate(b.trial_ends_at), activatedAt: b.activated_at ? limaDate(b.activated_at) : null, nextPaymentDate: b.next_pay_at || null, lastPaidAt: b.last_paid_at || null }));
   state.superAccount = { name: 'Soporte Caly', email: sb.s.email, passHash: null, mustChange: !!prof.must_change };
   superBase = {}; state.businesses.forEach(b => { superBase[b.id] = bizRow(b); });
 }
@@ -2948,6 +2948,7 @@ function changePasswordFor(role){
   const wasForced = !!t.mustChange;
   t[key] = hashPw(nw);
   t.mustChange = false;
+  if (role === 'admin' && t.activatedAt === null) { t.activatedAt = todayISO(); if (t.plan === 'Prueba') t.trialEndsAt = addDaysISO(todayISO(), 14); }
   state.pwError = null;
   if (role === 'client') state.booking.step = wasForced ? 'panel' : 'perfil';
   saveState();
@@ -3015,7 +3016,7 @@ function createBusinessAccount(){
     mustChange: true,
     plan: 'Prueba',
     nextPaymentDate: null, lastPaidAt: null,
-    trialEndsAt: addDaysISO(todayISO(), 14),
+    trialEndsAt: null, activatedAt: null,
     enabled: true,
   });
   state.tempReveal = { kind: 'newbiz', who: `${name.trim()} (${adminUser.trim()})`, biz: name.trim(), email: adminUser.trim(), pw: adminPass.trim(), link: adminAccessLink() };
@@ -3589,7 +3590,7 @@ function toggleBusinessPlan(id){
   const biz = state.businesses.find(b => b.id === id);
   if (!biz) return;
   biz.plan = biz.plan === 'Pro' ? 'Prueba' : 'Pro';
-  if (biz.plan === 'Prueba' && !biz.trialEndsAt) biz.trialEndsAt = addDaysISO(todayISO(), 14);
+  if (biz.plan === 'Prueba' && !biz.trialEndsAt && biz.activatedAt !== null) biz.trialEndsAt = addDaysISO(todayISO(), 14);
   if (biz.plan === 'Pro') { biz.lastPaidAt = todayISO(); biz.nextPaymentDate = addDaysISO(todayISO(), 30); }
   saveState();
   render();
@@ -5917,13 +5918,14 @@ function renderSuper(){
             <div class="row-main">
               <div class="row-title">${escapeHtml(biz.name)}</div>
               <div class="secondary" style="overflow-wrap:anywhere;">${escapeHtml(biz.adminUser)}</div>
-              ${biz.mustChange ? `<div style="margin-top:6px;">${chip('warning', 'Contraseña temporal sin cambiar')}</div>` : ''}
+              ${biz.activatedAt === null ? '' : biz.mustChange ? `<div style="margin-top:6px;">${chip('warning', 'Contraseña temporal sin cambiar')}</div>` : ''}
             </div>
             <div class="row-side">
               ${chip(biz.plan === 'Pro' ? 'success' : 'neutral', escapeHtml(biz.plan))}
+              ${biz.activatedAt === null && biz.plan === 'Prueba' ? chip('neutral', 'Prueba de 14 días desde que se active') : ''}
               ${biz.plan === 'Prueba' && biz.trialEndsAt ? chip(expired ? 'danger' : 'neutral', expired ? 'Prueba terminada' : `Prueba hasta ${fmtDay(biz.trialEndsAt)}${left !== null && left <= 3 ? ' · quedan ' + left : ''}`) : ''}
               ${pay ? (pay.suspended ? chip('danger', 'Detenida por falta de pago') : pay.overdue ? chip('warning', `Pago pendiente · se detiene el ${fmtDay(pay.stopOn)}`) : chip('neutral', `Próximo pago ${fmtDay(pay.next)}`)) : ''}
-              ${chip(biz.enabled ? 'success' : 'danger', biz.enabled ? 'Activa' : 'Desactivada')}
+              ${!biz.enabled ? chip('danger', 'Desactivada') : biz.activatedAt === null ? chip('warning', 'Pendiente de activación') : chip('success', biz.activatedAt ? `Activa desde ${fmtDay(biz.activatedAt)}` : 'Activa')}
             </div>
             <div class="sa-groups">
               <div class="sa-group">
@@ -5937,7 +5939,7 @@ function renderSuper(){
                 <p class="label">Plan</p>
                 <div class="row">
                   <button class="btn btn-sm btn-soft" type="button" onclick="toggleBusinessPlan('${biz.id}')">${biz.plan === 'Pro' ? 'Pasar a Prueba' : 'Pasar a Pro'}</button>
-                  ${biz.plan === 'Prueba' ? `<button class="btn btn-sm btn-soft" type="button" onclick="extendTrial('${biz.id}')">Extender prueba 14 días</button>` : ''}
+                  ${biz.plan === 'Prueba' && biz.activatedAt !== null ? `<button class="btn btn-sm btn-soft" type="button" onclick="extendTrial('${biz.id}')">Extender prueba 14 días</button>` : ''}
                 </div>
                 ${pay ? `<div class="field"><label for="np-${biz.id}">Próxima fecha de pago</label><input id="np-${biz.id}" type="date" value="${pay.next}" onchange="setNextPayment('${biz.id}', this.value)"></div>` : ''}
               </div>
