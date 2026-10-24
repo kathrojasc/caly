@@ -471,7 +471,8 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .tabbar { position: fixed; z-index: 30; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: min(calc(100% - 24px), 520px); height: 72px; padding: 8px; display: flex; gap: 2px; border-radius: var(--radius-xl); background: rgba(255,255,255,0.92); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: var(--shadow-nav); }
 .tabbar.split { padding: 0; gap: 10px; background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
 .tb-pill { flex: 1; min-width: 0; display: flex; gap: 2px; padding: 8px; border-radius: var(--radius-xl); background: rgba(255,255,255,0.92); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: var(--shadow-nav); }
-.tb-fab { flex: 0 0 72px; width: 72px; height: 72px; border: 0; border-radius: 50%; background: #0B0B0C; color: #fff; display: inline-flex; align-items: center; justify-content: center; box-shadow: var(--shadow-nav); cursor: pointer; }
+.tb-fab { flex: 0 0 92px; width: 92px; height: 72px; padding: 8px; border: 0; border-radius: var(--radius-xl); background: #0B0B0C; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: inherit; font-size: 12px; font-weight: 600; box-shadow: var(--shadow-nav); cursor: pointer; }
+.tb-fab svg { width: 24px; height: 24px; }
 .tb-fab:active { transform: scale(0.96); }
 .tab { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; border-radius: 28px; background: transparent; padding: 0; color: var(--color-nav-text); font-size: 12px; font-weight: 600; }
 .tab svg { width: 24px; height: 24px; }
@@ -3827,7 +3828,7 @@ function renderClientTabbar(active){
   const items = [['panel', 'Inicio', 'home', 'goToPanel()'], ['citas', 'Mis citas', 'calendar', "goToMisCitas('proximas')"], ['perfil', 'Mi cuenta', 'user', 'goToPerfil()']];
   return `<nav class="tabbar split" aria-label="Secciones">
     <div class="tb-pill">${items.map(([id, label, ic, fn]) => `<button class="tab" type="button" ${active === id ? 'aria-current="page"' : ''} onclick="${fn}">${icon(ic, 24, 2)}<span>${label}</span></button>`).join('')}</div>
-    <button class="tb-fab" type="button" onclick="goToReservar()" aria-label="Reservar cita">${icon('plus', 30, 2.4)}</button>
+    <button class="tb-fab" type="button" onclick="goToReservar()" aria-label="Reservar cita">${icon('plus', 24, 2.4)}<span>Reservar</span></button>
   </nav>`;
 }
 function goToMisCitas(tab){ state.booking.step = 'citas'; state.booking.misTab = tab || 'proximas'; render(); window.scrollTo(0, 0); }
