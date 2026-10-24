@@ -1330,6 +1330,34 @@ async function remoteClientLogout(){
   render(); window.scrollTo(0, 0);
 }
 
+/* Botones de guardar: desactivados mientras no se haya cambiado nada */
+function syncDirty(box){
+  if (!box || !box._base) return;
+  let dirty = false;
+  box.querySelectorAll('input, select, textarea').forEach(f => {
+    if (!f.id) return;
+    const v = (f.type === 'checkbox') ? f.checked : f.value;
+    if (box._base[f.id] !== v) dirty = true;
+  });
+  box.querySelectorAll('[data-save]').forEach(b => { b.disabled = !dirty; });
+}
+function initDirty(){
+  document.querySelectorAll('[data-dirty]').forEach(box => {
+    box._base = {};
+    box.querySelectorAll('input, select, textarea').forEach(f => { if (f.id) box._base[f.id] = (f.type === 'checkbox') ? f.checked : f.value; });
+    syncDirty(box);
+  });
+}
+document.addEventListener('input', e => { const box = e.target.closest && e.target.closest('[data-dirty]'); if (box) syncDirty(box); });
+document.addEventListener('change', e => { const box = e.target.closest && e.target.closest('[data-dirty]'); if (box) syncDirty(box); });
+function drawerDirty(){
+  if (state.editingStaff) return state.editingStaff === 'new' || stable(state.staffDraft) !== state.staffBase;
+  if (state.editingService) return state.editingService === 'new' || stable(state.svcDraft) !== state.svcBase;
+  if (state.editingBiz) return stable(state.bizDraft) !== state.bizBase;
+  return true;
+}
+function syncDrawerSave(){ const b = document.getElementById('drawer-save'); if (b) b.disabled = !drawerDirty(); }
+
 /* ---------- Textos legales y consentimiento ---------- */
 const LEGAL_VERSION = '2026-10-v1';
 const LEGAL_CONTACT = 'kxrojascisneros@gmail.com';
@@ -3198,10 +3226,11 @@ function startEditStaff(id){
     sched: JSON.parse(JSON.stringify(m.schedule || {})),
     off: (m.timeOff || []).map(o => ({ id: o.id, from: o.from, to: o.to, note: o.note || '' }))
   };
+  state.staffBase = stable(state.staffDraft);
   render();
 }
-function dName(v){ state.staffDraft.name = v; }
-function dRange(day, ri, f, v){ state.staffDraft.sched[day][ri][f] = v; }
+function dName(v){ state.staffDraft.name = v; syncDrawerSave(); }
+function dRange(day, ri, f, v){ state.staffDraft.sched[day][ri][f] = v; syncDrawerSave(); }
 function dAddRange(day){
   const bh = state.businessHours[day] || [];
   if (!bh.length) return showToast('El negocio no atiende ese día');
@@ -3214,7 +3243,7 @@ function dAddRange(day){
   render();
 }
 function dDelRange(day, ri){ const r = state.staffDraft.sched[day]; r.splice(ri, 1); if (!r.length) delete state.staffDraft.sched[day]; render(); }
-function dOff(i, f, v){ state.staffDraft.off[i][f] = v; }
+function dOff(i, f, v){ state.staffDraft.off[i][f] = v; syncDrawerSave(); }
 function dAddOff(){ state.staffDraft.off.push({ id: newId('of'), from: '', to: '', note: '' }); render(); }
 function dDelOff(i){ state.staffDraft.off.splice(i, 1); render(); }
 function saveStaffDraft(){
@@ -3617,7 +3646,7 @@ function renderPasswordCard(role){
   const err = state.pwError && state.pwError.role === role ? state.pwError.msg : null;
   return `
     ${t.mustChange ? `<div class="notice warn" style="margin-bottom:14px;">Debes crear una contraseña nueva antes de continuar. Usa la contraseña temporal como contraseña actual.</div>` : ''}
-    <form class="card stack" onsubmit="event.preventDefault(); changePasswordFor('${role}')">
+    <form class="card stack" data-dirty onsubmit="event.preventDefault(); changePasswordFor('${role}')">
       ${pwInput('pw-cur-' + role, t.mustChange ? 'Contraseña temporal' : 'Contraseña actual')}
       ${pwInput('pw-new-' + role, 'Nueva contraseña', 'new-password')}
       ${pwInput('pw-conf-' + role, 'Confirmar nueva contraseña', 'new-password')}
@@ -3626,7 +3655,7 @@ function renderPasswordCard(role){
         <span>Leí y acepto los <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('terminos')">términos de uso</button> y la <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('privacidad')">política de privacidad</button>. Entiendo que soy responsable del manejo de los datos de mis clientes.</span>
       </label>` : ''}
       ${err ? `<p class="error-text" role="alert">${escapeHtml(err)}</p>` : ''}
-      <button class="btn btn-primary" type="submit" style="align-self:flex-start;">${REMOTE && role === 'admin' && t.mustChange && state.termsOk === false ? 'Crear contraseña y continuar' : 'Actualizar contraseña'}</button>
+      <button class="btn btn-primary" type="submit" data-save style="align-self:flex-start;">${REMOTE && role === 'admin' && t.mustChange && state.termsOk === false ? 'Crear contraseña y continuar' : 'Actualizar contraseña'}</button>
     </form>`;
 }
 function renderForcedPassword(role){
@@ -3918,9 +3947,9 @@ function renderPerfil(b){
     <div class="page w456">
       <div style="display:flex;align-items:center;min-height:${forced ? '48' : '16'}px;"></div>
       <h1 class="title-1" style="margin:${forced ? '20px' : '12px'} 0 4px;">${forced ? 'Crea tu nueva contraseña' : 'Mi cuenta'}</h1>
-      <p class="secondary">${forced ? 'Por seguridad, cambia la contraseña temporal para continuar.' : 'Si cambias tus datos, el negocio los verá actualizados al instante.'}</p>
+      ${forced ? `<p class="secondary">Por seguridad, cambia la contraseña temporal para continuar.</p>` : ''}
       ${forced ? `<div style="margin-top:20px;">${renderPasswordCard('client')}</div>` : `
-      <form class="stack" style="margin-top:24px;gap:18px;" onsubmit="event.preventDefault(); saveProfile()">
+      <form class="stack" data-dirty style="margin-top:24px;gap:18px;" onsubmit="event.preventDefault(); saveProfile()">
         <div class="field">
           <label for="perfil-doc">${DOC_TYPES[b.docType].long}</label>
           <input id="perfil-doc" value="${escapeHtml(b.dni)}" disabled style="color:var(--color-text-secondary);">
@@ -3930,7 +3959,7 @@ function renderPerfil(b){
         <div class="field"><label for="perfil-apellidos">Apellidos</label><input id="perfil-apellidos" autocomplete="family-name" value="${escapeHtml(b.apellidos)}"></div>
         <div class="field"><label for="perfil-phone">Teléfono</label><input id="perfil-phone" type="tel" inputmode="tel" autocomplete="tel" value="${escapeHtml(b.phone || '')}"></div>
         ${b.error ? `<p class="error-text" role="alert">${escapeHtml(b.error)}</p>` : ''}
-        <button class="btn btn-primary btn-block" type="submit">Guardar cambios</button>
+        <button class="btn btn-primary btn-block" type="submit" data-save>Guardar cambios</button>
       </form>
       <h2 class="title-2">Contraseña</h2>
       ${renderPasswordCard('client')}`}
@@ -4644,10 +4673,11 @@ function startEditService(id){
   state.editingService = id;
   state.drawerAnim = true;
   state.svcDraft = v ? { name: v.name, minutes: v.minutes, staffIds: v.staffIds.slice(), paused: !!v.paused } : { name: '', minutes: 45, staffIds: [], paused: false };
+  state.svcBase = stable(state.svcDraft);
   render();
 }
-function svName(v){ state.svcDraft.name = v; }
-function svMin(v){ state.svcDraft.minutes = v; }
+function svName(v){ state.svcDraft.name = v; syncDrawerSave(); }
+function svMin(v){ state.svcDraft.minutes = v; syncDrawerSave(); }
 function svPause(p){ state.svcDraft.paused = p; render(); }
 function svStaff(id){ const d = state.svcDraft; d.staffIds = d.staffIds.includes(id) ? d.staffIds.filter(x => x !== id) : d.staffIds.concat(id); render(); }
 function saveServiceDraft(){
@@ -4716,7 +4746,7 @@ function renderServiceDrawer(){
             : `<button class="btn-text danger" type="button" style="align-self:center;" onclick="deleteServiceFromDrawer()">Eliminar servicio</button>`; })()}`}
         </div>
         <div class="drawer-foot">
-          <button class="btn btn-primary btn-block" type="button" onclick="saveServiceDraft()">${isNew ? 'Crear servicio' : 'Guardar cambios'}</button>
+          <button id="drawer-save" class="btn btn-primary btn-block" type="button" ${drawerDirty() ? '' : 'disabled'} onclick="saveServiceDraft()">${isNew ? 'Crear servicio' : 'Guardar cambios'}</button>
         </div>
       </div>
     </div>`;
@@ -4805,9 +4835,10 @@ function startEditBiz(){
   state.editingBiz = true;
   state.drawerAnim = true;
   state.bizDraft = { sched: JSON.parse(JSON.stringify(state.businessHours || {})) };
+  state.bizBase = stable(state.bizDraft);
   render();
 }
-function bRange(day, ri, f, v){ state.bizDraft.sched[day][ri][f] = v; }
+function bRange(day, ri, f, v){ state.bizDraft.sched[day][ri][f] = v; syncDrawerSave(); }
 function bAddRange(day){
   const r = state.bizDraft.sched[day] || [];
   const last = r[r.length - 1];
@@ -4869,7 +4900,7 @@ function renderBizDrawer(){
             </div>`; }).join('')}
         </div>
         <div class="drawer-foot">
-          <button class="btn btn-primary btn-block" type="button" onclick="saveBizDraft()">Guardar cambios</button>
+          <button id="drawer-save" class="btn btn-primary btn-block" type="button" ${drawerDirty() ? '' : 'disabled'} onclick="saveBizDraft()">Guardar cambios</button>
         </div>
       </div>
     </div>`;
@@ -4995,7 +5026,7 @@ function renderAdminHorarios(){
     ${renderServicesSection()}
 
     <h2 class="title-2">Configuración de citas</h2>
-    <div class="card stack">
+    <div class="card stack" data-dirty>
       <div class="grid-2">
         ${isProPlan() && activeServices().length ? `<input id="cfg-slot" type="hidden" value="${cfg.slotMinutes}"><p class="secondary">La duración de cada cita la define su servicio (ver Servicios arriba).</p>` : `<div class="field"><label for="cfg-slot">Duración de la cita (min)</label><input id="cfg-slot" type="number" inputmode="numeric" value="${cfg.slotMinutes}"></div>`}
         <div class="field"><label for="cfg-buffer">Descanso entre citas (min)</label><input id="cfg-buffer" type="number" inputmode="numeric" value="${cfg.bufferMinutes}"></div>
@@ -5004,7 +5035,7 @@ function renderAdminHorarios(){
         <div class="field"><label for="cfg-cancel">Cancelaciones del cliente hasta (horas antes)</label><input id="cfg-cancel" type="number" inputmode="numeric" value="${cfg.cancelNoticeHours}"><span class="hint">Después de ese plazo el cliente ya no puede cancelar en línea. 0 = sin límite.</span></div>
       </div>
       ${isProPlan() ? `<p class="hint">En el plan Pro, cada servicio define su propia duración. La de arriba se usa solo cuando una cita no tiene servicio.</p>` : ''}
-      <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="saveConfig()">Guardar configuración</button>
+      <button class="btn btn-primary" type="button" data-save style="align-self:flex-start;" onclick="saveConfig()">Guardar configuración</button>
     </div>
 `;
 }
@@ -5066,7 +5097,7 @@ function renderStaffDrawer(){
           ${!isNew && state.staff.length > 1 ? `<button class="btn-text danger" type="button" style="align-self:center;" onclick="askRemoveStaff('${member.id}')">Eliminar trabajador</button>` : ''}
         </div>
         <div class="drawer-foot">
-          <button class="btn btn-primary btn-block" type="button" onclick="saveStaffDraft()">${isNew ? 'Agregar trabajador' : 'Guardar cambios'}</button>
+          <button id="drawer-save" class="btn btn-primary btn-block" type="button" ${drawerDirty() ? '' : 'disabled'} onclick="saveStaffDraft()">${isNew ? 'Agregar trabajador' : 'Guardar cambios'}</button>
         </div>
       </div>
     </div>`;
@@ -5076,7 +5107,7 @@ function renderAdminMarca(){
   return `
     <h2 class="title-2">Marca</h2>
     <p class="secondary" style="margin:-8px 0 14px;">Nombre y logo que ven tus clientes.</p>
-    <div class="card stack">
+    <div class="card stack" data-dirty>
       <div class="field">
         <label for="brand-name">Nombre del negocio</label>
         <input id="brand-name" value="${escapeHtml(state.brand.name)}">
@@ -5092,7 +5123,7 @@ function renderAdminMarca(){
         <span class="hint">PNG o JPG, hasta ~900 KB.</span>
       </div>
 
-      <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="saveBrand()">Guardar marca</button>
+      <button class="btn btn-primary" type="button" data-save style="align-self:flex-start;" onclick="saveBrand()">Guardar marca</button>
     </div>`;
 }
 
@@ -5122,11 +5153,11 @@ function renderAdminCuenta(){
     ${adminHeader('Cuenta')}
 
     <h2 class="title-2">Perfil</h2>
-    <div class="card stack">
+    <div class="card stack" data-dirty>
       <div class="field"><label for="acc-name">Nombre</label><input id="acc-name" value="${escapeHtml(acc.name)}"></div>
       <div class="field"><label for="acc-email">Email de acceso</label><input id="acc-email" type="email" value="${escapeHtml(acc.email)}" ${REMOTE ? "disabled" : ""}></div>
       <div class="field"><label for="acc-phone">WhatsApp del negocio</label><input id="acc-phone" type="tel" inputmode="tel" value="${escapeHtml(acc.phone || '')}"><span class="hint">Lo ven tus clientes cuando necesitan pedirte un cambio, como corregir su documento.</span></div>
-      <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="saveAccount()">Guardar perfil</button>
+      <button class="btn btn-primary" type="button" data-save style="align-self:flex-start;" onclick="saveAccount()">Guardar perfil</button>
     </div>
 
     ${renderAdminMarca()}
@@ -5738,6 +5769,7 @@ function render(){
   const newSheet = document.querySelector('.sheet, .drawer-body');
   if (newSheet && sheetEl) newSheet.scrollTop = sheetTop;
   markRequired();
+  initDirty();
   renderToast();
 }
 
