@@ -811,7 +811,7 @@ function buildDefaultState(){
     includePast: false,
     citasFilter: 'todas',
     brand: { name: 'Caly', color: '#0B0B0C', logo: null },
-    account: { name: 'Valentina Rossi', email: 'valentina@caly.app', phone: '11-5555-0100' },
+    account: { name: 'Valentina Rossi', email: 'valentina', phone: '11-5555-0100' },
     config: { slotMinutes: 45, bufferMinutes: 0, minNoticeHours: 2, windowDays: 21, cancelNoticeHours: 12 },
     staff: [
       { id: 'staff-1', name: 'Valentina Rossi', schedule: defaultWeekSchedule() },
@@ -826,14 +826,14 @@ function buildDefaultState(){
       '27555444': { docType: 'DNI', nombres: 'Facundo', apellidos: 'López', name: 'Facundo López', phone: '11-9988-7766', passHash: null, mustChange: false, createdBy: 'admin' },
     },
     session: { client: null, admin: false, super: false },
-    superAccount: { name: 'Soporte Caly', email: 'super@caly.app', passHash: hashPw('super2026'), mustChange: false },
+    superAccount: { name: 'Soporte Caly', email: 'super', passHash: hashPw('super2026'), mustChange: false },
     authFails: {},
     authError: null,
     authDraft: '',
     activity: [],
     pwError: null,
     showForgot: false,
-    tempReveal: null,
+    tempReveal: null, renameUser: null,
     appointments: [
       { id: 'a1', dni: '30111222', name: 'Marina Ibáñez', phone: '11-4455-6677', date: nextDayWhere(addDaysISO(t,1), [1,2,3,4,5]), start: '09:00', end: '09:45', status: 'CONFIRMED', paid: false, staffId: 'staff-1', staffName: 'Valentina Rossi', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
       { id: 'a2', dni: '28999888', name: 'Julián Ortiz', phone: '11-2233-4455', date: nextDayWhere(addDaysISO(t,1), [1,3]), start: '15:00', end: '15:45', status: 'CONFIRMED', paid: true, staffId: 'staff-2', staffName: 'Camila Torres', rescheduleRequested: false, serviceId: 'svc-1', serviceName: 'Kinesiología' },
@@ -896,9 +896,9 @@ function buildDefaultState(){
     serviceAssign: {},
     toast: null,
     businesses: [
-      { id: 'biz-1', name: 'Caly Demo — Valentina Rossi', adminUser: 'valentina@caly.app', adminPassHash: hashPw('caly2026'), mustChange: false, plan: 'Pro', trialEndsAt: null, nextPaymentDate: addDaysISO(t, 9), lastPaidAt: addDaysISO(t, -21), enabled: true },
-      { id: 'biz-2', name: 'Clínica Dental Sonric', adminUser: 'admin@sonric.pe', adminPassHash: hashPw('sonric123'), mustChange: false, plan: 'Prueba', trialEndsAt: addDaysISO(t, 12), enabled: true },
-      { id: 'biz-3', name: 'Estudio Pilates Flow', adminUser: 'admin@flowpilates.pe', adminPassHash: hashPw('flow456'), mustChange: false, plan: 'Prueba', trialEndsAt: addDaysISO(t, -3), enabled: false },
+      { id: 'biz-1', name: 'Caly Demo — Valentina Rossi', adminUser: 'valentina', adminPassHash: hashPw('caly2026'), mustChange: false, plan: 'Pro', trialEndsAt: null, nextPaymentDate: addDaysISO(t, 9), lastPaidAt: addDaysISO(t, -21), enabled: true },
+      { id: 'biz-2', name: 'Clínica Dental Sonric', adminUser: 'sonric', adminPassHash: hashPw('sonric123'), mustChange: false, plan: 'Prueba', trialEndsAt: addDaysISO(t, 12), enabled: true },
+      { id: 'biz-3', name: 'Estudio Pilates Flow', adminUser: 'flowpilates', adminPassHash: hashPw('flow456'), mustChange: false, plan: 'Prueba', trialEndsAt: addDaysISO(t, -3), enabled: false },
     ],
     newBusiness: { name: '', adminUser: '', adminPass: '' },
     superAlerts: [],
@@ -937,6 +937,8 @@ function newId(prefix){
 }
 
 const SB_ERRORS = {
+  usuario_existe: 'Ese usuario ya existe. Elige otro.',
+  usuario_invalido: 'El usuario debe tener entre 3 y 30 caracteres: letras sin tildes, números, punto, guion o guion bajo.',
   fuera_horario_negocio: 'Ese horario está fuera del horario del negocio.',
   negocio_cerrado: 'El negocio está cerrado en ese día u horario.',
   trabajador_ausente: 'El trabajador no atiende ese día.',
@@ -969,8 +971,8 @@ function friendlyError(e){
   if (e.code === '23P01') return SB_ERRORS.horario_ocupado;
   if (e.code === '23505') return 'Ya existe un registro con esos datos.';
   if (e.code === '42501' || e.status === 403) return 'No tienes permiso para esa acción.';
-  if (/invalid login credentials/i.test(m)) return 'Correo o contraseña incorrectos.';
-  if (/already registered|user_already_exists/i.test(m) || e.code === 'user_already_exists') return 'Ese correo ya tiene una cuenta.';
+  if (/invalid login credentials/i.test(m)) return 'Usuario o contraseña incorrectos.';
+  if (/already registered|user_already_exists/i.test(m) || e.code === 'user_already_exists') return 'Ese usuario ya existe. Elige otro.';
   if (/email_address_invalid|invalid email|is invalid/i.test(m + ' ' + (e.code || ''))) return 'No pudimos crear la cuenta con esos datos. Escribe al negocio para que te ayude.';
   if (/signup.*disabled|signups not allowed/i.test(m)) return 'El registro de cuentas está desactivado por ahora.';
   if (e.status === 429) return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
@@ -1075,7 +1077,7 @@ async function loadAdminData(){
   const keep = { session: state.session, view: state.view };
   state.currentBizId = b.id;
   state.bizSlug = b.slug;
-  state.businesses = [{ id: b.id, name: b.name, adminUser: sb.s.email, mustChange: !!prof.must_change, plan: b.plan, enabled: !!b.enabled,
+  state.businesses = [{ id: b.id, name: b.name, adminUser: userFromEmail(sb.s.email), mustChange: !!prof.must_change, plan: b.plan, enabled: !!b.enabled,
     trialEndsAt: limaDate(b.trial_ends_at), activatedAt: b.activated_at ? limaDate(b.activated_at) : null, nextPaymentDate: b.next_pay_at || null, lastPaidAt: b.last_paid_at || null }];
   const br = b.brand || {};
   state.brand = { name: br.name || b.name, color: br.color || '#0B0B0C', logo: br.logo || null };
@@ -1083,9 +1085,9 @@ async function loadAdminData(){
   state.businessHours = b.business_hours || {};
   state.trackPayments = !!b.track_payments;
   state.allowClientStaffPick = !!b.show_staff;
-  const nm = sb.s.email.split('@')[0].replace(/[._-]+/g, ' ');
+  const nm = userFromEmail(sb.s.email).split('@')[0].replace(/[._-]+/g, ' ');
   state.termsOk = prof.terms_version === LEGAL_VERSION;
-  state.account = { name: prof.display_name || (nm.charAt(0).toUpperCase() + nm.slice(1)), email: sb.s.email, phone: prof.phone || '' };
+  state.account = { name: prof.display_name || (nm.charAt(0).toUpperCase() + nm.slice(1)), email: userFromEmail(sb.s.email), phone: prof.phone || '' };
   const staffById = {}; staff.forEach(x => { staffById[x.id] = x; });
   const svcById = {}; services.forEach(x => { svcById[x.id] = x; });
   state.staff = staff.filter(x => !x.deleted_at).map(x => ({ id: x.id, name: x.name, schedule: x.schedule || {}, timeOff: x.time_off || [] }));
@@ -1195,11 +1197,12 @@ async function remoteEnterAdmin(){
   state.session.admin = true;
 }
 async function remoteAdminLogin(){
-  const email = $('auth-email').value.trim();
+  const typed = $('auth-user').value.trim();
+  const email = userEmail(typed);
   const pw = $('auth-pw').value;
-  state.authDraft = email;
+  state.authDraft = typed;
   const fail = msg => { state.authError = { role: 'admin', msg }; render(); };
-  if (!email || !pw) return fail('Ingresa tu correo y contraseña.');
+  if (!typed || !pw) return fail('Ingresa tu usuario y contraseña.');
   try {
     await sb.signIn(email, pw);
     await remoteEnterAdmin();
@@ -1265,6 +1268,12 @@ async function bootRemote(){
 }
 
 /* ---------- Cliente (modo servidor) ---------- */
+const USER_DOMAIN = 'usuarios.caly.pe';
+function normUser(v){ return String(v || '').trim().toLowerCase(); }
+function validUser(v){ return /^[a-z0-9._-]{3,30}$/.test(v); }
+function userEmail(v){ v = normUser(v); return v.includes('@') ? v : `${v}@${USER_DOMAIN}`; }
+function userFromEmail(e){ e = String(e || ''); const sfx = '@' + USER_DOMAIN; return e.toLowerCase().endsWith(sfx) ? e.slice(0, -sfx.length) : e; }
+const USER_RULE = 'El usuario debe tener entre 3 y 30 caracteres: letras sin tildes, números, punto, guion o guion bajo.';
 function clientEmail(type, doc){ return `${String(type || 'DNI').toLowerCase()}-${String(doc).toLowerCase()}.${ROUTE.slug}@clientes.caly.pe`; }
 async function loadPublicBusiness(){
   const d = await sb.rpc('public_business', { p_slug: ROUTE.slug }, true);
@@ -1458,7 +1467,7 @@ function drawerDirty(){
 function syncDrawerSave(){ const b = document.getElementById('drawer-save'); if (b) b.disabled = !drawerDirty(); }
 
 /* ---------- Textos legales y consentimiento ---------- */
-const LEGAL_VERSION = '2026-10-v2';
+const LEGAL_VERSION = '2026-10-v3';
 const LEGAL_CONTACT = 'kxrojascisneros@gmail.com';
 const LEGAL_TEXTS = {
   privacidad: {
@@ -1483,7 +1492,7 @@ const LEGAL_TEXTS = {
     sections: [
       ['Etapa de prueba', 'Caly está en proceso de creación y se ofrece en etapa de prueba. Puede tener errores, cambios o interrupciones, y no garantizamos su disponibilidad continua. Agradecemos tu comprensión. Tu participación es voluntaria.'],
       ['Sin costo por ahora', 'En esta etapa Caly no obtiene ganancia con la plataforma. Si más adelante se cobra por el servicio, te lo informaremos antes y podrás decidir si continúas.'],
-      ['Tus datos de acceso', 'Para tu cuenta guardamos tu correo electrónico, que se usa únicamente como usuario para que accedas a tu cuenta, y tu contraseña, almacenada de forma cifrada. No usamos tu correo para enviarte publicidad ni para otro fin.'],
+      ['Tus datos de acceso', 'Para tu cuenta guardamos el nombre de usuario que te asigna Caly, que se usa únicamente para que accedas a tu cuenta, y tu contraseña, almacenada de forma cifrada. No te pedimos ni guardamos tu correo electrónico.'],
       ['Datos de tus clientes', 'Los datos que registres o que tus clientes te den en Caly se usan únicamente para agendar citas y para contactar a esos clientes en todo lo que concierne a su cita. Tú eres responsable del manejo que le des a esos datos y de contar con la autorización de tus clientes. No los uses para otros fines ni los compartas sin su permiso.'],
       ['Responsabilidad', 'En la medida que la ley lo permita, Caly y los miembros de su equipo no se hacen responsables por el manejo que cada negocio dé a los datos de sus clientes, ni por las consecuencias de errores o interrupciones durante la etapa de prueba. Haremos esfuerzos razonables para evitar problemas y, si ocurre un incidente de seguridad que afecte tus datos o los de tus clientes, te lo informaremos.'],
       ['Fin del periodo de prueba', 'Los datos de tu negocio y de tus clientes serán eliminados o dados de baja cuando termine tu periodo de prueba. Antes de esa fecha puedes descargar tus citas desde Cuenta, en Exportar citas.'],
@@ -1569,6 +1578,46 @@ async function remoteResetBizPassword(id){
     render();
   } catch (e) { showToast(friendlyError(e)); }
 }
+function askRename(id){ const b = state.businesses.find(x => x.id === id); if (b) { state.renameUser = { id, value: b.adminUser || '' }; render(); } }
+function cancelRename(){ state.renameUser = null; render(); }
+function renderRenameModal(){
+  const r = state.renameUser;
+  const biz = r && state.businesses.find(b => b.id === r.id);
+  if (!biz) return '';
+  return `
+    <div class="modal-back" onclick="if (event.target === this) cancelRename()">
+      <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="rn-title">
+        <h2 class="title-3" id="rn-title">Cambiar usuario de ${escapeHtml(biz.name)}</h2>
+        <p class="secondary" style="margin-top:8px;">Su contraseña no cambia. Avísale el nuevo usuario para que lo use al ingresar.</p>
+        <div class="field" style="margin-top:16px;">
+          <label for="rn-user">Nuevo usuario</label>
+          <input id="rn-user" value="${escapeHtml(r.value)}" oninput="state.renameUser.value = this.value" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off">
+        </div>
+        <div class="stack" style="margin-top:20px;gap:10px;">
+          <button class="btn btn-primary btn-block" type="button" onclick="confirmRename()">Guardar usuario</button>
+          <button class="btn btn-soft btn-block" type="button" data-close onclick="cancelRename()">Cancelar</button>
+        </div>
+      </div>
+    </div>`;
+}
+async function confirmRename(){
+  const r = state.renameUser;
+  const biz = r && state.businesses.find(b => b.id === r.id);
+  if (!biz) return;
+  const u = normUser(r.value);
+  if (!validUser(u)) return showToast(USER_RULE);
+  if (u === (biz.adminUser || '').toLowerCase()) { state.renameUser = null; return render(); }
+  if (state.businesses.some(b => b.id !== biz.id && (b.adminUser || '').toLowerCase() === u)) return showToast('Ese usuario ya existe. Elige otro.');
+  if (REMOTE) {
+    try { await sb.rpc('rename_admin_user', { p_business: biz.id, p_username: u }); }
+    catch (e) { return showToast(friendlyError(e)); }
+  } else if (biz.id === (state.currentBizId || 'biz-1')) state.account.email = u;
+  biz.adminUser = u;
+  state.renameUser = null;
+  if (!REMOTE) saveState();
+  render();
+  showToast(`Usuario cambiado a "${u}"`);
+}
 function askPurge(id){ state.purgeConfirm = { id, typed: '' }; render(); }
 function cancelPurge(){ state.purgeConfirm = null; render(); }
 function renderPurgeModal(){
@@ -1612,9 +1661,9 @@ async function loadSuperData(){
   if (prof.role !== 'super') throw new Error('rol_incorrecto');
   const [biz, admins] = await Promise.all([sb.selectAll('businesses', 'select=*&order=created_at.asc'), sb.selectAll('profiles', 'select=*&role=eq.admin')]);
   const mc = {}; admins.forEach(a => { mc[a.business_id] = !!a.must_change; });
-  state.businesses = biz.map(b => ({ id: b.id, name: b.name, slug: b.slug, adminUser: b.admin_email || '', mustChange: !!mc[b.id], plan: b.plan, enabled: !!b.enabled,
+  state.businesses = biz.map(b => ({ id: b.id, name: b.name, slug: b.slug, adminUser: userFromEmail(b.admin_email || ''), mustChange: !!mc[b.id], plan: b.plan, enabled: !!b.enabled,
     trialEndsAt: limaDate(b.trial_ends_at), activatedAt: b.activated_at ? limaDate(b.activated_at) : null, nextPaymentDate: b.next_pay_at || null, lastPaidAt: b.last_paid_at || null }));
-  state.superAccount = { name: 'Soporte Caly', email: sb.s.email, passHash: null, mustChange: !!prof.must_change };
+  state.superAccount = { name: 'Soporte Caly', email: userFromEmail(sb.s.email), passHash: null, mustChange: !!prof.must_change };
   superBase = {}; state.businesses.forEach(b => { superBase[b.id] = bizRow(b); });
 }
 async function runSuperSync(){
@@ -1632,11 +1681,12 @@ async function runSuperSync(){
   }
 }
 async function remoteSuperLogin(){
-  const email = $('auth-email').value.trim();
+  const typed = $('auth-user').value.trim();
+  const email = userEmail(typed);
   const pw = $('auth-pw').value;
-  state.authDraft = email;
+  state.authDraft = typed;
   const fail = msg => { state.authError = { role: 'super', msg }; render(); };
-  if (!email || !pw) return fail('Ingresa tu correo y contraseña.');
+  if (!typed || !pw) return fail('Ingresa tu usuario y contraseña.');
   try { await sb.signIn(email, pw); await loadSuperData(); }
   catch (e) { sb.clear(); return fail(friendlyError(e)); }
   state.session.super = true; state.authError = null; state.authDraft = '';
@@ -1645,12 +1695,13 @@ async function remoteSuperLogin(){
 async function remoteCreateBusiness(){
   const { name, adminUser, adminPass } = state.newBusiness;
   if (!name.trim() || !adminUser.trim() || !adminPass.trim()) return showToast('Completa negocio, usuario y contraseña');
-  if (!/^\S+@\S+\.\S+$/.test(adminUser.trim())) return showToast('El usuario debe ser un correo válido');
+  const user = normUser(adminUser);
+  if (!validUser(user)) return showToast(USER_RULE);
   if (adminPass.trim().length < 6) return showToast('La contraseña temporal debe tener al menos 6 caracteres');
-  const email = adminUser.trim().toLowerCase();
+  const email = userEmail(user);
   try {
     try { await sb.raw('/auth/v1/signup', { method: 'POST', body: { email, password: adminPass.trim() } }); }
-    catch (e) { if (!(e.code === 'user_already_exists' || /already registered/i.test(e.message || ''))) throw e; }
+    catch (e) { if (e.code === 'user_already_exists' || /already registered/i.test(e.message || '')) return showToast('Ese usuario ya existe. Elige otro.'); throw e; }
     let slug = bookingSlugOf(name), done = false;
     for (let i = 0; i < 6 && !done; i++) {
       try { await sb.rpc('create_business', { p_name: name.trim(), p_slug: i ? `${slug}-${i + 1}` : slug, p_admin_email: email }); done = true; }
@@ -1660,7 +1711,7 @@ async function remoteCreateBusiness(){
     await loadSuperData();
   } catch (e) { return showToast(friendlyError(e)); }
   state.newBusiness = { name: '', adminUser: '', adminPass: '' };
-  state.tempReveal = { kind: 'newbiz', who: `${name.trim()} (${email})`, biz: name.trim(), email, pw: adminPass.trim(), link: adminAccessLink() };
+  state.tempReveal = { kind: 'newbiz', who: `${name.trim()} (${user})`, biz: name.trim(), user, pw: adminPass.trim(), link: adminAccessLink() };
   render();
 }
 async function remoteOpenBizLog(id){
@@ -1779,7 +1830,7 @@ function loadState(){
       parsed.authError = null;
       parsed.pwError = null;
       parsed.showForgot = false;
-      parsed.tempReveal = null;
+      parsed.tempReveal = null; parsed.renameUser = null;
       return parsed;
     }
   } catch (e) {}
@@ -2132,7 +2183,7 @@ function showToast(msg){
   clearTimeout(window.__toastTimer);
   window.__toastTimer = setTimeout(() => { state.toast = null; renderToast(); }, 2200);
 }
-const REQUIRED_RE = /^((login|reg|na|cd)-type|login-doc|auth-email|reg-(nombres|apellidos|doc|phone)|perfil-(nombres|apellidos|phone)|cd-(doc|nombres|apellidos|phone|from|st|et)|mg-dupe|sv-(name|min)|es-name|ns-(name|min)|bh-(start|end)|cfg-(slot|buffer|notice|window|cancel)|new-staff-name|nr-(start|end)-.+|of-from-.+|brand-name|acc-(name|email)|na-(dni|nombres|apellidos|phone)|nb-(name|user|pass)|manual-time|sa-.+)$/;
+const REQUIRED_RE = /^((login|reg|na|cd)-type|login-doc|auth-user|reg-(nombres|apellidos|doc|phone)|perfil-(nombres|apellidos|phone)|cd-(doc|nombres|apellidos|phone|from|st|et)|mg-dupe|sv-(name|min)|es-name|ns-(name|min)|bh-(start|end)|cfg-(slot|buffer|notice|window|cancel)|new-staff-name|nr-(start|end)-.+|of-from-.+|brand-name|acc-(name|email)|na-(dni|nombres|apellidos|phone)|nb-(name|user|pass)|manual-time|sa-.+)$/;
 function markRequired(){
   const root = document.getElementById('view');
   if (!root) return;
@@ -3000,7 +3051,7 @@ function changePasswordFor(role){
 }
 function adminLogin(){
   if (REMOTE) return withLoader(remoteAdminLogin);
-  const email = $('auth-email').value.trim();
+  const email = $('auth-user').value.trim();
   const pw = $('auth-pw').value;
   state.authDraft = email;
   const biz = currentBusiness();
@@ -3008,8 +3059,8 @@ function adminLogin(){
   const fail = msg => { state.authError = { role: 'admin', msg }; render(); };
   const wait = authLocked(key);
   if (wait) return fail(`Demasiados intentos. Espera ${wait} segundos e inténtalo de nuevo.`);
-  if (!email || !pw) return fail('Ingresa tu correo y contraseña.');
-  if (!biz || biz.adminUser.toLowerCase() !== email.toLowerCase() || biz.adminPassHash !== hashPw(pw)) { authFail(key); return fail('Correo o contraseña incorrectos.'); }
+  if (!email || !pw) return fail('Ingresa tu usuario y contraseña.');
+  if (!biz || biz.adminUser.toLowerCase() !== email.toLowerCase() || biz.adminPassHash !== hashPw(pw)) { authFail(key); return fail('Usuario o contraseña incorrectos.'); }
   authOk(key);
   state.session.admin = true;
   logEvent('auth.login', 'El administrador inició sesión.', { role: 'admin', actor: `${state.account.name} (administrador)` });
@@ -3021,7 +3072,7 @@ function adminLogin(){
 }
 function superLogin(){
   if (REMOTE) return withLoader(remoteSuperLogin);
-  const email = $('auth-email').value.trim();
+  const email = $('auth-user').value.trim();
   const pw = $('auth-pw').value;
   state.authDraft = email;
   const acc = state.superAccount;
@@ -3029,8 +3080,8 @@ function superLogin(){
   const fail = msg => { state.authError = { role: 'super', msg }; render(); };
   const wait = authLocked(key);
   if (wait) return fail(`Demasiados intentos. Espera ${wait} segundos e inténtalo de nuevo.`);
-  if (!email || !pw) return fail('Ingresa tu correo y contraseña.');
-  if (acc.email.toLowerCase() !== email.toLowerCase() || acc.passHash !== hashPw(pw)) { authFail(key); return fail('Correo o contraseña incorrectos.'); }
+  if (!email || !pw) return fail('Ingresa tu usuario y contraseña.');
+  if (acc.email.toLowerCase() !== email.toLowerCase() || acc.passHash !== hashPw(pw)) { authFail(key); return fail('Usuario o contraseña incorrectos.'); }
   authOk(key);
   state.session.super = true;
   state.authError = null;
@@ -3049,12 +3100,13 @@ function createBusinessAccount(){
     showToast('Completa negocio, usuario y contraseña');
     return;
   }
-  if (!/^\S+@\S+\.\S+$/.test(adminUser.trim())) return showToast('El usuario debe ser un correo válido');
+  if (!validUser(normUser(adminUser))) return showToast(USER_RULE);
+  if (state.businesses.some(b => (b.adminUser || '').toLowerCase() === normUser(adminUser))) return showToast('Ese usuario ya existe. Elige otro.');
   if (adminPass.trim().length < 6) return showToast('La contraseña temporal debe tener al menos 6 caracteres');
   state.businesses.push({
     id: 'biz' + Date.now(),
     name: name.trim(),
-    adminUser: adminUser.trim(),
+    adminUser: normUser(adminUser),
     adminPassHash: hashPw(adminPass.trim()),
     mustChange: true,
     plan: 'Prueba',
@@ -3062,14 +3114,14 @@ function createBusinessAccount(){
     trialEndsAt: null, activatedAt: null,
     enabled: true,
   });
-  state.tempReveal = { kind: 'newbiz', who: `${name.trim()} (${adminUser.trim()})`, biz: name.trim(), email: adminUser.trim(), pw: adminPass.trim(), link: adminAccessLink() };
+  state.tempReveal = { kind: 'newbiz', who: `${name.trim()} (${normUser(adminUser)})`, biz: name.trim(), user: normUser(adminUser), pw: adminPass.trim(), link: adminAccessLink() };
   state.newBusiness = { name: '', adminUser: '', adminPass: '' };
   saveState();
   render();
 }
 function adminAccessLink(){ return (/^https?:/.test(location.origin) ? location.origin : 'https://caly.app') + '/admin'; }
 function newbizMessage(t){
-  return `Hola, tu cuenta de Caly para ${t.biz} está lista.\n\nIngresa aquí: ${t.link}\nCorreo: ${t.email}\nContraseña temporal: ${t.pw}\n\nAl ingresar te pediremos crear tu propia contraseña.`;
+  return `Hola, tu cuenta de Caly para ${t.biz} está lista.\n\nIngresa aquí: ${t.link}\nUsuario: ${t.user}\nContraseña temporal: ${t.pw}\n\nAl ingresar te pediremos crear tu propia contraseña.`;
 }
 function copyText(txt, okMsg){
   try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(() => showToast(okMsg), () => showToast('No se pudo copiar')); return; } } catch (e) {}
@@ -3096,18 +3148,14 @@ function bizContactLink(){
 }
 function saveAccount(){
   const name = document.getElementById('acc-name').value.trim();
-  const email = document.getElementById('acc-email').value.trim();
-  if (name.length < 2 || !email.includes('@')) {
-    showToast('Revisa el nombre y el email');
+  if (name.length < 2) {
+    showToast('Revisa el nombre');
     return;
   }
   const phone = document.getElementById('acc-phone').value.trim();
   if (phone && !isValidPhone(phone)) { showToast('Revisa el teléfono del negocio'); return; }
   state.account.name = name;
-  if (!REMOTE) state.account.email = email;
   state.account.phone = phone;
-  const biz = currentBusiness();
-  if (biz && !REMOTE) biz.adminUser = email;
   saveState();
   render();
   showToast('Perfil actualizado');
@@ -3818,8 +3866,8 @@ function renderAuth(role){
   const err = role === 'client' ? b.error : (state.authError && state.authError.role === role ? state.authError.msg : null);
   const copy = {
     client: { t: 'Reserva tu cita', sub: 'Ingresa con tu documento y contraseña.', demo: 'Demo: DNI <code>30111222</code> · contraseña <code>marina123</code>', forgot: 'Pídele al negocio que restablezca tu contraseña. Te entregará una contraseña temporal para ingresar.' },
-    admin: { t: 'Panel del negocio', sub: 'Ingresa con tu correo y contraseña.', demo: 'Demo: <code>valentina@caly.app</code> · contraseña <code>caly2026</code>', forgot: 'Escribe al equipo de Caly para que restablezcan tu contraseña. Te entregarán una temporal.' },
-    super: { t: 'Superadministrador', sub: 'Panel interno de Caly. Ingresa con tu correo y contraseña.', demo: 'Demo: <code>super@caly.app</code> · contraseña <code>super2026</code>', forgot: 'Pide a otra persona del equipo de Caly que restablezca tu contraseña.' },
+    admin: { t: 'Panel del negocio', sub: 'Ingresa con tu usuario y contraseña.', demo: 'Demo: usuario <code>valentina</code> · contraseña <code>caly2026</code>', forgot: 'Escribe al equipo de Caly para que restablezcan tu contraseña. Te entregarán una temporal.' },
+    super: { t: 'Superadministrador', sub: 'Panel interno de Caly. Ingresa con tu usuario y contraseña.', demo: 'Demo: usuario <code>super</code> · contraseña <code>super2026</code>', forgot: 'Pide a otra persona del equipo de Caly que restablezca tu contraseña.' },
   }[role];
   const submit = role === 'client' ? 'clientLogin()' : role === 'admin' ? 'adminLogin()' : 'superLogin()';
   const fields = role === 'client' ? `
@@ -3832,8 +3880,8 @@ function renderAuth(role){
         <input id="login-doc" inputmode="${b.login.type === 'DNI' ? 'numeric' : 'text'}" autocomplete="username" value="${escapeHtml(b.login.doc)}" oninput="setLogin('doc', this.value)" ${err ? 'aria-invalid="true"' : ''}>
       </div>` : `
       <div class="field">
-        <label for="auth-email">Correo electrónico</label>
-        <input id="auth-email" type="email" autocomplete="username" value="${escapeHtml(state.authDraft || '')}" ${err ? 'aria-invalid="true"' : ''}>
+        <label for="auth-user">Usuario</label>
+        <input id="auth-user" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" value="${escapeHtml(state.authDraft || '')}" ${err ? 'aria-invalid="true"' : ''}>
       </div>`;
   const pwId = role === 'client' ? 'login-pw' : 'auth-pw';
   return `
@@ -3929,7 +3977,7 @@ function renderTempModal(){
         <p class="secondary" style="margin-top:8px;">Envía esto al administrador de <strong style="color:var(--color-text);">${escapeHtml(t.biz)}</strong>. <strong style="color:var(--color-text);">La contraseña solo se muestra ahora</strong>; al ingresar deberá crear la suya.</p>
         <div class="card stack" style="margin-top:14px;gap:10px;">
           <div><p class="label">Enlace de ingreso</p><p class="tnum" style="overflow-wrap:anywhere;font-weight:600;">${escapeHtml(t.link)}</p></div>
-          <div><p class="label">Correo</p><p style="overflow-wrap:anywhere;font-weight:600;">${escapeHtml(t.email)}</p></div>
+          <div><p class="label">Usuario</p><p style="overflow-wrap:anywhere;font-weight:600;">${escapeHtml(t.user)}</p></div>
           <div><p class="label">Contraseña temporal</p><div class="temp-pw tnum" aria-label="Contraseña temporal" style="margin-top:4px;">${escapeHtml(t.pw)}</div></div>
         </div>
         <div class="stack" style="margin-top:16px;gap:10px;">
@@ -5461,7 +5509,7 @@ function renderAdminCuenta(){
     <h2 class="title-2">Perfil</h2>
     <div class="card stack" data-dirty>
       <div class="field"><label for="acc-name">Nombre</label><input id="acc-name" value="${escapeHtml(acc.name)}"></div>
-      <div class="field"><label for="acc-email">Email de acceso</label><input id="acc-email" type="email" value="${escapeHtml(acc.email)}" ${REMOTE ? "disabled" : ""}></div>
+      <div class="field"><label for="acc-user">Usuario de acceso</label><input id="acc-user" value="${escapeHtml(acc.email)}" disabled><span class="hint">Si necesitas cambiarlo, escribe al equipo de Caly.</span></div>
       <div class="field"><label for="acc-phone">WhatsApp del negocio</label><input id="acc-phone" type="tel" inputmode="tel" value="${escapeHtml(acc.phone || '')}"><span class="hint">Lo ven tus clientes cuando necesitan pedirte un cambio, como corregir su documento.</span></div>
       <button class="btn btn-primary" type="button" data-save style="align-self:flex-start;" onclick="saveAccount()">Guardar perfil</button>
     </div>
@@ -6014,9 +6062,9 @@ function renderSuper(){
                 </div>
                 ${pay ? `<div class="field"><label for="np-${biz.id}">Próxima fecha de pago</label><input id="np-${biz.id}" type="date" value="${pay.next}" onchange="setNextPayment('${biz.id}', this.value)"></div>` : ''}
               </div>
-              ${REMOTE ? `<div class="sa-group"><p class="label">Acceso</p><div class="row"><button class="btn btn-sm btn-soft" type="button" onclick="resetBusinessPassword('${biz.id}')">Restablecer contraseña</button></div><p class="hint">Enlace de reservas: <b>${escapeHtml(location.host || 'caly.app')}/reservar/${escapeHtml(biz.slug || '')}</b></p></div>` : `<div class="sa-group">
+              ${REMOTE ? `<div class="sa-group"><p class="label">Acceso</p><div class="row"><button class="btn btn-sm btn-soft" type="button" onclick="askRename('${biz.id}')">Cambiar usuario</button><button class="btn btn-sm btn-soft" type="button" onclick="resetBusinessPassword('${biz.id}')">Restablecer contraseña</button></div><p class="hint">Enlace de reservas: <b>${escapeHtml(location.host || 'caly.app')}/reservar/${escapeHtml(biz.slug || '')}</b></p></div>` : `<div class="sa-group">
                 <p class="label">Acceso</p>
-                <div class="row"><button class="btn btn-sm btn-soft" type="button" onclick="resetBusinessPassword('${biz.id}')">Restablecer contraseña</button></div>
+                <div class="row"><button class="btn btn-sm btn-soft" type="button" onclick="askRename('${biz.id}')">Cambiar usuario</button><button class="btn btn-sm btn-soft" type="button" onclick="resetBusinessPassword('${biz.id}')">Restablecer contraseña</button></div>
               </div>`}
               <div class="sa-group sa-danger">
                 <p class="label">Zona de riesgo</p>
@@ -6034,10 +6082,10 @@ function renderSuper(){
       <div class="card stack">
         <div class="grid-2">
           <div class="field"><label for="nb-name">Nombre del negocio</label><input id="nb-name" value="${escapeHtml(nb.name)}" oninput="updateNewBusiness('name', this.value)"></div>
-          <div class="field"><label for="nb-user">Correo del administrador</label><input id="nb-user" type="email" inputmode="email" value="${escapeHtml(nb.adminUser)}" oninput="updateNewBusiness('adminUser', this.value)"></div>
+          <div class="field"><label for="nb-user">Usuario del administrador</label><input id="nb-user" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Ej: spaluna" value="${escapeHtml(nb.adminUser)}" oninput="updateNewBusiness('adminUser', this.value)"></div>
           <div class="field"><label for="nb-pass">Contraseña temporal</label><input id="nb-pass" value="${escapeHtml(nb.adminPass)}" oninput="updateNewBusiness('adminPass', this.value)"><button class="btn-text" type="button" style="align-self:flex-start;min-height:0;padding:0;" onclick="regenNewbizPass()">Generar otra</button></div>
         </div>
-        <p class="hint">Al crear la cuenta te daremos un mensaje listo para enviar con el enlace, el correo y esta contraseña temporal.</p>
+        <p class="hint">Al crear la cuenta te daremos un mensaje listo para enviar con el enlace, el usuario y esta contraseña temporal.</p>
         <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="createBusinessAccount()">Crear cuenta</button>
       </div>
 
@@ -6046,7 +6094,7 @@ function renderSuper(){
 
       <div style="display:flex;justify-content:center;margin-top:28px;"><button class="btn-text" type="button" onclick="superLogout()">Cerrar sesión</button></div>
     </div>
-    ${renderPurgeModal()}`;
+    ${renderPurgeModal()}${renderRenameModal()}`;
 }
 
 function render(){
