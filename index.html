@@ -69,6 +69,8 @@ button:disabled { cursor: default; }
 .demo-note { font-size: 13px; line-height: 17px; font-weight: 500; color: var(--color-text-secondary); flex: 1 1 220px; }
 .seg { display: inline-flex; background: var(--color-surface); border-radius: var(--radius-pill); padding: 4px; gap: 2px; }
 .seg button { white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 16px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--color-text-secondary); font-size: 14px; font-weight: 600; transition: background .15s, color .15s; }
+.seg.full { display: flex; width: 100%; }
+.seg.full button { flex: 1; }
 .seg button[aria-pressed="true"], .seg button.active { background: #fff; color: var(--color-text); font-weight: 700; box-shadow: 0 1px 4px rgba(0,0,0,0.10); }
 .link-btn { border: 0; background: transparent; color: var(--color-text); font-size: 14px; font-weight: 600; text-decoration: underline; min-height: 44px; padding: 0 6px; }
 
@@ -3730,7 +3732,7 @@ function renderPacientePanel(b){
 
       <div class="sec-head">
         <h2 class="title-2">${upcoming.length > 1 ? 'Próximas citas' : 'Próxima cita'}</h2>
-        <button class="btn-text" type="button" style="min-height:32px;padding:0;white-space:nowrap;" aria-expanded="${!!b.historyOpen}" aria-controls="hist-list" onclick="toggleHistory()">${b.historyOpen ? 'Ocultar historial' : 'Ver historial'}</button>
+        <button class="btn-text" type="button" style="min-height:32px;padding:0;white-space:nowrap;" onclick="goToMisCitas('historial')">Ver historial</button>
       </div>
       ${next ? `
         ${patientCard(next, true)}
@@ -3741,21 +3743,49 @@ function renderPacientePanel(b){
           <p class="secondary">Agenda una cita fácilmente desde aquí.</p>
           <button class="btn btn-primary btn-block btn-xl" type="button" onclick="goToReservar()">Reservar cita</button>
         </div>`}
+    </div>
+    ${renderCancelModal()}`;
+}
 
-      <div class="hist" style="margin-top:28px;">
-        ${b.historyOpen ? `
-          <h2 class="title-2" style="margin-top:0;">Historial</h2>
-          <div id="hist-list" class="hist-list">
-            ${history.length === 0
-              ? `<p class="secondary" style="padding:8px 4px;">Todavía no tuviste citas.</p>`
-              : history.map(a => {
-                  const cancelled = a.status === 'CANCELLED';
-                  const lbl = cancelled ? (a.cancelledBy === 'admin' ? 'Cancelada por el negocio' : 'Cancelada') : (a.attendance === 'no_show' ? 'No asistió' : 'Realizada');
-                  return `<div class="hist-row"><span class="hist-main"><strong>${escapeHtml(cap(displayDateShort(a.date)))} ${escapeHtml(MONTHS[dateFromISO(a.date).getMonth()].slice(0, 3))}</strong> · <span class="tnum">${a.start}</span>${staffLine(a)}</span>${chip(cancelled ? 'danger' : (a.attendance === 'no_show' ? 'warning' : 'neutral'), lbl)}</div>`;
-                }).join('')}
-          </div>` : ''}
+function goToMisCitas(tab){ state.booking.step = 'citas'; state.booking.misTab = tab || 'proximas'; render(); window.scrollTo(0, 0); }
+function setMisTab(t){ state.booking.misTab = t; render(); }
+function histCard(a){
+  const cancelled = a.status === 'CANCELLED';
+  const noShow = a.attendance === 'no_show';
+  const lbl = cancelled ? (a.cancelledBy === 'admin' ? 'Cancelada por el negocio' : 'Cancelada') : (noShow ? 'No asistió' : 'Realizada');
+  const cls = cancelled ? 'cancel' : (noShow ? 'warn' : 'ok');
+  const meta = [a.serviceName, durationMin(a) + ' min'].filter(Boolean).map(escapeHtml).join(' · ');
+  return `
+    <div class="hero light">
+      <span class="chip-hero ${cls}">${lbl}</span>
+      <div>
+        <div class="h-title">${escapeHtml(cap(displayDateShort(a.date)))} · ${a.start}</div>
+        ${a.staffName ? `<div class="h-sub">${escapeHtml(a.staffName)}</div>` : ''}
+        <div class="h-meta">${meta}</div>
       </div>
-
+    </div>`;
+}
+function renderMisCitas(b){
+  const todayIso = todayISO();
+  const mine = state.appointments.filter(a => a.dni === b.dni);
+  const upcoming = mine.filter(a => a.status === 'CONFIRMED' && a.date >= todayIso).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
+  const history = mine.filter(a => a.status === 'CANCELLED' || a.date < todayIso).sort((x, y) => (y.date + y.start).localeCompare(x.date + x.start));
+  const tab = b.misTab === 'historial' ? 'historial' : 'proximas';
+  return `
+    <div class="page w560">
+      <div style="display:flex;align-items:center;min-height:48px;">
+        <button class="icon-btn" type="button" onclick="goToPanel()" aria-label="Volver">${icon('left', 22, 2.4)}</button>
+      </div>
+      <h1 class="title-1" style="margin:12px 0 18px;">Mis citas</h1>
+      <div class="seg full" role="tablist" aria-label="Mis citas">
+        <button type="button" role="tab" aria-pressed="${tab === 'proximas'}" onclick="setMisTab('proximas')">Próximas citas</button>
+        <button type="button" role="tab" aria-pressed="${tab === 'historial'}" onclick="setMisTab('historial')">Historial</button>
+      </div>
+      <div class="rows" style="margin-top:20px;">
+        ${tab === 'proximas'
+          ? (upcoming.length ? upcoming.map(a => patientCard(a, true)).join('') : `<p class="secondary">No tienes citas próximas.</p>`)
+          : (history.length ? history.map(histCard).join('') : `<p class="secondary">Todavía no tuviste citas.</p>`)}
+      </div>
     </div>
     ${renderCancelModal()}`;
 }
@@ -3900,6 +3930,7 @@ function renderPaciente(){
   if (b.step === 'registro') return renderRegistro();
   if (b.step === 'perfil') return renderPerfil(b);
   if (b.step === 'panel') return renderPacientePanel(b);
+  if (b.step === 'citas') return renderMisCitas(b);
 
   return renderBookingScreen(b, {
     backFn: 'goToPanel()', backLabel: 'Volver a mis citas',
