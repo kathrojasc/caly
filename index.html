@@ -1638,8 +1638,8 @@ async function remoteCreateBusiness(){
     await loadSuperData();
   } catch (e) { return showToast(friendlyError(e)); }
   state.newBusiness = { name: '', adminUser: '', adminPass: '' };
+  state.tempReveal = { kind: 'newbiz', who: `${name.trim()} (${email})`, biz: name.trim(), email, pw: adminPass.trim(), link: adminAccessLink() };
   render();
-  showToast('Cuenta de negocio creada');
 }
 async function remoteOpenBizLog(id){
   state.logView = id; state.logQuery = ''; state.logFrom = ''; state.logTo = ''; state.logRole = ''; state.logLimit = 40; state.logOpen = null;
@@ -3018,11 +3018,22 @@ function createBusinessAccount(){
     trialEndsAt: addDaysISO(todayISO(), 14),
     enabled: true,
   });
+  state.tempReveal = { kind: 'newbiz', who: `${name.trim()} (${adminUser.trim()})`, biz: name.trim(), email: adminUser.trim(), pw: adminPass.trim(), link: adminAccessLink() };
   state.newBusiness = { name: '', adminUser: '', adminPass: '' };
   saveState();
   render();
-  showToast('Cuenta de negocio creada');
 }
+function adminAccessLink(){ return (/^https?:/.test(location.origin) ? location.origin : 'https://caly.app') + '/admin'; }
+function newbizMessage(t){
+  return `Hola, tu cuenta de Caly para ${t.biz} está lista.\n\nIngresa aquí: ${t.link}\nCorreo: ${t.email}\nContraseña temporal: ${t.pw}\n\nAl ingresar te pediremos crear tu propia contraseña.`;
+}
+function copyText(txt, okMsg){
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(() => showToast(okMsg), () => showToast('No se pudo copiar')); return; } } catch (e) {}
+  showToast('No se pudo copiar');
+}
+function copyNewbizMessage(){ const t = state.tempReveal; if (t) copyText(newbizMessage(t), 'Mensaje copiado'); }
+function copyNewbizLink(){ const t = state.tempReveal; if (t) copyText(t.link, 'Enlace copiado'); }
+function regenNewbizPass(){ state.newBusiness.adminPass = genTempPassword(); render(); }
 
 function saveBrand(){
   const name = document.getElementById('brand-name').value.trim() || 'Caly';
@@ -3850,6 +3861,23 @@ function renderForcedPassword(role){
 function renderTempModal(){
   const t = state.tempReveal;
   if (!t) return '';
+  if (t.kind === 'newbiz') return `
+    <div class="modal-back" onclick="if (event.target === this) closeTempReveal()">
+      <div class="modal sheet" role="alertdialog" aria-modal="true" aria-labelledby="tp-title">
+        <h2 class="title-3" id="tp-title">Cuenta creada</h2>
+        <p class="secondary" style="margin-top:8px;">Envía esto al administrador de <strong style="color:var(--color-text);">${escapeHtml(t.biz)}</strong>. <strong style="color:var(--color-text);">La contraseña solo se muestra ahora</strong>; al ingresar deberá crear la suya.</p>
+        <div class="card stack" style="margin-top:14px;gap:10px;">
+          <div><p class="label">Enlace de ingreso</p><p class="tnum" style="overflow-wrap:anywhere;font-weight:600;">${escapeHtml(t.link)}</p></div>
+          <div><p class="label">Correo</p><p style="overflow-wrap:anywhere;font-weight:600;">${escapeHtml(t.email)}</p></div>
+          <div><p class="label">Contraseña temporal</p><div class="temp-pw tnum" aria-label="Contraseña temporal" style="margin-top:4px;">${escapeHtml(t.pw)}</div></div>
+        </div>
+        <div class="stack" style="margin-top:16px;gap:10px;">
+          <button class="btn btn-primary btn-block" type="button" onclick="copyNewbizMessage()">Copiar mensaje para el administrador</button>
+          <button class="btn btn-soft btn-block" type="button" onclick="copyNewbizLink()">Copiar solo el enlace</button>
+          <button class="btn-text" type="button" style="align-self:center;" autofocus onclick="closeTempReveal()">Listo</button>
+        </div>
+      </div>
+    </div>`;
   return `
     <div class="modal-back" onclick="if (event.target === this) closeTempReveal()">
       <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="tp-title" aria-describedby="tp-desc">
@@ -5859,6 +5887,7 @@ function renderSuper(){
   if (state.superAccount.mustChange) return renderForcedPassword('super');
   if (state.logView) return renderBizLog();
   const nb = state.newBusiness;
+  if (!nb.adminPass) nb.adminPass = genTempPassword();
 
   return `
     <div class="page w880">
@@ -5926,15 +5955,16 @@ function renderSuper(){
             </div>
           </div>`;}).join('')}
       </div>
-      <p class="hint" style="margin-top:12px;">Los administradores no se registran solos: tú creas la cuenta con una contraseña temporal que deberán cambiar al ingresar.</p>
+      <p class="hint" style="margin-top:12px;">Los administradores no se registran solos: tú creas la cuenta, les envías el enlace con una contraseña temporal y ellos crean la suya al ingresar.</p>
 
       <h2 class="title-2">Crear cuenta de negocio</h2>
       <div class="card stack">
         <div class="grid-2">
           <div class="field"><label for="nb-name">Nombre del negocio</label><input id="nb-name" value="${escapeHtml(nb.name)}" oninput="updateNewBusiness('name', this.value)"></div>
-          <div class="field"><label for="nb-user">Usuario admin (email)</label><input id="nb-user" type="email" value="${escapeHtml(nb.adminUser)}" oninput="updateNewBusiness('adminUser', this.value)"></div>
-          <div class="field"><label for="nb-pass">Contraseña temporal</label><input id="nb-pass" value="${escapeHtml(nb.adminPass)}" oninput="updateNewBusiness('adminPass', this.value)"></div>
+          <div class="field"><label for="nb-user">Correo del administrador</label><input id="nb-user" type="email" inputmode="email" value="${escapeHtml(nb.adminUser)}" oninput="updateNewBusiness('adminUser', this.value)"></div>
+          <div class="field"><label for="nb-pass">Contraseña temporal</label><input id="nb-pass" value="${escapeHtml(nb.adminPass)}" oninput="updateNewBusiness('adminPass', this.value)"><button class="btn-text" type="button" style="align-self:flex-start;min-height:0;padding:0;" onclick="regenNewbizPass()">Generar otra</button></div>
         </div>
+        <p class="hint">Al crear la cuenta te daremos un mensaje listo para enviar con el enlace, el correo y esta contraseña temporal.</p>
         <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="createBusinessAccount()">Crear cuenta</button>
       </div>
 
