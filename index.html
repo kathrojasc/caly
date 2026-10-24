@@ -849,6 +849,7 @@ const SB_ERRORS = {
   documento_ya_registrado: 'Ese documento ya tiene una cuenta. Ingresa con tu contraseña.',
   cliente_sin_ficha: 'Completa tus datos para reservar.',
   cita_no_encontrada: 'No encontramos esa cita.',
+  cliente_sin_cuenta: 'Este cliente todavía no creó su cuenta.',
   fuera_de_plazo: 'Ya no puedes cancelar en línea. Contacta al negocio.',
   solo_superadmin: 'Solo el superadmin puede hacer eso.',
   rol_incorrecto: 'Esta cuenta no corresponde a esta pantalla.',
@@ -997,7 +998,7 @@ async function loadAdminData(){
   clients.forEach(c => {
     clientById[c.id] = c;
     state.patients[c.doc] = { id: c.id, docType: c.doc_type, nombres: c.nombres, apellidos: c.apellidos, name: fullName(c.nombres, c.apellidos),
-      phone: c.phone || '', passHash: c.user_id ? 'cuenta' : null, mustChange: false, createdBy: c.created_by };
+      phone: c.phone || '', passHash: c.user_id ? 'cuenta' : null, mustChange: !!c.must_change, createdBy: c.created_by };
   });
   state.appointments = appts.map(a => {
     const c = clientById[a.client_id] || {};
@@ -1198,7 +1199,7 @@ async function loadClientData(){
   const clients = await sb.select('clients', 'select=*');
   const c = clients[0];
   if (!c) return false;
-  const p = { id: c.id, docType: c.doc_type, nombres: c.nombres, apellidos: c.apellidos, name: fullName(c.nombres, c.apellidos), phone: c.phone || '', passHash: 'cuenta', mustChange: false, createdBy: c.created_by };
+  const p = { id: c.id, docType: c.doc_type, nombres: c.nombres, apellidos: c.apellidos, name: fullName(c.nombres, c.apellidos), phone: c.phone || '', passHash: 'cuenta', mustChange: !!c.must_change, createdBy: c.created_by };
   state.patients = { [c.doc]: p };
   const appts = await sb.selectAll('appointments', 'select=*&order=date.asc');
   const staffById = {}; state.staff.forEach(x => { staffById[x.id] = x; });
@@ -1306,7 +1307,11 @@ async function remoteClientPassword(){
   if (nw === cur) return fail('La nueva contraseña debe ser distinta de la actual.');
   if (nw !== cf) return fail('Las contraseñas no coinciden.');
   try { await sb.signIn(clientEmail(p.docType, doc), cur); } catch (e) { return fail(e.offline ? friendlyError(e) : 'La contraseña actual no es correcta.'); }
-  try { await sb.setPassword(nw); } catch (e) { return fail(friendlyError(e)); }
+  try {
+    await sb.setPassword(nw);
+    await sb.rest('PATCH', `clients?user_id=eq.${sb.s.uid}`, { must_change: false }, { Prefer: 'return=minimal' });
+  } catch (e) { return fail(friendlyError(e)); }
+  p.mustChange = false;
   state.pwError = null; state.booking.step = 'perfil';
   render(); showToast('Contraseña actualizada');
 }
@@ -1407,6 +1412,26 @@ async function acceptTerms(){
   render(); window.scrollTo(0, 0);
 }
 
+async function remoteResetClientPassword(doc){
+  const p = state.patients[doc];
+  if (!p || !p.id) return;
+  try {
+    const pw = await sb.rpc('reset_client_password', { p_client: p.id });
+    p.mustChange = true;
+    state.tempReveal = { who: `${p.name} (${docLabel(p.docType)} ${doc})`, pw };
+    render();
+  } catch (e) { showToast(friendlyError(e)); }
+}
+async function remoteResetBizPassword(id){
+  const biz = state.businesses.find(b => b.id === id);
+  if (!biz) return;
+  try {
+    const pw = await sb.rpc('reset_admin_password', { p_business: id });
+    biz.mustChange = true;
+    state.tempReveal = { who: `${biz.name} (${biz.adminUser})`, pw };
+    render();
+  } catch (e) { showToast(friendlyError(e)); }
+}
 function askPurge(id){ state.purgeConfirm = { id, typed: '' }; render(); }
 function cancelPurge(){ state.purgeConfirm = null; render(); }
 function renderPurgeModal(){
@@ -2686,6 +2711,7 @@ function extendTrial(id){
   showToast(`${biz.name}: prueba extendida hasta el ${fmtDay(biz.trialEndsAt)}`);
 }
 function resetBusinessPassword(id){
+  if (REMOTE) return remoteResetBizPassword(id);
   const biz = state.businesses.find(b => b.id === id);
   if (!biz) return;
   const temp = genTempPassword();
@@ -2696,7 +2722,7 @@ function resetBusinessPassword(id){
   render();
 }
 function resetClientPassword(doc){
-  if (REMOTE) return showToast('Por ahora no se puede generar una contraseña desde aquí');
+  if (REMOTE) return remoteResetClientPassword(doc);
   const p = state.patients[doc];
   if (!p) return;
   const temp = genTempPassword();
@@ -4481,7 +4507,8 @@ function renderClientDetail(doc){
     <h2 class="title-2">Acceso</h2>
     <div class="card stack">
       ${REMOTE ? (p.passHash
-        ? `<p class="secondary">Este cliente ya tiene su cuenta y entra con su documento y su contraseña. Por ahora no se puede generar una contraseña desde aquí.</p>`
+        ? `<p class="secondary">Si olvidó su contraseña, genera una temporal y entrégasela. Deberá cambiarla al ingresar.</p>
+      <button class="btn btn-soft btn-sm" type="button" style="align-self:flex-start;background:#fff;" onclick="resetClientPassword('${doc}')">Generar contraseña temporal</button>`
         : `<p class="secondary">Aún no creó su cuenta. Pídele que entre a <b>${escapeHtml(bookingLink())}</b>, toque <b>Crear cuenta</b> y use su documento y el mismo teléfono que tú registraste (${escapeHtml(p.phone || 'sin teléfono')}). No necesita ningún código.</p>`)
       : `<p class="secondary">${p.passHash ? 'Si olvidó su contraseña, genera una temporal y entrégasela. Deberá cambiarla al ingresar.' : 'Aún no creó su cuenta. Puede crearla con su documento y teléfono, o puedes darle una contraseña temporal.'}</p>
       <button class="btn btn-soft btn-sm" type="button" style="align-self:flex-start;background:#fff;" onclick="resetClientPassword('${doc}')">${p.passHash ? 'Restablecer contraseña' : 'Crear acceso con contraseña temporal'}</button>`}
@@ -5589,7 +5616,7 @@ function renderSuper(){
                 </div>
                 ${pay ? `<div class="field"><label for="np-${biz.id}">Próxima fecha de pago</label><input id="np-${biz.id}" type="date" value="${pay.next}" onchange="setNextPayment('${biz.id}', this.value)"></div>` : ''}
               </div>
-              ${REMOTE ? `<div class="sa-group"><p class="label">Acceso</p><p class="hint">Enlace de reservas: <b>${escapeHtml(location.host || 'caly.app')}/reservar/${escapeHtml(biz.slug || '')}</b></p></div>` : `<div class="sa-group">
+              ${REMOTE ? `<div class="sa-group"><p class="label">Acceso</p><div class="row"><button class="btn btn-sm btn-soft" type="button" onclick="resetBusinessPassword('${biz.id}')">Restablecer contraseña</button></div><p class="hint">Enlace de reservas: <b>${escapeHtml(location.host || 'caly.app')}/reservar/${escapeHtml(biz.slug || '')}</b></p></div>` : `<div class="sa-group">
                 <p class="label">Acceso</p>
                 <div class="row"><button class="btn btn-sm btn-soft" type="button" onclick="resetBusinessPassword('${biz.id}')">Restablecer contraseña</button></div>
               </div>`}
