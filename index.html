@@ -3876,7 +3876,7 @@ function renderBookingScreen(b, cfg){
         </div>` : ''}
 
       <div class="cols">
-        <div class="c340">${renderCalendarPicker(b, noAvail)}</div>
+        <div class="c340"><p class="label" style="margin-bottom:8px;">Fecha y hora</p>${renderCalendarPicker(b, noAvail)}</div>
         <div class="c300" id="slots-section" style="scroll-margin-top:16px;">
           ${noAvail ? `
             <div class="empty-card">
