@@ -2696,6 +2696,7 @@ function resetBusinessPassword(id){
   render();
 }
 function resetClientPassword(doc){
+  if (REMOTE) return showToast('Por ahora no se puede generar una contraseña desde aquí');
   const p = state.patients[doc];
   if (!p) return;
   const temp = genTempPassword();
@@ -4479,8 +4480,11 @@ function renderClientDetail(doc){
 
     <h2 class="title-2">Acceso</h2>
     <div class="card stack">
-      <p class="secondary">${p.passHash ? 'Si olvidó su contraseña, genera una temporal y entrégasela. Deberá cambiarla al ingresar.' : 'Aún no creó su cuenta. Puede crearla con su documento y teléfono, o puedes darle una contraseña temporal.'}</p>
-      <button class="btn btn-soft btn-sm" type="button" style="align-self:flex-start;background:#fff;" onclick="resetClientPassword('${doc}')">${p.passHash ? 'Restablecer contraseña' : 'Crear acceso con contraseña temporal'}</button>
+      ${REMOTE ? (p.passHash
+        ? `<p class="secondary">Este cliente ya tiene su cuenta y entra con su documento y su contraseña. Por ahora no se puede generar una contraseña desde aquí.</p>`
+        : `<p class="secondary">Aún no creó su cuenta. Pídele que entre a <b>${escapeHtml(bookingLink())}</b>, toque <b>Crear cuenta</b> y use su documento y el mismo teléfono que tú registraste (${escapeHtml(p.phone || 'sin teléfono')}). No necesita ningún código.</p>`)
+      : `<p class="secondary">${p.passHash ? 'Si olvidó su contraseña, genera una temporal y entrégasela. Deberá cambiarla al ingresar.' : 'Aún no creó su cuenta. Puede crearla con su documento y teléfono, o puedes darle una contraseña temporal.'}</p>
+      <button class="btn btn-soft btn-sm" type="button" style="align-self:flex-start;background:#fff;" onclick="resetClientPassword('${doc}')">${p.passHash ? 'Restablecer contraseña' : 'Crear acceso con contraseña temporal'}</button>`}
     </div>
 
     ${others.length ? `
