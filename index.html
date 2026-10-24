@@ -1110,6 +1110,7 @@ async function loadAdminData(){
   state.session = keep.session; state.view = keep.view;
   remoteBase = toRows();
   refreshBrandUI();
+  if (ensureBasicStaff()) queueSync();
 }
 
 /* Pantalla → servidor: se compara lo guardado con lo actual y se envía solo la diferencia */
@@ -3574,6 +3575,14 @@ function saveServiceAssign(){
   showToast('Servicios asignados');
 }
 function currentBusiness(){ return state.businesses.find(b => b.id === (state.currentBizId || 'biz-1')); }
+function basicSchedule(){ return JSON.parse(JSON.stringify(state.businessHours || {})); }
+// Plan básico: un solo "trabajador" interno que sigue el horario del negocio (no se muestra en pantalla).
+function ensureBasicStaff(){
+  if (isProPlan() || !currentBusiness() || state.staff.length) return false;
+  state.staff.push({ id: newId('staff'), name: 'Atención', schedule: basicSchedule(), timeOff: [] });
+  return true;
+}
+function staffShown(a){ return isProPlan() ? (a.staffName || '') : ''; }
 function isProPlan(){ const b = currentBusiness(); return !!b && b.plan === 'Pro'; }
 function bookingServiceId(b){
   b = b || state.booking;
@@ -3587,7 +3596,7 @@ function bookingServiceId(b){
 }
 function clientStaffOptions(b){
   b = b || state.booking;
-  if (b.admin) return serviceStaff(bookingServiceId(b));
+  if (b.admin) return isProPlan() ? serviceStaff(bookingServiceId(b)) : [];
   return isProPlan() && state.allowClientStaffPick ? serviceStaff(bookingServiceId(b)) : [];
 }
 function pickerStaff(b){
@@ -3688,7 +3697,7 @@ function longDate(iso){ return cap(displayDateLong(iso)); }
 function monthAbbr(iso){ return MONTHS[dateFromISO(iso).getMonth()].slice(0, 3).toUpperCase(); }
 function dayNum(iso){ return dateFromISO(iso).getDate(); }
 function durationMin(a){ return timeToMinutes(a.end) - timeToMinutes(a.start); }
-function staffLine(a){ return `${a.serviceName ? ` · ${escapeHtml(a.serviceName)}` : ''}${a.staffName ? ` · ${escapeHtml(a.staffName)}` : ''}`; }
+function staffLine(a){ return `${a.serviceName ? ` · ${escapeHtml(a.serviceName)}` : ''}${staffShown(a) ? ` · ${escapeHtml(staffShown(a))}` : ''}`; }
 
 /* ---------- Calendario ---------- */
 function pickIdFor(b){
@@ -3969,7 +3978,7 @@ function patientCard(a, light){
       <span class="chip-hero ${light ? (mustAct ? 'cancel' : 'neu') : ''}">${mustAct ? 'Por confirmar' : escapeHtml(a.serviceName || 'Cita')}</span>
       <div>
         <div class="h-title">${when} · ${a.start}</div>
-        ${a.staffName ? `<div class="h-sub">${escapeHtml(a.staffName)}</div>` : ''}
+        ${staffShown(a) ? `<div class="h-sub">${escapeHtml(staffShown(a))}</div>` : ''}
         <div class="h-meta">${durationMin(a)} min${a.serviceName && mustAct ? ' · ' + escapeHtml(a.serviceName) : ''}</div>
       </div>
       ${note ? `<div class="hero-note${mustAct ? ' alert' : ''}" role="${mustAct ? 'alert' : 'note'}">${escapeHtml(note)}</div>` : ''}
@@ -4054,7 +4063,7 @@ function histCard(a){
       <span class="chip-hero ${cls}">${lbl}</span>
       <div>
         <div class="h-title">${escapeHtml(cap(displayDateShort(a.date)))} · ${a.start}</div>
-        ${a.staffName ? `<div class="h-sub">${escapeHtml(a.staffName)}</div>` : ''}
+        ${staffShown(a) ? `<div class="h-sub">${escapeHtml(staffShown(a))}</div>` : ''}
         <div class="h-meta">${meta}</div>
       </div>
     </div>`;
@@ -4258,7 +4267,7 @@ function adminHeader(title, eyebrow){
 
 function upcomingCard(a, light, todayIso){
   const when = a.date === todayIso ? 'Hoy' : cap(displayDateShort(a.date));
-  const meta = [a.serviceName, a.staffName].filter(Boolean).map(escapeHtml).join(' · ');
+  const meta = [a.serviceName, staffShown(a)].filter(Boolean).map(escapeHtml).join(' · ');
   const payLabel = a.paid ? 'Pagado' : 'Pago pendiente';
   return `
     <div class="hero${light ? ' light' : ''}">
@@ -4343,7 +4352,7 @@ function renderApptDetail(){
 function apptRow(a, now, showDate){
   const c = staffColor(a.staffId);
   const reason = apptPendingReason(a);
-  const meta = [showDate ? cap(displayDateShort(a.date)) : '', a.serviceName, a.staffName].filter(Boolean).map(escapeHtml).join(' · ');
+  const meta = [showDate ? cap(displayDateShort(a.date)) : '', a.serviceName, staffShown(a)].filter(Boolean).map(escapeHtml).join(' · ');
   const chipHtml = a.status === 'CANCELLED' ? chip('danger', 'Cancelada') : a.attendance === 'no_show' ? chip('warning', 'No asistió') : a.attendance === 'attended' ? chip('success', 'Asistió') : reason ? chip('danger', reason === 'Doble reserva' ? 'Doble reserva' : 'Por resolver') : a.rescheduleRequested ? chip('neutral', 'Esperando') : (!payOn() ? '' : a.paid ? chip('success', 'Pagado') : chip('warning', 'Por cobrar'));
   return `
     <div class="arow-wrap">
@@ -4415,7 +4424,7 @@ function renderAgendaView(){
     </div>
     <div class="fbar" role="group" aria-label="Filtros">
       <label class="fchip${dateF ? ' on' : ''}" for="citas-date">${icon('calendar', 18, 2)}<span>${dateF ? escapeHtml(cap(displayDateShort(dateF))) : 'Fecha'}</span><input id="citas-date" type="date" value="${dateF}" aria-label="Filtrar por fecha" onclick="try { this.showPicker(); } catch (e) {}" onchange="setCitasDate(this.value)">${dateF ? `<button class="fx" type="button" aria-label="Quitar fecha" onclick="event.preventDefault(); setCitasDate('')">${icon('close', 14, 2.6)}</button>` : ''}</label>
-      ${state.staff.length > 1 ? `<label class="fchip${state.calStaff ? ' on' : ''}" for="citas-staff">${icon('users', 18, 2)}<span>${state.calStaff ? escapeHtml((state.staff.find(m => m.id === state.calStaff) || {}).name || 'Trabajador') : 'Trabajador'}</span>
+      ${isProPlan() && state.staff.length > 1 ? `<label class="fchip${state.calStaff ? ' on' : ''}" for="citas-staff">${icon('users', 18, 2)}<span>${state.calStaff ? escapeHtml((state.staff.find(m => m.id === state.calStaff) || {}).name || 'Trabajador') : 'Trabajador'}</span>
         <select id="citas-staff" aria-label="Filtrar por trabajador" onchange="setCalStaff(this.value || null)">
           <option value="">Todos los trabajadores</option>
           ${state.staff.map(m => `<option value="${m.id}" ${state.calStaff === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
@@ -4680,7 +4689,7 @@ function citaCard(a, now, mode, asRow){
   const past = !cancelled && isPastAppt(a);
   const upcoming = !cancelled && !past;
   const when = a.date === now ? 'Hoy' : cap(displayDateShort(a.date));
-  const meta = [a.serviceName, a.staffName].filter(Boolean).map(escapeHtml).join(' · ');
+  const meta = [a.serviceName, staffShown(a)].filter(Boolean).map(escapeHtml).join(' · ');
   const reason = pend ? apptPendingReason(a) : null;
   let chips = '';
   if (reason) chips = `<span class="chip-hero cancel">${escapeHtml(reason)}</span>`;
@@ -4716,7 +4725,7 @@ function citaCard(a, now, mode, asRow){
       <td class="ct-when"><b>${when}</b><span class="tnum">${a.start}</span></td>
       <td><b>${escapeHtml(a.name)}</b>${a.phone ? `<span class="tnum">${escapeHtml(a.phone)}</span>` : ''}</td>
       <td>${escapeHtml(a.serviceName || '—')}</td>
-      <td>${escapeHtml(a.staffName || '—')}</td>
+      <td>${escapeHtml(staffShown(a) || '—')}</td>
       <td>${chips ? `<div class="chip-row">${chips}</div>` : '<span class="caption">—</span>'}</td>
       <td class="ct-actions">${rb.join('')}</td>
     </tr>`;
@@ -5120,6 +5129,7 @@ function saveBizDraft(){
   }
   const before = pendingAppts().length;
   state.businessHours = sched;
+  if (!isProPlan()) { ensureBasicStaff(); if (state.staff.length === 1) state.staff[0].schedule = basicSchedule(); }
   state.editingBiz = false;
   state.bizDraft = null;
   saveState();
@@ -5256,6 +5266,7 @@ function renderAdminHorarios(){
 
     ${renderClosuresSection()}
 
+    ${isProPlan() ? `
     <h2 class="title-2">Equipo y asignación</h2>
     <p class="secondary" style="margin-bottom:14px;">Cada trabajador tiene su propio horario. Cuando un cliente reserva, Caly asigna automáticamente al trabajador disponible siguiendo un turno rotativo (round robin), para repartir las citas de forma pareja.</p>
     <div class="rows staff-rows">${state.staff.map(member => `
@@ -5280,6 +5291,11 @@ function renderAdminHorarios(){
       </div>`).join('')}</div>
     <button class="btn btn-primary btn-sm add-btn" type="button" style="align-self:flex-start;margin-top:14px;" onclick="startEditStaff('new')">${icon('plus', 18, 2.6)} Agregar trabajador</button>
     ${renderStaffDrawer()}
+    ` : `
+    <h2 class="title-2">Equipo y asignación</h2>
+    <div class="card stack">
+      <div class="row">${chip('neutral', 'Plan Pro')}<span class="secondary">Agrega trabajadores con su propio horario y deja que Caly asigne las citas automáticamente.</span></div>
+    </div>`}
 
     ${renderServicesSection()}
 
