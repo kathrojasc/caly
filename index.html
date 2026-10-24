@@ -3981,7 +3981,8 @@ function renderPerfil(b){
       <h1 class="title-1" style="margin:${forced ? '20px' : '12px'} 0 4px;">${forced ? 'Crea tu nueva contraseña' : 'Mi cuenta'}</h1>
       ${forced ? `<p class="secondary">Por seguridad, cambia la contraseña temporal para continuar.</p>` : ''}
       ${forced ? `<div style="margin-top:20px;">${renderPasswordCard('client')}</div>` : `
-      <form class="stack" data-dirty style="margin-top:24px;gap:18px;" onsubmit="event.preventDefault(); saveProfile()">
+      <h2 class="title-2">Mis datos</h2>
+      <form class="card stack" data-dirty style="gap:18px;" onsubmit="event.preventDefault(); saveProfile()">
         <div class="field">
           <label for="perfil-doc">${DOC_TYPES[b.docType].long}</label>
           <input id="perfil-doc" value="${escapeHtml(b.dni)}" disabled style="color:var(--color-text-secondary);">
