@@ -5035,16 +5035,6 @@ function renderAdminMarca(){
       </div>
 
       <div class="field">
-        <label for="brand-color-hex">Color principal</label>
-        <div class="row">
-          <input id="brand-color" type="color" value="${state.brand.color}" aria-label="Elegir color"
-            oninput="document.getElementById('brand-color-hex').value = this.value">
-          <input id="brand-color-hex" class="tnum" style="max-width:140px;" value="${state.brand.color}"
-            oninput="if (/^#[0-9a-fA-F]{6}$/.test(this.value)) document.getElementById('brand-color').value = this.value;">
-        </div>
-      </div>
-
-      <div class="field">
         <span class="label">Logo</span>
         <div class="row">
           ${brandMark(48)}
@@ -5052,6 +5042,16 @@ function renderAdminMarca(){
           ${state.brand.logo ? `<button class="btn-text" type="button" onclick="removeLogo()">Quitar</button>` : ''}
         </div>
         <span class="hint">PNG o JPG, hasta ~900 KB.</span>
+      </div>
+
+      <div class="field">
+        <label for="brand-color-hex">Color principal</label>
+        <div class="row">
+          <input id="brand-color" type="color" value="${state.brand.color}" aria-label="Elegir color"
+            oninput="document.getElementById('brand-color-hex').value = this.value">
+          <input id="brand-color-hex" class="tnum" style="max-width:140px;" value="${state.brand.color}"
+            oninput="if (/^#[0-9a-fA-F]{6}$/.test(this.value)) document.getElementById('brand-color').value = this.value;">
+        </div>
       </div>
 
       <button class="btn btn-primary" type="button" style="align-self:flex-start;" onclick="saveBrand()">Guardar marca</button>
