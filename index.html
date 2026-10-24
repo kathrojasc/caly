@@ -1110,7 +1110,7 @@ async function loadAdminData(){
     const sv = a.service_id ? svcById[a.service_id] : null;
     return { id: a.id, dni: c.doc || '', name: c.doc ? fullName(c.nombres, c.apellidos) : 'Cliente', phone: c.phone || '', date: a.date, start: hhmm(a.start_time), end: hhmm(a.end_time),
       status: a.status, paid: !!a.paid, staffId: a.staff_id, staffName: st.name || '', serviceId: a.service_id || null, serviceName: sv ? sv.name : null,
-      attendance: a.attendance || undefined, cancelledBy: a.cancelled_by || undefined, cancelledAt: a.cancelled_at ? Date.parse(a.cancelled_at) : undefined,
+      cancelledBy: a.cancelled_by || undefined, cancelledAt: a.cancelled_at ? Date.parse(a.cancelled_at) : undefined,
       createdAt: Date.parse(a.created_at), createdBy: a.created_by, rescheduleRequested: false, manual: false };
   });
   state.session = keep.session; state.view = keep.view;
@@ -1138,7 +1138,7 @@ function toRows(){
   state.appointments.forEach(a => {
     const p = state.patients[a.dni];
     r.appts[a.id] = { id: a.id, business_id: bid, client_id: p ? p.id : null, staff_id: a.staffId, service_id: a.serviceId || null, date: a.date, start_time: a.start, end_time: a.end,
-      status: a.status, paid: !!a.paid, attendance: a.attendance || null, cancelled_by: a.cancelledBy || null, cancelled_at: tsIso(a.cancelledAt), created_by: a.createdBy || 'admin' };
+      status: a.status, paid: !!a.paid, cancelled_by: a.cancelledBy || null, cancelled_at: tsIso(a.cancelledAt), created_by: a.createdBy || 'admin' };
   });
   return JSON.parse(JSON.stringify(r));
 }
@@ -1319,7 +1319,7 @@ async function loadClientData(){
   const svcById = {}; state.services.forEach(x => { svcById[x.id] = x; });
   const mine = appts.map(a => ({ id: a.id, dni: c.doc, name: p.name, phone: p.phone, date: a.date, start: hhmm(a.start_time), end: hhmm(a.end_time), status: a.status, paid: !!a.paid,
     staffId: a.staff_id, staffName: (staffById[a.staff_id] || {}).name || '', serviceId: a.service_id || null, serviceName: a.service_id ? (svcById[a.service_id] || {}).name || null : null,
-    attendance: a.attendance || undefined, cancelledBy: a.cancelled_by || undefined, createdAt: Date.parse(a.created_at), createdBy: a.created_by, rescheduleRequested: false }));
+    cancelledBy: a.cancelled_by || undefined, createdAt: Date.parse(a.created_at), createdBy: a.created_by, rescheduleRequested: false }));
   state.appointments = state.appointments.filter(a => a.busy).concat(mine);
   dedupeBusy();
   state.session.client = c.doc;
@@ -1859,7 +1859,7 @@ function logEvent(action, text, o){
 }
 function auditSnap(){
   const appts = {};
-  state.appointments.forEach(a => { appts[a.id] = { s: a.status, paid: !!a.paid, att: a.attendance || null, date: a.date, start: a.start, end: a.end, dni: a.dni, name: a.name, staff: a.staffName || '', svc: a.serviceName || '' }; });
+  state.appointments.forEach(a => { appts[a.id] = { s: a.status, paid: !!a.paid, date: a.date, start: a.start, end: a.end, dni: a.dni, name: a.name, staff: a.staffName || '', svc: a.serviceName || '' }; });
   const pats = {};
   Object.keys(state.patients).forEach(d => { const p = state.patients[d]; pats[d] = { name: p.name, phone: p.phone || '', type: p.docType, ph: p.passHash || '', acct: !!p.passHash }; });
   const biz = {};
@@ -1874,7 +1874,6 @@ function auditSnap(){
   return { appts, pats, biz, cfg };
 }
 const CFG_LABEL = { businessHours: 'Horario del negocio', staff: 'Equipo y horarios de trabajadores', services: 'Servicios', closedDays: 'Cierres', config: 'Configuración de citas', brand: 'Marca', account: 'Perfil de la cuenta', allowClientStaffPick: 'Mostrar trabajadores al cliente', trackPayments: 'Control de pagos' };
-const ATT_LABEL = { attended: 'Asistió', no_show: 'No asistió' };
 function auditPass(){
   if (!auditPrev) { auditPrev = auditSnap(); return; }
   const prev = auditPrev, cur = auditSnap();
@@ -1901,7 +1900,6 @@ function auditPass(){
         Object.assign({}, base, { data: { fecha: c.date, inicio: c.start, 'horas de anticipación': hrs, 'plazo para cancelar (horas)': pol, cancelo: role === 'client' ? 'cliente' : 'administrador' } }));
     }
     if (p.paid !== c.paid) L('appt.paid', `Pago de la cita de ${c.name} (${when}): ${p.paid ? 'pagado' : 'pendiente'} → ${c.paid ? 'pagado' : 'pendiente'}.`, base);
-    if (p.att !== c.att) L('appt.attendance', `Asistencia de ${c.name} (${when}): ${ATT_LABEL[p.att] || 'sin marcar'} → ${ATT_LABEL[c.att] || 'sin marcar'}.`, base);
   });
   Object.keys(cur.pats).forEach(d => {
     const c = cur.pats[d], p = prev.pats[d];
@@ -2568,22 +2566,6 @@ function waitingAppts(){
 }
 function daysWaiting(a){ return a.rescheduleRequestedAt ? Math.floor((Date.now() - a.rescheduleRequestedAt) / 86400000) : 0; }
 function isPastAppt(a){ return combineDateTime(a.date, a.end) < new Date(); }
-function setAttendance(id, val){
-  const a = state.appointments.find(x => x.id === id);
-  if (!a) return;
-  a.attendance = a.attendance === val ? null : val;
-  saveState();
-  render();
-  showToast(a.attendance === 'attended' ? 'Marcado como asistió' : a.attendance === 'no_show' ? 'Marcado como no asistió' : 'Asistencia sin marcar');
-}
-function toggleNoShow(id){
-  const a = state.appointments.find(x => x.id === id);
-  if (!a) return;
-  a.attendance = a.attendance === 'no_show' ? null : 'no_show';
-  saveState();
-  render();
-  showToast(a.attendance === 'no_show' ? 'Marcado como no asistió' : 'Asistencia registrada');
-}
 function resendReschedule(id){
   const a = state.appointments.find(x => x.id === id);
   if (!a) return;
@@ -4122,9 +4104,8 @@ function emptyApptsCard(title, text, withButton){
 }
 function histCard(a){
   const cancelled = a.status === 'CANCELLED';
-  const noShow = a.attendance === 'no_show';
-  const lbl = cancelled ? (a.cancelledBy === 'admin' ? 'Cancelada por el negocio' : 'Cancelada') : (noShow ? 'No asistió' : 'Realizada');
-  const cls = cancelled ? 'cancel' : (noShow ? 'warn' : 'ok');
+  const lbl = cancelled ? (a.cancelledBy === 'admin' ? 'Cancelada por el negocio' : 'Cancelada') : 'Realizada';
+  const cls = cancelled ? 'cancel' : 'ok';
   const meta = [a.serviceName, durationMin(a) + ' min'].filter(Boolean).map(escapeHtml).join(' · ');
   return `
     <div class="hero light">
@@ -4421,7 +4402,7 @@ function apptRow(a, now, showDate){
   const c = staffColor(a.staffId);
   const reason = apptPendingReason(a);
   const meta = [showDate ? cap(displayDateShort(a.date)) : '', a.serviceName, staffShown(a)].filter(Boolean).map(escapeHtml).join(' · ');
-  const chipHtml = a.status === 'CANCELLED' ? chip('danger', 'Cancelada') : a.attendance === 'no_show' ? chip('warning', 'No asistió') : a.attendance === 'attended' ? chip('success', 'Asistió') : reason ? chip('danger', reason === 'Doble reserva' ? 'Doble reserva' : 'Por resolver') : a.rescheduleRequested ? chip('neutral', 'Esperando') : (!payOn() ? '' : a.paid ? chip('success', 'Pagado') : chip('warning', 'Por cobrar'));
+  const chipHtml = a.status === 'CANCELLED' ? chip('danger', 'Cancelada') : reason ? chip('danger', reason === 'Doble reserva' ? 'Doble reserva' : 'Por resolver') : a.rescheduleRequested ? chip('neutral', 'Esperando') : (!payOn() ? '' : a.paid ? chip('success', 'Pagado') : chip('warning', 'Por cobrar'));
   return `
     <div class="arow-wrap">
       <button type="button" class="arow${isProblem(a) ? ' problem' : ''}" onclick="openApptDetail('${a.id}')">
@@ -4775,9 +4756,6 @@ function citaCard(a, now, mode, asRow){
   else if (cancelled) chips = `<span class="chip-hero cancel">Cancelada${a.cancelledBy === 'client' ? ' por el cliente' : ''}</span>`;
   else {
     chips = payOn() ? `<span class="chip-hero ${a.paid ? 'ok' : 'warn'}">${a.paid ? 'Pagado' : 'Pago pendiente'}</span>` : '';
-    if (a.attendance === 'attended') chips += `<span class="chip-hero ok">Asistió</span>`;
-    else if (a.attendance === 'no_show') chips += `<span class="chip-hero warn">No asistió</span>`;
-    else if (past) chips += `<span class="chip-hero neu">Falta marcar asistencia</span>`;
   }
   const btns = [];
   const B = (cls, fn, ic, label, extra) => `<button type="button" ${cls ? `class="${cls}"` : ''} onclick="${fn}" ${extra || ''}>${ic}<span>${label}</span></button>`;
@@ -4791,9 +4769,6 @@ function citaCard(a, now, mode, asRow){
     if (upcoming) {
       btns.push(B('', `sendReminder('${a.id}')`, icon('chat', 20), 'Recordar', `aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}"`));
       btns.push(B('danger', `askCancel('${a.id}')`, icon('close', 20, 2.4), 'Cancelar'));
-    } else {
-      btns.push(B(a.attendance === 'attended' ? 'emph' : '', `setAttendance('${a.id}', 'attended')`, icon('check', 20, 2.4), 'Asistió'));
-      btns.push(B(a.attendance === 'no_show' ? 'emph' : '', `setAttendance('${a.id}', 'no_show')`, icon('close', 20, 2.4), 'No asistió'));
     }
   }
   if (asRow) {
@@ -5794,7 +5769,7 @@ function apptCreatedAt(a){ if (a.createdAt) return a.createdAt; const m = /^a(\d
 function exportRows(from, to){
   const list = state.appointments.filter(a => (!from || a.date >= from) && (!to || a.date <= to)).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
   const withPay = payOn();
-  const head = ['ID', 'Fecha', 'Hora inicio', 'Hora fin', 'Cliente', 'Tipo de documento', 'Documento', 'Teléfono', 'Servicio', 'Trabajador', 'Estado', 'Cancelada por', 'Fecha de cancelación', 'Asistencia']
+  const head = ['ID', 'Fecha', 'Hora inicio', 'Hora fin', 'Cliente', 'Tipo de documento', 'Documento', 'Teléfono', 'Servicio', 'Trabajador', 'Estado', 'Cancelada por', 'Fecha de cancelación']
     .concat(withPay ? ['Pago'] : []).concat(['Creada el', 'Observación']);
   const rows = [head];
   list.forEach(a => {
@@ -5802,8 +5777,7 @@ function exportRows(from, to){
     const cancelled = a.status === 'CANCELLED';
     const reason = apptPendingReason(a);
     const cr = apptCreatedAt(a);
-    const att = cancelled ? '' : (a.attendance === 'attended' ? 'Asistió' : a.attendance === 'no_show' ? 'No asistió' : (isPastAppt(a) ? 'Sin marcar' : 'Aún no ocurre'));
-    rows.push([a.id, a.date, a.start, a.end, a.name, p ? docLabel(p.docType) : '', a.dni, a.phone || '', a.serviceName || '', a.staffName || '', cancelled ? 'Cancelada' : 'Confirmada', cancelled ? (a.cancelledBy === 'client' ? 'Cliente' : 'Negocio') : '', a.cancelledAt ? tsFull(a.cancelledAt) : '', att]
+    rows.push([a.id, a.date, a.start, a.end, a.name, p ? docLabel(p.docType) : '', a.dni, a.phone || '', a.serviceName || '', a.staffName || '', cancelled ? 'Cancelada' : 'Confirmada', cancelled ? (a.cancelledBy === 'client' ? 'Cliente' : 'Negocio') : '', a.cancelledAt ? tsFull(a.cancelledAt) : '']
       .concat(withPay ? [cancelled ? '' : (a.paid ? 'Pagado' : 'Pendiente')] : []).concat([cr ? tsFull(cr) : '', reason || '']));
   });
   return { rows, count: list.length };
@@ -5865,7 +5839,7 @@ function exportCount0(){ return exportRows('', '').count; }
 function renderExportCard(){
   return `
     <h2 class="title-2">Exportar citas</h2>
-    <p class="secondary" style="margin-bottom:14px;">Descarga tus citas en un archivo (CSV, se abre en Excel): confirmadas, canceladas, realizadas o por venir, con cliente, servicio, trabajador, asistencia y pago.</p>
+    <p class="secondary" style="margin-bottom:14px;">Descarga tus citas en un archivo (CSV, se abre en Excel): confirmadas, canceladas, realizadas o por venir, con cliente, servicio, trabajador y pago.</p>
     <button class="btn btn-primary btn-sm" type="button" style="align-self:flex-start;" onclick="openExport()">Descargar</button>
     ${renderExportDrawer()}`;
 }
