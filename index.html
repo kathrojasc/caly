@@ -5127,7 +5127,7 @@ function renderAdminHorarios(){
         <div class="field"><label for="cfg-cancel">Cancelaciones del cliente hasta (horas antes)</label><input id="cfg-cancel" type="number" inputmode="numeric" value="${cfg.cancelNoticeHours}"></div>
       </div>
       <p class="hint">Cancelaciones: después de ese plazo el cliente ya no puede cancelar en línea. 0 = sin límite.</p>
-      ${isProPlan() && activeServices().length ? `<p class="hint">La duración de cada cita la define su servicio (ver Servicios arriba).</p>` : (isProPlan() ? `<p class="hint">En el plan Pro, cada servicio define su propia duración. La de arriba se usa solo cuando una cita no tiene servicio.</p>` : '')}
+      ${isProPlan() && !activeServices().length ? `<p class="hint">En el plan Pro, cada servicio define su propia duración. La de arriba se usa solo cuando una cita no tiene servicio.</p>` : ''}
       <button class="btn btn-primary" type="button" data-save style="align-self:flex-start;" onclick="saveConfig()">Guardar configuración</button>
     </div>
 `;
