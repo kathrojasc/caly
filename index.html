@@ -1307,10 +1307,10 @@ async function remoteClientLogin(){
   if (!isValidDni(doc, type)) return fail(docErrorText(type));
   if (!pw) return fail('Ingresa tu contraseña.');
   try { await sb.signIn(clientEmail(type, doc), pw); }
-  catch (e) { return fail(e.offline ? friendlyError(e) : 'Documento o contraseña incorrectos. Si es tu primera vez, toca "Crear cuenta".'); }
+  catch (e) { return fail(e.offline ? friendlyError(e) : 'Contraseña incorrecta.'); }
   try {
     const ok = await loadClientData();
-    if (!ok) { sb.clear(); return fail('Completa tu registro con "Crear cuenta".'); }
+    if (!ok) { sb.clear(); b.authStage = 'register'; b.reg.type = type; b.reg.doc = rawDoc; return fail('Aún falta completar tu registro. Llena tus datos para continuar.'); }
   } catch (e) { sb.clear(); return fail(friendlyError(e)); }
   b.error = null;
   await refreshBusy().catch(() => {});
@@ -2182,8 +2182,30 @@ function toggleForgot(){ state.showForgot = !state.showForgot; render(); }
 function setLogin(field, value){ state.booking.login[field] = value; }
 function setReg(field, value){ state.booking.reg[field] = value; }
 function goToRegistro(){ state.booking.error = null; state.booking.step = 'registro'; state.showForgot = false; render(); window.scrollTo(0, 0); }
-function goToLogin(){ state.booking.error = null; state.booking.step = 'login'; render(); window.scrollTo(0, 0); }
+function goToLogin(){ state.booking.error = null; state.booking.authStage = 'doc'; state.booking.step = 'login'; render(); window.scrollTo(0, 0); }
 
+async function clientContinue(){
+  const b = state.booking;
+  const type = $('login-type').value;
+  const rawDoc = $('login-doc').value;
+  const doc = normalizeDni(rawDoc, type);
+  b.login = { type, doc: rawDoc };
+  if (!isValidDni(doc, type)) { b.error = docErrorText(type); return render(); }
+  let exists = false;
+  if (REMOTE) {
+    try { exists = !!(await sb.rpc('client_exists', { p_email: clientEmail(type, doc) })); }
+    catch (e) { b.error = friendlyError(e); return render(); }
+  } else {
+    const p = state.patients[doc];
+    exists = !!(p && p.passHash && p.docType === type);
+  }
+  b.error = null;
+  b.reg.type = type; b.reg.doc = rawDoc;
+  b.authStage = exists ? 'login' : 'register';
+  render();
+  const f = $(exists ? 'login-pw' : 'reg-nombres'); if (f) f.focus();
+}
+function changeDoc(){ const b = state.booking; b.error = null; b.authStage = 'doc'; render(); }
 function clientLogin(){
   if (REMOTE) return remoteClientLogin();
   const b = state.booking;
@@ -2200,7 +2222,7 @@ function clientLogin(){
   if (!pw) return fail('Ingresa tu contraseña.');
   const p = state.patients[doc];
   if (p && !p.passHash) return fail('Este documento fue registrado por el negocio. Toca "Crear cuenta" para activar tu cuenta.');
-  if (!p || p.docType !== type || p.passHash !== hashPw(pw)) { authFail(key); return fail('Documento o contraseña incorrectos.'); }
+  if (!p || p.docType !== type || p.passHash !== hashPw(pw)) { authFail(key); return fail('Contraseña incorrecta.'); }
   authOk(key);
   state.session.client = doc;
   logEvent('auth.login', `${p.name} inició sesión.`, { role: 'client', actor: `${p.name} (${docLabel(p.docType)} ${doc})`, doc });
@@ -3675,7 +3697,50 @@ function renderCalendarPicker(b, noAvail){
 function pwInput(id, label, autocomplete){
   return `<div class="field"><label for="${id}">${label}</label><div class="pw-wrap"><input id="${id}" type="password" autocomplete="${autocomplete || 'current-password'}"><button class="pw-toggle" type="button" onclick="togglePw('${id}', this)" aria-label="Mostrar contraseña">${icon('eye', 20)}</button></div></div>`;
 }
+function renderClientAuth(){
+  const b = state.booking;
+  const r = b.reg;
+  const err = b.error;
+  const stage = b.authStage || 'doc';
+  const locked = stage !== 'doc';
+  const reg = stage === 'register';
+  return `
+    <div class="page w456">
+      <div class="hdr" style="margin-top:8px;">${brandBlock()}</div>
+      <h1 class="title-1" style="margin-top:32px;">${reg ? 'Crea tu cuenta' : 'Reserva tu cita'}</h1>
+      <p class="secondary" style="margin-top:6px;">${stage === 'doc' ? 'Ingresa tu documento para continuar.' : reg ? 'No encontramos una cuenta con este documento. Completa tus datos una sola vez; después reservas solo con tu documento y contraseña.' : 'Ya tienes una cuenta. Ingresa tu contraseña.'}</p>
+      <form class="stack" style="margin-top:24px;gap:16px;" onsubmit="event.preventDefault(); ${stage === 'doc' ? 'clientContinue()' : reg ? 'clientRegister()' : 'clientLogin()'}">
+        <div class="field">
+          <label for="login-type">Tipo de documento</label>
+          <select id="login-type" ${locked ? 'disabled' : ''} onchange="setLogin('type', this.value); render()">${docOptions(b.login.type)}</select>
+        </div>
+        <div class="field">
+          <label for="login-doc">Número de documento</label>
+          <input id="login-doc" inputmode="${b.login.type === 'DNI' ? 'numeric' : 'text'}" autocomplete="username" ${locked ? 'disabled' : 'autofocus'} value="${escapeHtml(b.login.doc)}" oninput="setLogin('doc', this.value)" ${err && !locked ? 'aria-invalid="true"' : ''}>
+          ${locked ? `<button class="btn-text" type="button" style="align-self:flex-start;min-height:0;padding:0;" onclick="changeDoc()">Cambiar documento</button>` : ''}
+        </div>
+        ${stage === 'login' ? pwInput('login-pw', 'Contraseña') : ''}
+        ${reg ? `
+        <div class="field"><label for="reg-nombres">Nombres</label><input id="reg-nombres" autocomplete="given-name" value="${escapeHtml(r.nombres)}" oninput="setReg('nombres', this.value)"></div>
+        <div class="field"><label for="reg-apellidos">Apellidos</label><input id="reg-apellidos" autocomplete="family-name" value="${escapeHtml(r.apellidos)}" oninput="setReg('apellidos', this.value)"></div>
+        <div class="field"><label for="reg-phone">Teléfono</label><input id="reg-phone" type="tel" inputmode="tel" autocomplete="tel" value="${escapeHtml(r.phone)}" oninput="setReg('phone', this.value)"></div>
+        ${pwInput('reg-pw', 'Crea una contraseña', 'new-password')}
+        ${pwInput('reg-pw2', 'Confirmar contraseña', 'new-password')}
+        <span class="hint" style="margin-top:-8px;">Mínimo 6 caracteres.</span>
+        <label class="consent" for="reg-consent">
+          <input id="reg-consent" type="checkbox" ${r.consent ? 'checked' : ''} onchange="state.booking.reg.consent = this.checked">
+          <span>Acepto que <b>${escapeHtml((currentBusiness() && currentBusiness().name) || 'el negocio')}</b> y Caly guarden mis datos para agendar mis citas y contactarme sobre ellas. Leí la <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('privacidad')">política de privacidad</button>.</span>
+        </label>` : ''}
+        ${err ? `<p class="error-text" role="alert">${escapeHtml(err)}</p>` : ''}
+        <button class="btn btn-primary btn-block" type="submit">${stage === 'doc' ? 'Continuar' : reg ? 'Crear cuenta' : 'Ingresar'}</button>
+        ${stage === 'login' ? `<button class="btn-text" type="button" style="align-self:center;" onclick="toggleForgot()" aria-expanded="${state.showForgot}">¿Olvidaste tu contraseña?</button>
+        ${state.showForgot ? `<div class="notice">Pídele al negocio que restablezca tu contraseña. Te entregará una contraseña temporal para ingresar.</div>` : ''}` : ''}
+      </form>
+      ${REMOTE || stage !== 'doc' ? '' : `<div class="notice demo" style="margin-top:18px;">Demo: DNI <code>30111222</code> · contraseña <code>marina123</code></div>`}
+    </div>`;
+}
 function renderAuth(role){
+  if (role === 'client') return renderClientAuth();
   const b = state.booking;
   const err = role === 'client' ? b.error : (state.authError && state.authError.role === role ? state.authError.msg : null);
   const copy = {
@@ -4092,7 +4157,7 @@ function renderPaciente(){
 
   if (!bizAvailable()) return renderUnavailable('Este negocio no está disponible por ahora', 'Vuelve a intentarlo más tarde o contacta directamente al negocio.');
   if (b.step === 'login') return renderAuth('client');
-  if (b.step === 'registro') return renderRegistro();
+  if (b.step === 'registro') return renderAuth('client');
   if (b.step === 'perfil') return renderPerfil(b);
   if (b.step === 'panel') return renderPacientePanel(b);
   if (b.step === 'citas') return renderMisCitas(b);

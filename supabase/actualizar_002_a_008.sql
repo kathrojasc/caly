@@ -260,3 +260,12 @@ begin
 end $$;
 revoke execute on function public.reset_admin_password(uuid) from public, anon;
 grant execute on function public.reset_admin_password(uuid) to authenticated;
+
+-- ===== 008 =====
+
+create or replace function public.client_exists(p_email text) returns boolean
+language sql security definer stable set search_path = public, auth as $$
+  select p_email like '%@clientes.caly.pe' and exists (select 1 from auth.users where lower(email) = lower(p_email));
+$$;
+revoke execute on function public.client_exists(text) from public;
+grant execute on function public.client_exists(text) to anon, authenticated;
