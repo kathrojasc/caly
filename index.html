@@ -618,6 +618,7 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
   body.admin-on .tab { flex: 0 0 auto; height: 46px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 14px; font-size: 15px; position: relative; }
   body.admin-on .tab svg { width: 22px; height: 22px; }
   body.admin-on .tab .tab-dot { top: 14px; right: 14px; left: auto; }
+  body.admin-on .admin-brand { display: none; }
   body.admin-on .side-brand { display: flex; flex-direction: column; gap: 2px; padding: 4px 14px 22px; }
   body.admin-on .sb-name { font-size: 18px; font-weight: 700; line-height: 24px; overflow-wrap: anywhere; }
   body.admin-on .sb-sub { font-size: 13px; color: var(--color-text-secondary); }
@@ -5588,10 +5589,10 @@ function renderAdmin(){
     return renderServiceMigration(pendingServiceAppts());
   }
   return `
-    <div class="page w880 admin-page">${renderAdminContent()}</div>
+    <div class="page w880 admin-page"><div class="hdr admin-brand">${brandBlock()}</div>${renderAdminContent()}</div>
     ${renderApptDetail()}${renderRescheduleModal()}${renderCancelModal()}${renderClosureModal()}${renderNotifyModal()}${renderMergeModal()}${renderRemoveStaffModal()}
     <nav class="tabbar" aria-label="Secciones">
-      <div class="side-brand"><span class="sb-name">${escapeHtml((myBiz && myBiz.name) || 'Caly')}</span><span class="sb-sub">Panel del negocio</span></div>
+      <div class="side-brand">${brandBlock()}<span class="sb-sub">Panel del negocio</span></div>
       ${ADMIN_NAV.map(t => `
         <button class="tab" type="button" ${state.adminTab === t.id ? 'aria-current="page"' : ''} onclick="setAdminTab('${t.id}')">
           ${icon(t.icon, 24, 2)}<span>${t.label}</span>${t.id === 'inicio' && unreadCount() ? '<span class="tab-dot" aria-label="Novedades sin leer"></span>' : ''}
