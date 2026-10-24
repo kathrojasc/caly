@@ -3855,6 +3855,7 @@ function renderMisCitas(b){
   return `
     <div class="page w560">
       <h1 class="title-1" style="margin:28px 0 18px;">Mis citas</h1>
+      ${(tab === 'proximas' && !upcoming.length) ? '' : `<button class="btn btn-primary btn-block btn-xl" type="button" style="margin-bottom:20px;" onclick="goToReservar()">Reservar</button>`}
       <div class="seg full" role="tablist" aria-label="Mis citas">
         <button type="button" role="tab" aria-pressed="${tab === 'proximas'}" onclick="setMisTab('proximas')">Próximas citas</button>
         <button type="button" role="tab" aria-pressed="${tab === 'historial'}" onclick="setMisTab('historial')">Historial</button>
