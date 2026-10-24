@@ -640,6 +640,42 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
   .as-day .rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; }
   .cl-rows, .staff-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 12px; }
 }
+
+.table-only { display: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (min-width: 1024px) {
+  .cards-only { display: none !important; }
+  .table-only { display: block; margin-top: 14px; border: 1px solid var(--color-border); border-radius: var(--radius-l); overflow: hidden; background: #fff; }
+  .ctable { width: 100%; border-collapse: collapse; }
+  .ctable th { text-align: left; font-size: 13px; font-weight: 600; color: var(--color-text-secondary); padding: 12px 16px; background: var(--color-surface); }
+  .ctable td { padding: 12px 16px; font-size: 15px; vertical-align: middle; border-top: 1px solid var(--color-border); }
+  .ctable td b { display: block; font-weight: 600; }
+  .ctable td span.tnum { display: block; font-size: 14px; color: var(--color-text-secondary); }
+  .ctable .ct-when { white-space: nowrap; }
+  .ctable .chip-row { margin: 0; }
+  .ctable .ct-actions { white-space: nowrap; text-align: right; }
+  .ctable .ct-actions button { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; margin-left: 6px; border: 0; border-radius: var(--radius-pill); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 13.5px; font-weight: 600; }
+  .ctable .ct-actions button svg { width: 16px; height: 16px; }
+  .ctable .ct-actions button.danger { background: var(--color-danger-bg); color: var(--color-danger); }
+  .ctable .ct-actions button.emph { background: #0B0B0C; color: #fff; }
+  .ctable tr:hover td { background: #fafafa; }
+  .ctable .chip-hero { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: var(--radius-pill); font-size: 13px; font-weight: 700; white-space: nowrap; background: var(--color-chip-neutral); color: var(--color-chip-neutral-text); }
+  .ctable .chip-hero.warn { background: var(--color-warning-bg); color: var(--color-warning); }
+  .ctable .chip-hero.ok { background: var(--color-success-bg); color: var(--color-success); }
+  .ctable .chip-hero.cancel { background: var(--color-danger-bg); color: var(--color-danger); }
+  .ctable td:nth-child(2) { min-width: 150px; }
+  .as-day .ctable .ct-actions button { width: 36px; padding: 0; justify-content: center; }
+  .as-day .ctable .ct-actions button span { display: none; }
+  .agenda-split { grid-template-columns: 380px minmax(0, 1fr); }
+  .as-day .ctable th, .as-day .ctable td { padding: 12px 8px; }
+  .as-day .ctable th:first-child, .as-day .ctable td:first-child { padding-left: 14px; }
+  .as-day .ctable th { white-space: nowrap; }
+  .as-day .ctable .ct-actions { padding-right: 12px; }
+  .as-day .ctable .ct-actions button { width: 34px; height: 34px; margin-left: 4px; }
+  .as-day .ctable td:nth-child(2) { min-width: 0; }
+  .as-day .table-only { margin-top: 0; }
+  .dash-cols { grid-template-columns: minmax(0, 1fr) 340px; }
+}
 </style>
 </head>
 <body>
@@ -4271,7 +4307,7 @@ function renderAgendaView(){
     </div>
       ${sel !== now ? `<button class="btn-text" type="button" style="white-space:nowrap;min-height:36px;flex-shrink:0;" onclick="pickAgendaDay('${now}')">Ir a hoy</button>` : ''}
     </div>
-    ${list.length ? `<div class="rows" style="margin-top:14px;">${list.map(a => citaCard(a, now, citaMode(a))).join('')}</div>` : `<p class="secondary" style="margin-top:16px;">No hay citas este día.</p>`}
+    ${list.length ? `<div style="margin-top:14px;">${citaList(list, now, citaMode)}</div>` : `<p class="secondary" style="margin-top:16px;">No hay citas este día.</p>`}
     </div></div>`;
 }
 function calLayout(list){
@@ -4458,15 +4494,15 @@ function renderAdminInicio(){
     </div>
     <div class="dash-cols${(state.activity.length || doubleBookings().length || (() => { const p = payInfo(currentBusiness()); return p && p.overdue; })()) ? '' : ' no-side'}"><div class="dc-main">
     ${(() => {
-      const LIM = isDesktop() ? 6 : 3;
+      const LIM = isDesktop() ? 8 : 3;
       const up = state.appointments.filter(x => x.status === 'CONFIRMED' && !isPastAppt(x)).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
       const bad = state.appointments.filter(isProblem).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
       return `
     <h2 class="title-2">Próximas citas</h2>
-    ${up.length ? `<div class="rows">${up.slice(0, LIM).map(x => citaCard(x, todayIso, citaMode(x))).join('')}</div>${up.length > LIM ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:12px;" onclick="goAgenda()">Ver más (${up.length - LIM})</button>` : ''}` : `<p class="secondary">No tienes citas próximas.</p>`}
+    ${up.length ? `${citaList(up.slice(0, LIM), todayIso, citaMode)}${up.length > LIM ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:12px;" onclick="goAgenda()">Ver más (${up.length - LIM})</button>` : ''}` : `<p class="secondary">No tienes citas próximas.</p>`}
     ${bad.length ? `
     <h2 class="title-2">Citas con problemas</h2>
-    <div class="rows">${bad.slice(0, LIM).map(x => citaCard(x, todayIso, citaMode(x))).join('')}</div>
+    ${citaList(bad.slice(0, LIM), todayIso, citaMode)}
     ${bad.length > LIM ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:12px;" onclick="goAtencion()">Ver más (${bad.length - LIM})</button>` : ''}` : ''}`;
     })()}
     ${(() => {
@@ -4517,8 +4553,12 @@ function renderAdminInicio(){
   `;
 }
 
+function citaList(list, now, modeFn){
+  return `<div class="rows cards-only">${list.map(x => citaCard(x, now, modeFn(x))).join('')}</div>
+    <div class="table-only"><table class="ctable"><thead><tr><th>Fecha y hora</th><th>Cliente</th><th>Servicio</th><th>Trabajador</th><th>Estado</th><th><span class="sr-only">Acciones</span></th></tr></thead><tbody>${list.map(x => citaCard(x, now, modeFn(x), true)).join('')}</tbody></table></div>`;
+}
 function isDesktop(){ return window.matchMedia && window.matchMedia('(min-width: 1024px)').matches; }
-function citaCard(a, now, mode){
+function citaCard(a, now, mode, asRow){
   const pend = mode === true || mode === 'pend';
   const wait = mode === 'wait';
   const cancelled = a.status === 'CANCELLED';
@@ -4553,6 +4593,18 @@ function citaCard(a, now, mode){
       btns.push(B(a.attendance === 'attended' ? 'emph' : '', `setAttendance('${a.id}', 'attended')`, icon('check', 20, 2.4), 'Asistió'));
       btns.push(B(a.attendance === 'no_show' ? 'emph' : '', `setAttendance('${a.id}', 'no_show')`, icon('close', 20, 2.4), 'No asistió'));
     }
+  }
+  if (asRow) {
+    const rb = btns.map(b => { const m = b.match(/<span>(.*?)<\/span>/); return m ? b.replace('<button ', `<button title="${m[1]}" `) : b; });
+    return `
+    <tr>
+      <td class="ct-when"><b>${when}</b><span class="tnum">${a.start}</span></td>
+      <td><b>${escapeHtml(a.name)}</b>${a.phone ? `<span class="tnum">${escapeHtml(a.phone)}</span>` : ''}</td>
+      <td>${escapeHtml(a.serviceName || '—')}</td>
+      <td>${escapeHtml(a.staffName || '—')}</td>
+      <td>${chips ? `<div class="chip-row">${chips}</div>` : '<span class="caption">—</span>'}</td>
+      <td class="ct-actions">${rb.join('')}</td>
+    </tr>`;
   }
   return `
     <div class="hero light${pend ? ' problem' : wait ? ' waiting' : ''}">
