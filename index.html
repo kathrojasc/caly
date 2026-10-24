@@ -607,6 +607,39 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
 .has-tabbar footer.foot { display: none; }
 .has-tabbar main#view { padding-bottom: 104px; }
 @media (max-width: 520px) { .hdr { padding: 0 -4px; } .media .day { font-size: 80px; } }
+
+/* Escritorio: panel del administrador */
+.side-brand, .side-new { display: none; }
+@media (min-width: 1024px) {
+  body.admin-on .demo-bar { max-width: none; margin-left: 232px; }
+  body.admin-on main#view { padding-left: 232px; padding-bottom: 0; }
+  body.admin-on .page.admin-page { max-width: 1240px; padding: 8px 40px 56px; }
+  body.admin-on .tabbar { top: 0; left: 0; bottom: 0; transform: none; width: 232px; height: auto; padding: 22px 14px; flex-direction: column; gap: 4px; border-radius: 0; background: #fff; border-right: 1px solid var(--color-border); box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  body.admin-on .tab { flex: 0 0 auto; height: 46px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 14px; font-size: 15px; position: relative; }
+  body.admin-on .tab svg { width: 22px; height: 22px; }
+  body.admin-on .tab .tab-dot { top: 14px; right: 14px; left: auto; }
+  body.admin-on .side-brand { display: flex; flex-direction: column; gap: 2px; padding: 4px 14px 22px; }
+  body.admin-on .sb-name { font-size: 18px; font-weight: 700; line-height: 24px; overflow-wrap: anywhere; }
+  body.admin-on .sb-sub { font-size: 13px; color: var(--color-text-secondary); }
+  body.admin-on .side-new { display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: auto; height: 48px; border: 0; border-radius: var(--radius-pill); background: #0B0B0C; color: #fff; font: inherit; font-size: 15px; font-weight: 600; }
+  body.admin-on .toast { bottom: 32px; }
+
+  .dash-top { margin-top: 20px; }
+  .dash-top .btn-xl, .top-actions .btn-xl { display: none; }
+  .stats.one { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 12px; }
+  .dash-cols { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 36px; align-items: start; }
+  .dc-main .rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; }
+  .dash-cols.no-side { grid-template-columns: minmax(0, 1fr); }
+  .dc-side .news { margin-top: 24px; }
+  .dc-side .alert-card { margin-top: 24px; }
+
+  .top-actions { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+  .agenda-split { display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 36px; align-items: start; }
+  .as-cal { position: sticky; top: 16px; }
+  .as-day > .row:first-child { margin-top: 14px !important; }
+  .as-day .rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; }
+  .cl-rows, .staff-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 12px; }
+}
 </style>
 </head>
 <body>
@@ -4228,8 +4261,9 @@ function renderAgendaView(){
   const closures = state.closedDays.filter(c => closureAppliesOn(c, sel));
   const fullClosed = closures.filter(c => !c.startTime);
   const list = agendaAppts(sel);
-  return `${controls}
-    <div style="margin-top:14px;">${renderMonthPicker(sel, now)}</div>
+  return `<div class="agenda-split"><div class="as-cal">${controls}
+    <div style="margin-top:14px;">${renderMonthPicker(sel, now)}</div></div>
+    <div class="as-day">
     <div class="row between" style="margin-top:18px;flex-wrap:nowrap;gap:10px;">
       <div class="row" style="gap:8px;min-width:0;">
       ${(() => { const dl = `${WEEKDAYS_LONG[dayOfWeek(sel)]} ${dayNum(sel)}`; return fullClosed.length ? chip('danger', `${dl} · Cerrado${fullClosed[0].note ? ': ' + escapeHtml(fullClosed[0].note) : ''}`) : (biz.length ? chip('neutral', `${dl} · Atención ${biz.map(r => r.start + '–' + r.end).join(', ')}`) : chip('neutral', `${dl} · Sin atención`)); })()}
@@ -4237,7 +4271,8 @@ function renderAgendaView(){
     </div>
       ${sel !== now ? `<button class="btn-text" type="button" style="white-space:nowrap;min-height:36px;flex-shrink:0;" onclick="pickAgendaDay('${now}')">Ir a hoy</button>` : ''}
     </div>
-    ${list.length ? `<div class="rows" style="margin-top:14px;">${list.map(a => citaCard(a, now, citaMode(a))).join('')}</div>` : `<p class="secondary" style="margin-top:16px;">No hay citas este día.</p>`}`;
+    ${list.length ? `<div class="rows" style="margin-top:14px;">${list.map(a => citaCard(a, now, citaMode(a))).join('')}</div>` : `<p class="secondary" style="margin-top:16px;">No hay citas este día.</p>`}
+    </div></div>`;
 }
 function calLayout(list){
   const out = []; let cluster = []; let clusterEnd = -1;
@@ -4408,28 +4443,31 @@ function renderAdminInicio(){
   return `
     ${adminHeader('Hola de nuevo', longDate(todayIso))}
 
+    <div class="dash-top">
     <div class="link-card2">
       <div class="lc-head"><span class="ic">${icon('link', 20)}</span><div style="min-width:0;"><p class="lc-title">Tu enlace de reservas</p><p class="caption">Compártelo con tus clientes para que agenden solos</p></div></div>
       <div class="lc-row"><div class="lc-url tnum">${escapeHtml(bookingLink())}</div><button class="btn btn-primary btn-sm" type="button" onclick="copyBookingLink()">Copiar</button></div>
     </div>
     <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:12px;" onclick="goNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
+    </div>
     <div class="stats one">
       <button type="button" class="stat${todayAppts.length ? '' : ' zero'}" onclick="goAgenda()"><span class="ic">${icon('calendar', 22)}</span><div><div class="n">${todayAppts.length}</div><div class="l">Citas hoy</div></div></button>
       <button type="button" class="stat${next7Count ? '' : ' zero'}" onclick="goAgenda()"><span class="ic">${icon('clock', 22)}</span><div><div class="n">${next7Count}</div><div class="l">Próximos 7 días</div></div></button>
       <button type="button" class="stat ${pendingCount > 0 ? 'danger' : 'zero'}" onclick="goPendientes()"><span class="ic">${icon('alert', 22)}</span><div><div class="n">${pendingCount}</div><div class="l">Por resolver</div></div></button>
       ${payOn() ? `      <div class="stat ${pendingPayCount > 0 ? 'warn' : 'zero'}"><span class="ic" style="${pendingPayCount > 0 ? 'color:var(--color-warning)' : ''}">${icon('info', 22)}</span><div><div class="n">${pendingPayCount}</div><div class="l">Pagos pendientes</div></div></div>` : ''}
     </div>
+    <div class="dash-cols${(state.activity.length || doubleBookings().length || (() => { const p = payInfo(currentBusiness()); return p && p.overdue; })()) ? '' : ' no-side'}"><div class="dc-main">
     ${(() => {
-      const nowD = new Date();
+      const LIM = isDesktop() ? 6 : 3;
       const up = state.appointments.filter(x => x.status === 'CONFIRMED' && !isPastAppt(x)).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
       const bad = state.appointments.filter(isProblem).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
       return `
     <h2 class="title-2">Próximas citas</h2>
-    ${up.length ? `<div class="rows">${up.slice(0, 3).map(x => citaCard(x, todayIso, citaMode(x))).join('')}</div>${up.length > 3 ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:12px;" onclick="goAgenda()">Ver más (${up.length - 3})</button>` : ''}` : `<p class="secondary">No tienes citas próximas.</p>`}
+    ${up.length ? `<div class="rows">${up.slice(0, LIM).map(x => citaCard(x, todayIso, citaMode(x))).join('')}</div>${up.length > LIM ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:12px;" onclick="goAgenda()">Ver más (${up.length - LIM})</button>` : ''}` : `<p class="secondary">No tienes citas próximas.</p>`}
     ${bad.length ? `
     <h2 class="title-2">Citas con problemas</h2>
-    <div class="rows">${bad.slice(0, 3).map(x => citaCard(x, todayIso, citaMode(x))).join('')}</div>
-    ${bad.length > 3 ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:12px;" onclick="goAtencion()">Ver más (${bad.length - 3})</button>` : ''}` : ''}`;
+    <div class="rows">${bad.slice(0, LIM).map(x => citaCard(x, todayIso, citaMode(x))).join('')}</div>
+    ${bad.length > LIM ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:12px;" onclick="goAtencion()">Ver más (${bad.length - LIM})</button>` : ''}` : ''}`;
     })()}
     ${(() => {
       const wc = waitingAppts().length;
@@ -4443,6 +4481,7 @@ function renderAdminInicio(){
       </div>
     </div>` : '';
     })()}
+    </div><div class="dc-side">
     ${(() => { const p = payInfo(currentBusiness()); return p && p.overdue ? `
     <div class="alert-card" role="alert">
       <span class="ic">${icon('alert', 22)}</span>
@@ -4474,10 +4513,11 @@ function renderAdminInicio(){
           </div>`).join('')}
       </div>
     </div>` : ''}
-
+    </div></div>
   `;
 }
 
+function isDesktop(){ return window.matchMedia && window.matchMedia('(min-width: 1024px)').matches; }
 function citaCard(a, now, mode){
   const pend = mode === true || mode === 'pend';
   const wait = mode === 'wait';
@@ -4685,7 +4725,7 @@ function renderAdminClientes(){
     </div>
     <p class="caption" style="margin:12px 4px 0;">${list.length} cliente${list.length === 1 ? '' : 's'}</p>
     ${list.length === 0 ? `<p class="secondary" style="margin-top:16px;">No encontramos clientes con esa búsqueda.</p>` : `
-    <div class="rows" style="margin-top:12px;">
+    <div class="rows cl-rows" style="margin-top:12px;">
       ${shown.map(({ doc, p }) => {
         const n = state.appointments.filter(a => a.dni === doc).length;
         return `
@@ -4709,8 +4749,10 @@ function setCitasFilter(f){ state.citasFilter = f; state.citasLimit = 15; render
 function weekStart(iso){ const dow = dateFromISO(iso).getDay(); return addDaysISO(iso, dow === 0 ? -6 : 1 - dow); }
 function citasTop(){
   return `
+    <div class="top-actions">
     ${adminHeader('Citas')}
-    <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:20px;" onclick="openNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>`;
+    <button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:20px;" onclick="openNewAppt()">${icon('plus', 22, 2.6)} Nueva cita</button>
+    </div>`;
 }
 function renderAdminCitas(){
   return `${citasTop()}${renderAgendaView()}`;
@@ -5050,7 +5092,7 @@ function renderAdminHorarios(){
 
     <h2 class="title-2">Equipo y asignación</h2>
     <p class="secondary" style="margin-bottom:14px;">Cada trabajador tiene su propio horario. Cuando un cliente reserva, Caly asigna automáticamente al trabajador disponible siguiendo un turno rotativo (round robin), para repartir las citas de forma pareja.</p>
-    <div class="rows">${state.staff.map(member => `
+    <div class="rows staff-rows">${state.staff.map(member => `
       <div class="card stack">
         <div class="row between" style="flex-wrap:nowrap;">
           <div class="row" style="flex-wrap:nowrap;gap:12px;min-width:0;">
@@ -5431,10 +5473,12 @@ function renderAdmin(){
     <div class="page w880 admin-page">${renderAdminContent()}</div>
     ${renderApptDetail()}${renderRescheduleModal()}${renderCancelModal()}${renderClosureModal()}${renderNotifyModal()}${renderMergeModal()}${renderRemoveStaffModal()}
     <nav class="tabbar" aria-label="Secciones">
+      <div class="side-brand"><span class="sb-name">${escapeHtml((myBiz && myBiz.name) || 'Caly')}</span><span class="sb-sub">Panel del negocio</span></div>
       ${ADMIN_NAV.map(t => `
         <button class="tab" type="button" ${state.adminTab === t.id ? 'aria-current="page"' : ''} onclick="setAdminTab('${t.id}')">
           ${icon(t.icon, 24, 2)}<span>${t.label}</span>${t.id === 'inicio' && unreadCount() ? '<span class="tab-dot" aria-label="Novedades sin leer"></span>' : ''}
         </button>`).join('')}
+      <button class="side-new" type="button" onclick="${'openNewAppt()'}">${icon('plus', 20, 2.6)} Nueva cita</button>
     </nav>`;
 }
 
@@ -5794,6 +5838,7 @@ function renderSuper(){
 function render(){
   document.body.classList.toggle('brand-on', state.view === 'paciente');
   document.body.classList.toggle('has-tabbar', (state.view === 'admin' && !!state.session.admin) || clientNavVisible());
+  document.body.classList.toggle('admin-on', state.view === 'admin' && !!state.session.admin && !state.newAppt);
   if (REMOTE && ROUTE.kind === 'home') { document.getElementById('view').innerHTML = '<div class="page w456"><div class="hdr" style="margin-top:64px;">' + brandBlock() + '</div><h1 class="title-1" style="margin-top:32px;">Reserva de citas</h1><p class="secondary" style="margin-top:8px;">Para reservar, usa el enlace que te compartió tu negocio.</p></div>'; return; }
   if (REMOTE && state.booting) { document.getElementById('view').innerHTML = '<div class="page"><p class="secondary" style="margin-top:64px;text-align:center;">Cargando…</p></div>'; return; }
   ['paciente', 'admin', 'super'].forEach(v => {
@@ -5857,6 +5902,13 @@ new MutationObserver(() => {
 // Refresco a medianoche: si cambia el día, recalcula "hoy"
 let lastDay = todayISO();
 setInterval(() => { const d = todayISO(); if (d !== lastDay) { lastDay = d; render(); } }, 60000);
+
+(function(){
+  if (!window.matchMedia) return;
+  const mq = window.matchMedia('(min-width: 1024px)');
+  const onChange = () => { try { if (state.view === 'admin' && state.session.admin && !document.querySelector('.drawer-back')) render(); } catch (e) {} };
+  if (mq.addEventListener) mq.addEventListener('change', onChange);
+})();
 </script>
 
 </body></html>
