@@ -677,8 +677,8 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
   .as-day .table-only { margin-top: 0; }
   .dash-cols { grid-template-columns: minmax(0, 1fr) 340px; }
 }
-.date-pill { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 6px 0 16px; border-radius: var(--radius-pill); background: var(--color-surface); font-size: 14px; font-weight: 600; }
-.date-pill input[type=date] { width: auto; height: 34px; border: 0; background: #fff; border-radius: var(--radius-pill); padding: 0 12px; font: inherit; font-size: 14px; }
+.date-pill { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: var(--radius-pill); background: var(--color-surface); font-size: 14px; font-weight: 600; overflow: hidden; }
+.date-pill input[type=date] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -4330,7 +4330,7 @@ function shiftAgendaMonth(n){
 }
 function citaMode(a){ return apptPendingReason(a) ? 'pend' : (a.rescheduleRequested ? 'wait' : false); }
 function setCitasTab(t){ state.citasTab = t; state.citasLimit = 15; render(); }
-function setCitasDate(v){ if (!state.citasDates) state.citasDates = {}; state.citasDates[state.citasTab || 'proximas'] = v || ''; state.citasLimit = 15; render(); }
+function setCitasDate(v){ if (!state.citasDates) state.citasDates = {}; state.citasDates[['historial', 'proximas'].includes(state.citasTab) ? state.citasTab : 'todas'] = v || ''; state.citasLimit = 15; render(); }
 function renderAgendaView(){
   const now = todayISO();
   const tab = ['historial', 'proximas'].includes(state.citasTab) ? state.citasTab : 'todas';
@@ -4359,7 +4359,7 @@ function renderAgendaView(){
       <input id="citas-q" type="search" placeholder="Buscar nombre, DNI o teléfono" aria-label="Buscar citas" value="${escapeHtml(q)}" oninput="setCitasQuery(this.value)">
     </div>
     <div class="row date-filter" style="margin-top:12px;gap:8px;flex-wrap:nowrap;">
-      <label class="date-pill" for="citas-date"><span>Fecha</span><input id="citas-date" type="date" value="${dateF}" onchange="setCitasDate(this.value)"></label>
+      <label class="date-pill" for="citas-date">${icon('calendar', 18, 2)}<span>${dateF ? escapeHtml(cap(displayDateShort(dateF))) : 'Todas las fechas'}</span><input id="citas-date" type="date" value="${dateF}" aria-label="Filtrar por fecha" onclick="try { this.showPicker(); } catch (e) {}" onchange="setCitasDate(this.value)"></label>
       ${dateF ? `<button class="btn-text" type="button" style="min-height:36px;" onclick="setCitasDate('')">Quitar fecha</button>` : ''}
     </div>
     ${tab === 'proximas' || staffSel ? `<div class="row" style="margin-top:12px;gap:8px;">
