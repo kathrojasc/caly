@@ -4344,7 +4344,7 @@ function renderAgendaView(){
       <option value="">Todos los trabajadores</option>
       ${state.staff.map(m => `<option value="${m.id}" ${state.calStaff === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
     </select>` : '';
-  const base = state.appointments.filter(a => staffOk(a) && citaMatches(a, q) && (!dateF || a.date === dateF) && (tab === 'todas' ? true : tab === 'proximas' ? isNext(a) && (!state.citasProblems || isProblem(a)) : !isNext(a)));
+  const base = state.appointments.filter(a => staffOk(a) && citaMatches(a, q) && (!dateF || a.date === dateF) && (tab === 'todas' ? (!state.citasProblems || isProblem(a)) : tab === 'proximas' ? isNext(a) && (!state.citasProblems || isProblem(a)) : !isNext(a)));
   const sorted = base.sort((x, y) => tab === 'proximas' ? (x.date + x.start).localeCompare(y.date + y.start) : (y.date + y.start).localeCompare(x.date + x.start));
   const shown = sorted.slice(0, state.citasLimit);
   const empty = (q || dateF) ? 'No encontramos citas con esa búsqueda o fecha.' : tab === 'todas' ? 'Todavía no hay citas.' : tab === 'historial' ? 'Todavía no hay citas en el historial.' : (state.citasProblems ? 'No hay citas con problemas.' : 'No hay citas próximas.');
@@ -4362,8 +4362,8 @@ function renderAgendaView(){
       <label class="date-pill" for="citas-date">${icon('calendar', 18, 2)}<span>${dateF ? escapeHtml(cap(displayDateShort(dateF))) : 'Todas las fechas'}</span><input id="citas-date" type="date" value="${dateF}" aria-label="Filtrar por fecha" onclick="try { this.showPicker(); } catch (e) {}" onchange="setCitasDate(this.value)"></label>
       ${dateF ? `<button class="btn-text" type="button" style="min-height:36px;" onclick="setCitasDate('')">Quitar fecha</button>` : ''}
     </div>
-    ${tab === 'proximas' || staffSel ? `<div class="row" style="margin-top:12px;gap:8px;">
-      ${tab === 'proximas' ? `<button type="button" class="pill-opt prob${state.citasProblems ? ' on' : ''}" aria-pressed="${!!state.citasProblems}" onclick="toggleProblems()"><i class="dot" style="background:var(--color-danger)"></i>Con problemas${probCount ? ` (${probCount})` : ''}</button>` : ''}
+    ${tab !== 'historial' || staffSel ? `<div class="row" style="margin-top:12px;gap:8px;">
+      ${tab !== 'historial' ? `<button type="button" class="pill-opt prob${state.citasProblems ? ' on' : ''}" aria-pressed="${!!state.citasProblems}" onclick="toggleProblems()"><i class="dot" style="background:var(--color-danger)"></i>Con problemas${probCount ? ` (${probCount})` : ''}</button>` : ''}
       ${staffSel}
     </div>` : ''}
     ${shown.length ? `<div style="margin-top:14px;">${citaList(shown, now, citaMode)}</div>
