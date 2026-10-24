@@ -1535,10 +1535,10 @@ function renderTermsGate(){
         <button class="btn btn-soft btn-block" type="button" onclick="openLegal('privacidad')">Leer la política de privacidad</button>
       </div>
       <label class="consent" style="margin-top:22px;" for="terms-ok">
-        <input id="terms-ok" type="checkbox" ${state.termsCheck ? 'checked' : ''} onchange="state.termsCheck = this.checked">
-        <span>Leí y acepto los términos de uso y la política de privacidad. Entiendo que soy responsable del manejo de los datos de mis clientes.</span>
+        <input id="terms-ok" type="checkbox" ${state.termsCheck ? 'checked' : ''} onchange="state.termsCheck = this.checked; const sb = document.getElementById('terms-gate-btn'); if (sb) sb.disabled = !this.checked;">
+        <span>Leí y acepto los Términos de uso y la política de privacidad de Caly. Entiendo que Caly está en etapa de prueba y que soy responsable del manejo de los datos de mis clientes.</span>
       </label>
-      <button class="btn btn-primary btn-block" type="button" style="margin-top:18px;" onclick="acceptTerms()">Aceptar y continuar</button>
+      <button id="terms-gate-btn" class="btn btn-primary btn-block" type="button" style="margin-top:18px;" ${state.termsCheck ? '' : 'disabled'} onclick="acceptTerms()">Aceptar y continuar</button>
     </div>`;
 }
 async function acceptTerms(){
@@ -3802,7 +3802,7 @@ function renderClientAuth(){
         <span class="hint" style="margin-top:-8px;">Mínimo 6 caracteres.</span>
         <label class="consent" for="reg-consent">
           <input id="reg-consent" type="checkbox" ${r.consent ? 'checked' : ''} onchange="state.booking.reg.consent = this.checked; const sb = document.getElementById('auth-submit'); if (sb) sb.disabled = !this.checked;">
-          <span>Acepto que <b>${escapeHtml((currentBusiness() && currentBusiness().name) || 'el negocio')}</b> y Caly guarden mis datos para agendar mis citas y contactarme sobre ellas. Leí la <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('privacidad')">política de privacidad</button> y entiendo que Caly está en etapa de prueba.</span>
+          <span>Acepto que <b>${escapeHtml((currentBusiness() && currentBusiness().name) || 'el negocio')}</b> y Caly guarden mis datos para agendar mis citas y contactarme sobre ellas. Entiendo que Caly está en etapa de prueba. Leí la <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('privacidad')">política de privacidad</button>.</span>
         </label>` : ''}
         ${err ? `<p class="error-text" role="alert">${escapeHtml(err)}</p>` : ''}
         <button id="auth-submit" class="btn btn-primary btn-block" type="submit" ${reg && !r.consent ? 'disabled' : ''}>${stage === 'doc' ? 'Continuar' : reg ? 'Crear cuenta' : 'Ingresar'}</button>
@@ -3882,7 +3882,7 @@ function renderRegistro(){
         <span class="hint" style="margin-top:-8px;">Mínimo 6 caracteres.</span>
         <label class="consent" for="reg-consent">
           <input id="reg-consent" type="checkbox" ${r.consent ? 'checked' : ''} onchange="state.booking.reg.consent = this.checked">
-          <span>Acepto que <b>${escapeHtml((currentBusiness() && currentBusiness().name) || 'el negocio')}</b> y Caly guarden mis datos para agendar mis citas y contactarme sobre ellas. Leí la <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('privacidad')">política de privacidad</button> y entiendo que Caly está en etapa de prueba.</span>
+          <span>Acepto que <b>${escapeHtml((currentBusiness() && currentBusiness().name) || 'el negocio')}</b> y Caly guarden mis datos para agendar mis citas y contactarme sobre ellas. Entiendo que Caly está en etapa de prueba. Leí la <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('privacidad')">política de privacidad</button>.</span>
         </label>
         ${err ? `<p class="error-text" role="alert">${escapeHtml(err)}</p>` : ''}
         <button class="btn btn-primary btn-block" type="submit">Crear cuenta</button>
@@ -3900,7 +3900,7 @@ function renderPasswordCard(role){
       ${pwInput('pw-conf-' + role, 'Confirmar nueva contraseña', 'new-password')}
       ${REMOTE && role === 'admin' && t.mustChange && state.termsOk === false ? `<label class="consent" for="terms-ok-pw">
         <input id="terms-ok-pw" type="checkbox" ${state.termsCheck ? 'checked' : ''} onchange="state.termsCheck = this.checked; const sb = document.getElementById('terms-submit'); if (sb) sb.disabled = !this.checked;">
-        <span>Leí y acepto los <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('terminos')">términos de uso</button> y la <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('privacidad')">política de privacidad</button>. Entiendo que soy responsable del manejo de los datos de mis clientes.</span>
+        <span>Leí y acepto los <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('terminos')">Términos de uso</button> y la <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('privacidad')">política de privacidad</button> de Caly. Entiendo que Caly está en etapa de prueba y que soy responsable del manejo de los datos de mis clientes.</span>
       </label>` : ''}
       ${err ? `<p class="error-text" role="alert">${escapeHtml(err)}</p>` : ''}
       ${REMOTE && role === 'admin' && t.mustChange && state.termsOk === false
