@@ -1311,8 +1311,9 @@ async function remoteClientPassword(){
     await sb.setPassword(nw);
     await sb.rest('PATCH', `clients?user_id=eq.${sb.s.uid}`, { must_change: false }, { Prefer: 'return=minimal' });
   } catch (e) { return fail(friendlyError(e)); }
+  const wasForced = !!p.mustChange;
   p.mustChange = false;
-  state.pwError = null; state.booking.step = 'perfil';
+  state.pwError = null; state.booking.step = wasForced ? 'panel' : 'perfil';
   render(); showToast('Contraseña actualizada');
 }
 async function remoteClientLogout(){
@@ -2755,10 +2756,11 @@ function changePasswordFor(role){
   if (nw.length < 6) return fail('La nueva contraseña debe tener al menos 6 caracteres.');
   if (nw === cur) return fail('La nueva contraseña debe ser distinta de la actual.');
   if (nw !== cf) return fail('Las contraseñas no coinciden.');
+  const wasForced = !!t.mustChange;
   t[key] = hashPw(nw);
   t.mustChange = false;
   state.pwError = null;
-  if (role === 'client') state.booking.step = 'perfil';
+  if (role === 'client') state.booking.step = wasForced ? 'panel' : 'perfil';
   saveState();
   render();
   showToast('Contraseña actualizada');
