@@ -3868,11 +3868,6 @@ function renderMisCitas(b){
     <div class="page w560">
       ${patientHeader(b.name)}
       <h1 class="title-1" style="margin:24px 0 18px;">Mis citas</h1>
-      ${(tab === 'proximas' && upcoming.length) ? `<div class="no-appts cta" style="margin-bottom:20px;">
-        <span class="na-ic" aria-hidden="true">${icon('sparkles', 30, 1.8)}</span>
-        <p class="na-title">Tu próxima cita te espera</p>
-        <button class="btn btn-primary btn-block btn-xl" type="button" onclick="goToReservar()">Reservar cita</button>
-      </div>` : ''}
       <div class="seg full" role="tablist" aria-label="Mis citas">
         <button type="button" role="tab" aria-pressed="${tab === 'proximas'}" onclick="setMisTab('proximas')">Próximas citas</button>
         <button type="button" role="tab" aria-pressed="${tab === 'historial'}" onclick="setMisTab('historial')">Historial</button>
