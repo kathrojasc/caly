@@ -3799,7 +3799,11 @@ function renderPacientePanel(b){
       ${patientHeader(b.name)}
       <h1 class="title-1" style="margin-top:24px;">Hola, ${escapeHtml(firstWord(b.nombres || b.name))}</h1>
 
-      ${next ? `<button class="btn btn-primary btn-block btn-xl" type="button" style="margin-top:24px;" onclick="goToReservar()">Reservar</button>` : ''}
+      ${next ? `<div class="no-appts cta" style="margin-top:24px;">
+        <span class="na-ic" aria-hidden="true">${icon('sparkles', 30, 1.8)}</span>
+        <p class="na-title">Tu próxima cita te espera</p>
+        <button class="btn btn-primary btn-block btn-xl" type="button" onclick="goToReservar()">Reservar cita</button>
+      </div>` : ''}
 
       <div class="sec-head">
         <h2 class="title-2">${upcoming.length > 1 ? 'Próximas citas' : 'Próxima cita'}</h2>
