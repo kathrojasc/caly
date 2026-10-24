@@ -691,6 +691,9 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
 .ll-ring { width: 44px; height: 44px; border-radius: 50%; border: 4px solid #e8e8ea; border-top-color: #0B0B0C; animation: llSpin .8s linear infinite; }
 @keyframes llSpin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ll-ring { animation-duration: 3s !important; } }
+.plan-snack { margin-top: 16px; background: var(--color-surface); border-radius: var(--radius-l); padding: 18px; display: flex; gap: 14px; align-items: flex-start; }
+.plan-snack .ic { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
+#cfg-slot.flash { box-shadow: 0 0 0 3px #0B0B0C; }
 </style>
 </head>
 <body>
@@ -1110,6 +1113,7 @@ async function loadAdminData(){
   state.session = keep.session; state.view = keep.view;
   remoteBase = toRows();
   refreshBrandUI();
+  if (isProPlan() && state.config.slotAck) { state.config.slotAck = false; queueSync(); }
   if (ensureBasicStaff()) queueSync();
 }
 
@@ -1432,6 +1436,7 @@ function syncDirty(box){
     const v = (f.type === 'checkbox') ? f.checked : f.value;
     if (box._base[f.id] !== v) dirty = true;
   });
+  if (box.hasAttribute('data-force')) dirty = true;
   box.querySelectorAll('[data-save]').forEach(b => { b.disabled = !dirty; });
 }
 function initDirty(){
@@ -3136,6 +3141,7 @@ function saveConfig(){
   state.config.minNoticeHours = Math.max(0, read('cfg-notice'));
   state.config.windowDays = Math.max(1, read('cfg-window'));
   state.config.cancelNoticeHours = Math.max(0, read('cfg-cancel'));
+  state.config.slotAck = true;
   saveState();
   render();
   showToast('Configuración guardada');
@@ -3582,7 +3588,14 @@ function ensureBasicStaff(){
   state.staff.push({ id: newId('staff'), name: 'Atención', schedule: basicSchedule(), timeOff: [] });
   return true;
 }
-function staffShown(a){ return isProPlan() ? (a.staffName || '') : ''; }
+function needsSlotAck(){ return !isProPlan() && !!currentBusiness() && state.services.length > 0 && !state.config.slotAck; }
+function goSlotDuration(){
+  state.adminTab = 'horarios'; render(); window.scrollTo(0, 0);
+  setTimeout(() => { const el = $('cfg-slot'); if (!el) return; el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.focus({ preventScroll: true }); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 2200); }, 80);
+}
+// Citas creadas mientras el plan era Pro (tienen servicio) conservan trabajador y servicio; las nuevas del plan básico no los muestran.
+function staffShown(a){ return (isProPlan() || a.serviceId) ? (a.staffName || '') : ''; }
+let citaShowStaff = true;
 function isProPlan(){ const b = currentBusiness(); return !!b && b.plan === 'Pro'; }
 function bookingServiceId(b){
   b = b || state.booking;
@@ -4602,6 +4615,15 @@ function renderAdminInicio(){
 
   return `
     ${adminHeader('Hola de nuevo', longDate(todayIso))}
+    ${needsSlotAck() ? `
+    <div class="plan-snack" role="status">
+      <span class="ic">${icon('sparkles', 22, 1.8)}</span>
+      <div style="min-width:0;flex:1;">
+        <p class="card-title">Gracias por haber sido parte del plan Pro</p>
+        <p class="secondary" style="margin-top:2px;">Tu cuenta ahora está en el plan básico. Para que tus clientes sigan reservando sin problema, completa un último dato: la duración de cada cita.</p>
+        <button class="btn btn-sm btn-primary" type="button" style="margin-top:12px;" onclick="goSlotDuration()">Completar ahora</button>
+      </div>
+    </div>` : ''}
 
     <div class="dash-top">
     <div class="link-card2">
@@ -4678,8 +4700,9 @@ function renderAdminInicio(){
 }
 
 function citaList(list, now, modeFn){
+  citaShowStaff = isProPlan() || list.some(a => a.serviceId && a.staffName);
   return `<div class="rows cards-only">${list.map(x => citaCard(x, now, modeFn(x))).join('')}</div>
-    <div class="table-only"><table class="ctable"><thead><tr><th>Fecha y hora</th><th>Cliente</th><th>Servicio</th><th>Trabajador</th><th>Estado</th><th><span class="sr-only">Acciones</span></th></tr></thead><tbody>${list.map(x => citaCard(x, now, modeFn(x), true)).join('')}</tbody></table></div>`;
+    <div class="table-only"><table class="ctable"><thead><tr><th>Fecha y hora</th><th>Cliente</th><th>Servicio</th>${citaShowStaff ? '<th>Trabajador</th>' : ''}<th>Estado</th><th><span class="sr-only">Acciones</span></th></tr></thead><tbody>${list.map(x => citaCard(x, now, modeFn(x), true)).join('')}</tbody></table></div>`;
 }
 function isDesktop(){ return window.matchMedia && window.matchMedia('(min-width: 1024px)').matches; }
 function citaCard(a, now, mode, asRow){
@@ -4725,7 +4748,7 @@ function citaCard(a, now, mode, asRow){
       <td class="ct-when"><b>${when}</b><span class="tnum">${a.start}</span></td>
       <td><b>${escapeHtml(a.name)}</b>${a.phone ? `<span class="tnum">${escapeHtml(a.phone)}</span>` : ''}</td>
       <td>${escapeHtml(a.serviceName || '—')}</td>
-      <td>${escapeHtml(staffShown(a) || '—')}</td>
+      ${citaShowStaff ? `<td>${escapeHtml(staffShown(a) || '—')}</td>` : ''}
       <td>${chips ? `<div class="chip-row">${chips}</div>` : '<span class="caption">—</span>'}</td>
       <td class="ct-actions">${rb.join('')}</td>
     </tr>`;
@@ -5300,7 +5323,7 @@ function renderAdminHorarios(){
     ${renderServicesSection()}
 
     <h2 class="title-2">Configuración de citas</h2>
-    <div class="card stack" data-dirty>
+    <div class="card stack" data-dirty${needsSlotAck() ? ' data-force' : ''}>
       <div class="grid-2">
         ${isProPlan() && activeServices().length ? `<input id="cfg-slot" type="hidden" value="${cfg.slotMinutes}">` : `<div class="field"><label for="cfg-slot">Duración de la cita (min)</label><input id="cfg-slot" type="number" inputmode="numeric" value="${cfg.slotMinutes}"></div>`}
         <div class="field"><label for="cfg-buffer">Descanso entre citas (min)</label><input id="cfg-buffer" type="number" inputmode="numeric" value="${cfg.bufferMinutes}"></div>
