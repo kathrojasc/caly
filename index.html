@@ -229,6 +229,9 @@ button.chip { cursor: pointer; }
 .pill-opt[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); font-weight: 700; }
 .no-appts { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 32px 20px 20px; border: 2px dashed var(--color-border-strong, #D4D4DA); border-radius: var(--radius-l, 24px); background: var(--color-surface); }
 .na-ic { width: 88px; height: 88px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px; color: var(--color-text); }
+.no-appts.cta { padding: 22px 20px 20px; }
+.no-appts.cta .na-ic { width: 64px; height: 64px; margin-bottom: 8px; }
+.no-appts.cta .btn { margin-top: 12px; }
 .na-title { font-size: 20px; line-height: 26px; font-weight: 700; }
 .no-appts .btn { margin-top: 18px; }
 .empty-card { display: flex; gap: 14px; align-items: flex-start; background: var(--color-surface); border-radius: var(--radius-m); padding: 18px; }
@@ -3497,6 +3500,7 @@ function svg(size, body, sw){
 const ICONS = {
   home: `<path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-5a2 2 0 0 1 4 0v5h3a1 1 0 0 0 1-1v-9"/>`,
   calendar: `<rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>`,
+  sparkles: `<path d="M11 3.5l1.9 5 5 1.9-5 1.9-1.9 5-1.9-5-5-1.9 5-1.9 1.9-5z"/><path d="M19 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z"/>`,
   clock: `<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>`,
   palette: `<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1 0 1.6-.7 1.6-1.5 0-.4-.2-.8-.4-1.1-.2-.3-.4-.6-.4-1 0-.8.7-1.4 1.5-1.4H16a4 4 0 0 0 4-4c0-4.2-3.6-7.5-8-7.5Z"/><circle cx="7.6" cy="11.5" r="1.1" fill="currentColor"/><circle cx="10" cy="8" r="1.1" fill="currentColor"/><circle cx="14.5" cy="8" r="1.1" fill="currentColor"/>`,
   user: `<circle cx="12" cy="8.5" r="3.5"/><path d="M4.5 20c1-3.5 4-5.5 7.5-5.5s6.5 2 7.5 5.5"/>`,
@@ -3856,7 +3860,11 @@ function renderMisCitas(b){
     <div class="page w560">
       ${patientHeader(b.name)}
       <h1 class="title-1" style="margin:24px 0 18px;">Mis citas</h1>
-      ${(tab === 'proximas' && !upcoming.length) ? '' : `<button class="btn btn-primary btn-block btn-xl" type="button" style="margin-bottom:20px;" onclick="goToReservar()">Reservar</button>`}
+      ${(tab === 'proximas' && !upcoming.length) ? '' : `<div class="no-appts cta" style="margin-bottom:20px;">
+        <span class="na-ic" aria-hidden="true">${icon('sparkles', 30, 1.8)}</span>
+        <p class="na-title">Tu próxima cita te espera</p>
+        <button class="btn btn-primary btn-block btn-xl" type="button" onclick="goToReservar()">Reservar cita</button>
+      </div>`}
       <div class="seg full" role="tablist" aria-label="Mis citas">
         <button type="button" role="tab" aria-pressed="${tab === 'proximas'}" onclick="setMisTab('proximas')">Próximas citas</button>
         <button type="button" role="tab" aria-pressed="${tab === 'historial'}" onclick="setMisTab('historial')">Historial</button>
