@@ -687,6 +687,10 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
 .fchip.prob.on { background: var(--color-danger); color: #fff; }
 .fchip.prob.on .dot { background: #fff; }
 @media (min-width: 1024px) { .fbar { margin: 12px 0 0; padding: 0; flex-wrap: wrap; overflow: visible; } }
+#login-loader { position: fixed; inset: 0; z-index: 200; background: #fff; display: flex; align-items: center; justify-content: center; animation: drawerFade .15s ease; }
+.ll-ring { width: 44px; height: 44px; border-radius: 50%; border: 4px solid #e8e8ea; border-top-color: #0B0B0C; animation: llSpin .8s linear infinite; }
+@keyframes llSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ll-ring { animation-duration: 3s !important; } }
 </style>
 </head>
 <body>
@@ -2202,7 +2206,7 @@ function showLoader(msg){
     loaderTimer = null;
     const el = document.createElement('div');
     el.id = 'login-loader'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
-    el.innerHTML = `<div class="ll-box"><div class="ll-mark">${brandMark(56)}<span class="ll-ring" aria-hidden="true"></span></div><p>${msg || 'Ingresando a tu sesión…'}</p></div>`;
+    el.innerHTML = `<span class="ll-ring" aria-hidden="true"></span><span class="sr-only">${msg || 'Ingresando a tu sesión…'}</span>`;
     document.body.appendChild(el);
   }, 150);
 }
