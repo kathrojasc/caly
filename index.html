@@ -97,6 +97,7 @@ button:disabled { cursor: default; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 52px; padding: 0 24px; border: 0; border-radius: var(--radius-pill); font-size: 16px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; transition: background .15s, color .15s; }
 .btn svg { flex-shrink: 0; }
 .btn-primary { background: var(--color-primary); color: var(--color-on-primary); }
+.brand-on .btn-primary, .brand-on .dock.on { background: var(--brand, var(--color-primary)); color: var(--on-brand, var(--color-on-primary)); }
 .btn-inverse { background: #fff; color: var(--color-text); }
 .btn-soft { background: var(--color-surface); color: var(--color-text); }
 .btn-disabled, .btn:disabled { background: var(--color-disabled-btn); color: var(--color-disabled-text); }
@@ -1764,8 +1765,9 @@ function applyBrandTheme(){
   const lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
   const lum = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
   const root = document.documentElement.style;
-  root.setProperty('--color-primary', c);
-  root.setProperty('--color-on-primary', lum > 0.4 ? '#0B0B0C' : '#FFFFFF');
+  // El color de la marca solo se usa en los botones principales que ve el cliente; el resto de la interfaz queda neutra.
+  root.setProperty('--brand', c);
+  root.setProperty('--on-brand', lum > 0.4 ? '#0B0B0C' : '#FFFFFF');
   // Fondo degradado de la pantalla de resumen: sigue el color de la marca (si es casi negro o gris, queda un brillo neutro)
   const mx = Math.max(r, g, b) / 255, mn = Math.min(r, g, b) / 255, l = (mx + mn) / 2, d = mx - mn;
   const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
@@ -5673,6 +5675,7 @@ function renderSuper(){
 }
 
 function render(){
+  document.body.classList.toggle('brand-on', state.view === 'paciente');
   document.body.classList.toggle('has-tabbar', state.view === 'admin' && !!state.session.admin);
   if (REMOTE && ROUTE.kind === 'home') { document.getElementById('view').innerHTML = '<div class="page w456"><div class="hdr" style="margin-top:64px;">' + brandBlock() + '</div><h1 class="title-1" style="margin-top:32px;">Reserva de citas</h1><p class="secondary" style="margin-top:8px;">Para reservar, usa el enlace que te compartió tu negocio.</p></div>'; return; }
   if (REMOTE && state.booting) { document.getElementById('view').innerHTML = '<div class="page"><p class="secondary" style="margin-top:64px;text-align:center;">Cargando…</p></div>'; return; }
