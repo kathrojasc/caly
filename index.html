@@ -4104,12 +4104,12 @@ function emptyApptsCard(title, text, withButton){
 }
 function histCard(a){
   const cancelled = a.status === 'CANCELLED';
-  const lbl = cancelled ? (a.cancelledBy === 'admin' ? 'Cancelada por el negocio' : 'Cancelada') : 'Realizada';
-  const cls = cancelled ? 'cancel' : 'ok';
+  const lbl = cancelled ? (a.cancelledBy === 'admin' ? 'Cancelada por el negocio' : 'Cancelada') : '';
+  const cls = 'cancel';
   const meta = [a.serviceName, durationMin(a) + ' min'].filter(Boolean).map(escapeHtml).join(' · ');
   return `
     <div class="hero light">
-      <span class="chip-hero ${cls}">${lbl}</span>
+      ${lbl ? `<span class="chip-hero ${cls}">${lbl}</span>` : ''}
       <div>
         <div class="h-title">${escapeHtml(cap(displayDateShort(a.date)))} · ${a.start}</div>
         ${staffShown(a) ? `<div class="h-sub">${escapeHtml(staffShown(a))}</div>` : ''}
