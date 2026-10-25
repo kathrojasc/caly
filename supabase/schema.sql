@@ -89,7 +89,6 @@ create table public.appointments (
   end_time      time not null,
   status        text not null default 'CONFIRMED' check (status in ('CONFIRMED','CANCELLED')),
   paid          boolean not null default false,
-  attendance    text check (attendance in ('attended','no_show')),
   cancelled_by  text check (cancelled_by in ('client','admin')),
   cancelled_at  timestamptz,
   created_by    text not null default 'client',
@@ -193,8 +192,6 @@ begin
     act := 'appt.create'; txt := format('Se creó la cita del %s a las %s para %s.', new.date, to_char(new.start_time,'HH24:MI'), who);
   elsif new.status = 'CANCELLED' and old.status = 'CONFIRMED' then
     act := 'appt.cancel'; txt := format('Se canceló la cita del %s a las %s de %s (por %s).', new.date, to_char(new.start_time,'HH24:MI'), who, coalesce(new.cancelled_by, '—'));
-  elsif new.attendance is distinct from old.attendance then
-    act := 'appt.attendance'; txt := format('Asistencia de %s (%s): %s.', who, new.date, coalesce(new.attendance, 'sin marcar'));
   elsif new.paid is distinct from old.paid then
     act := 'appt.paid'; txt := format('Pago de %s (%s): %s.', who, new.date, case when new.paid then 'pagado' else 'pendiente' end);
   else return new; end if;

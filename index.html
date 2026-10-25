@@ -89,10 +89,10 @@ button:disabled { cursor: default; }
 .secondary { font-size: 15px; line-height: 21px; color: var(--color-text-secondary); }
 .caption { font-size: 13px; line-height: 17px; font-weight: 500; color: var(--color-text-secondary); }
 .eyebrow { font-size: 13px; line-height: 17px; font-weight: 700; color: var(--color-text-secondary); }
-.section { margin-top: 32px; }
+
 .stack { display: flex; flex-direction: column; gap: 14px; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-.row-end { align-items: flex-end; }
+
 .between { justify-content: space-between; }
 
 /* Botones */
@@ -102,7 +102,7 @@ button:disabled { cursor: default; }
 .brand-on .btn-primary, .brand-on .dock.on { background: var(--brand, var(--color-primary)); color: var(--on-brand, var(--color-on-primary)); }
 .btn-inverse { background: #fff; color: var(--color-text); }
 .btn-soft { background: var(--color-surface); color: var(--color-text); }
-.btn-disabled, .btn:disabled { background: var(--color-disabled-btn); color: var(--color-disabled-text); }
+.btn:disabled { background: var(--color-disabled-btn); color: var(--color-disabled-text); }
 .btn-block { width: 100%; }
 .btn-xl { height: 60px; font-size: 18px; font-weight: 700; }
 .btn-sm { height: 44px; padding: 0 16px; font-size: 14px; }
@@ -142,67 +142,20 @@ button.chip { cursor: pointer; }
 
 /* Tarjetas y filas */
 .card { background: var(--color-surface); border-radius: var(--radius-m); padding: 20px; }
-.card-line { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-m); padding: 20px; }
+
 .rows { display: flex; flex-direction: column; gap: 10px; }
 .row-card { display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: var(--radius-m); border: 1px solid var(--color-border); flex-wrap: wrap; }
 .row-main { flex: 1 1 140px; min-width: 0; }
 .row-title { font-size: 17px; line-height: 22px; font-weight: 700; overflow-wrap: anywhere; }
 .row-side { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-.row-actions { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 2px; }
-.date-tile { flex-shrink: 0; width: 60px; height: 60px; border-radius: var(--radius-s); background: var(--color-surface); display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.date-tile b { font-size: 22px; line-height: 24px; font-weight: 700; }
-.date-tile b.time { font-size: 17px; line-height: 20px; }
-.date-tile i { font-style: normal; font-size: 12px; line-height: 14px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--color-text-secondary); }
-.appt-card { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 12px 16px; padding: 16px; border-radius: var(--radius-m); border: 1px solid var(--color-border); background: var(--color-bg); align-items: center; }
-.appt-card .row-main { min-width: 0; }
-.appt-card .row-title { font-size: 18px; line-height: 24px; }
-.appt-card .secondary { margin-top: 2px; }
-.appt-chips { grid-column: 2; display: flex; flex-wrap: wrap; gap: 8px; }
-.appt-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-top: 14px; border-top: 1px solid var(--color-border); }
-.appt-actions.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.appt-actions .pay-btn { grid-column: 1 / -1; }
-.appt-actions.confirm { grid-template-columns: 1fr 1fr; }
-.appt-actions.confirm > span { grid-column: 1 / -1; }
-.appt-actions .btn { padding: 0 10px; width: 100%; }
-.appt-card .btn-text { padding-left: 0; }
-@media (max-width: 639px) {
-  .appt-actions .btn:not(.pay-btn) { flex-direction: column; height: 64px; gap: 6px; padding: 0 4px; font-size: 13px; line-height: 16px; border-radius: var(--radius-s); }
-  .appt-actions .btn:not(.pay-btn) svg { width: 22px; height: 22px; }
-}
+
 @media (max-width: 639px) { .chip.ph { display: none; } }
-@media (min-width: 640px) {
-  .appt-card { grid-template-columns: 60px minmax(0, 1fr) auto; }
-  .appt-chips { grid-column: 3; grid-row: 1; justify-content: flex-end; flex-wrap: nowrap; }
-  .appt-actions { display: flex; flex-wrap: wrap; }
-  .appt-actions .btn { width: auto; padding: 0 18px; }
-  .appt-actions .pay-btn { grid-column: auto; }
-  .appt-actions.confirm { display: flex; align-items: center; }
-  .appt-actions.confirm > span { margin-right: 4px; }
-}
+
 .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 36px 0 14px; }
 .sec-head .title-2 { margin: 0; }
-.hist-head { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 16px; border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: var(--color-bg); text-align: left; }
-.hist-title { flex: 1; font-size: 16px; font-weight: 700; }
-.hist-count { min-width: 26px; height: 26px; padding: 0 8px; border-radius: var(--radius-pill); background: var(--color-surface); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--color-text-secondary); }
-.hist-chev { display: inline-flex; color: var(--color-text-secondary); transition: transform .15s; }
-.hist-chev.open { transform: rotate(90deg); }
-.hist-list { margin-top: 8px; padding: 4px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-m); }
-.hist-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 6px 0; font-size: 14px; line-height: 19px; color: var(--color-text-secondary); }
-.hist-row + .hist-row { border-top: 1px solid var(--color-border); }
-.hist-main { min-width: 0; overflow-wrap: anywhere; }
-.hist-main strong { color: var(--color-text); font-weight: 700; }
-.day-label { margin: 22px 0 10px; font-size: 13px; font-weight: 700; color: var(--color-text-secondary); }
 
 /* Tarjeta media (paciente) */
-.media { position: relative; height: 208px; border-radius: var(--radius-l); background: var(--color-surface-media); display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.media .day { font-size: 88px; line-height: 88px; font-weight: 600; letter-spacing: -3px; }
-.media .mon { margin-top: 2px; font-size: 17px; font-weight: 700; letter-spacing: 3px; color: var(--color-text-secondary); text-transform: uppercase; }
-.media .chip-badge { position: absolute; top: 14px; left: 14px; height: 34px; padding: 0 14px 0 10px; display: inline-flex; align-items: center; gap: 6px; border-radius: var(--radius-pill); background: #fff; font-size: 14px; font-weight: 700; box-shadow: var(--shadow-badge); }
-.next-bar { margin-top: 12px; display: flex; align-items: center; min-height: 60px; padding: 8px 20px; border-radius: var(--radius-pill); background: var(--color-primary); color: var(--color-on-primary); }
-.nb-info { min-width: 0; font-size: 17px; line-height: 22px; white-space: nowrap; }
-.nb-info strong { font-weight: 700; }
-.next-detail { margin: 12px 4px 0; font-size: 16px; line-height: 22px; font-weight: 600; color: var(--color-text); }
-.next-resched { display: inline-flex; align-items: center; min-height: 44px; margin: 2px 0 0; padding: 0 4px; border: 0; background: transparent; color: var(--color-text-secondary); font-size: 14px; font-weight: 500; text-decoration: underline; }
+
 .card-title { font-size: 19px; line-height: 25px; font-weight: 700; }
 
 /* CTA tipo buscador */
@@ -244,17 +197,7 @@ button.chip { cursor: pointer; }
 .cr-main .row-title { font-size: 16px; line-height: 21px; }
 .cr-main .secondary { font-size: 14px; line-height: 19px; overflow-wrap: anywhere; }
 .cr-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
-.agenda-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.agenda-range { font-size: 17px; font-weight: 700; }
-.week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 12px; }
-.week-day { border: 0; border-radius: var(--radius-s); background: var(--color-surface); padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 76px; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
-.week-day b { font-size: 19px; line-height: 24px; color: var(--color-text); }
-.week-day i { font-style: normal; min-width: 18px; height: 18px; border-radius: 9px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; color: transparent; }
-.week-day i.on { background: var(--color-primary); color: var(--color-on-primary); }
-.week-day.today b { text-decoration: underline; text-underline-offset: 3px; }
-.week-day.sel { background: var(--color-primary); color: var(--color-on-primary); }
-.week-day.sel b { color: var(--color-on-primary); }
-.week-day.sel i.on { background: var(--color-on-primary); color: var(--color-primary); }
+
 .pay-block { background: #fff; border-radius: var(--radius-m); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .pay-rows { display: flex; flex-direction: column; gap: 6px; }
 .pay-rows > div { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
@@ -262,57 +205,13 @@ button.chip { cursor: pointer; }
 .pay-rows b { font-weight: 700; text-align: right; }
 .pay-warn { margin: 0; background: var(--color-danger-bg); color: var(--color-danger); border-radius: var(--radius-s); padding: 10px 12px; font-size: 14px; line-height: 20px; font-weight: 600; }
 .field label.req::after { content: ' *'; color: var(--color-danger); font-weight: 700; }
-.req-note { margin: 0; font-size: 13px; line-height: 18px; color: var(--color-text-secondary); }
-.req-note span { color: var(--color-danger); font-weight: 700; }
+
 /* Calendario */
-.cal-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.acal-nav { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
-.cal-title { flex: 1; text-align: center; font-size: 17px; line-height: 22px; font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cal-staff { margin-top: 12px; }
-.cal-staff .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
-.cal-wrap { margin-top: 14px; border: 1px solid var(--color-border); border-radius: var(--radius-m); overflow: hidden; background: var(--color-bg); }
-.cal-body { display: flex; position: relative; }
-.cal-hours { position: relative; width: 44px; flex-shrink: 0; }
-.cal-hour { position: absolute; left: 0; width: 100%; padding-left: 6px; font-size: 12px; line-height: 14px; color: var(--color-text-secondary); transform: translateY(-7px); background: var(--color-bg); font-variant-numeric: tabular-nums; }
-.cal-hour:first-child { transform: translateY(2px); }
-.cal-days { position: relative; flex: 1; min-width: 0; display: flex; border-left: 1px solid var(--color-border); }
-.cal-line { position: absolute; left: 0; right: 0; height: 1px; background: var(--color-border); pointer-events: none; }
-.cal-col { position: relative; flex: 1; min-width: 0; }
-.cal-days.week .cal-col + .cal-col { border-left: 1px solid var(--color-border); }
-.cal-off { position: absolute; left: 0; right: 0; background: rgba(0,0,0,.045); pointer-events: none; }
-.cal-closed { position: absolute; left: 0; right: 0; background: repeating-linear-gradient(135deg, rgba(201,74,74,.18) 0 6px, rgba(201,74,74,.06) 6px 12px); pointer-events: none; }
-.cal-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--color-danger); z-index: 3; }
-.cal-ev { position: absolute; border: 0; border-left: 4px solid; border-radius: 8px; padding: 3px 6px; text-align: left; overflow: hidden; display: flex; flex-direction: column; gap: 0; font-size: 12px; line-height: 15px; z-index: 2; }
-.cal-ev b { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cal-ev span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .75; }
-.cal-ev.pend { outline: 2px dashed var(--color-danger); outline-offset: -2px; }
-.cal-ev.wait { outline: 2px dashed #8e8e93; outline-offset: -2px; opacity: .85; }
-.cal-ev.sel { box-shadow: 0 0 0 2px var(--color-primary); z-index: 4; }
-.cal-days.week .cal-ev { padding: 2px 3px; border-left-width: 3px; border-radius: 6px; }
-.cal-weekhead { display: flex; border-bottom: 1px solid var(--color-border); }
-.cal-gutter { width: 44px; flex-shrink: 0; }
-.cal-weekhead button { flex: 1; min-width: 0; border: 0; background: transparent; padding: 6px 0; display: flex; flex-direction: column; align-items: center; font-size: 12px; color: var(--color-text-secondary); }
-.cal-weekhead button b { font-size: 16px; line-height: 22px; color: var(--color-text); width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
-.cal-weekhead button.today b { background: var(--color-primary); color: var(--color-on-primary); }
-.acal-month { margin-top: 14px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-.cal-mh { text-align: center; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); padding: 4px 0; }
-.cal-cell { border: 0; border-radius: var(--radius-s); background: var(--color-surface); min-height: 62px; padding: 6px 4px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; position: relative; }
-.cal-cell b { font-size: 15px; line-height: 20px; }
-.cal-cell.out { opacity: .4; }
-.cal-cell.today b { background: var(--color-primary); color: var(--color-on-primary); width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; }
-.cal-cell.closed { background: repeating-linear-gradient(135deg, rgba(201,74,74,.14) 0 6px, var(--color-surface) 6px 12px); }
-.cal-count { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); line-height: 14px; }
-.cal-dots { display: flex; gap: 3px; }
-.cal-dots i { width: 6px; height: 6px; border-radius: 50%; display: block; }
-.stats.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
 button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .stat.danger { background: var(--color-danger-bg); }
 .stat.danger .n, .stat.danger .l { color: var(--color-danger); }
-.link-compact { margin-top: 10px; background: var(--color-surface); border-radius: var(--radius-m); padding: 10px 10px 10px 14px; display: flex; align-items: center; gap: 12px; }
-.link-compact .ic { flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
-.link-text { margin: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
-.form-open { display: flex; flex-direction: column; gap: 14px; background: #fff; border-radius: var(--radius-m); padding: 14px; }
-.stats-strip { margin-top: 12px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--color-surface); border-radius: var(--radius-m); padding: 6px 0; }
+
 .ss { border: 0; background: transparent; color: inherit; padding: 10px 4px; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; font: inherit; }
 .ss + .ss { border-left: 1px solid var(--color-border); }
 .ss b { font-size: 26px; line-height: 30px; font-weight: 700; letter-spacing: -0.6px; }
@@ -326,58 +225,19 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .lc-row { display: flex; align-items: center; gap: 10px; }
 .lc-url { flex: 1; min-width: 0; background: #fff; border-radius: var(--radius-pill); padding: 0 16px; height: 48px; line-height: 48px; display: block; font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lc-row .btn { min-height: 48px; padding: 0 22px; }
-.sum-pills { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; }
-.sum { border: 0; border-radius: var(--radius-pill); background: var(--color-surface); color: var(--color-text); padding: 8px 14px; font: inherit; font-size: 14px; line-height: 20px; display: inline-flex; gap: 5px; align-items: baseline; }
-.sum b { font-weight: 700; }
-.sum.danger { background: var(--color-danger-bg); color: var(--color-danger); }
-.sum.warn { background: var(--color-warning-bg); color: var(--color-warning-strong); }
-.arow-wrap { display: flex; flex-direction: column; gap: 8px; }
-.arow { width: 100%; display: flex; align-items: stretch; gap: 12px; padding: 12px 14px 12px 12px; border-radius: var(--radius-m); border: 1px solid var(--color-border); background: var(--color-bg); text-align: left; font: inherit; color: inherit; }
-.arow.open { border-color: var(--color-primary); }
-.ar-bar { width: 4px; border-radius: 4px; flex-shrink: 0; }
-.ar-time { display: flex; flex-direction: column; gap: 2px; min-width: 46px; font-size: 15px; line-height: 20px; }
-.ar-time span { font-size: 13px; color: var(--color-text-secondary); }
-.ar-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.ar-main b { font-size: 16px; line-height: 21px; overflow-wrap: anywhere; }
-.ar-main span { font-size: 14px; line-height: 19px; color: var(--color-text-secondary); overflow-wrap: anywhere; }
-.ar-side { flex-shrink: 0; align-self: flex-start; }
-.hcards { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
-.hcard { width: 100%; border: 0; background: var(--color-surface); border-radius: var(--radius-m); padding: 14px 16px; display: flex; align-items: center; gap: 14px; text-align: left; font: inherit; color: inherit; }
-.hcard .ic { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
-.hc-n { font-size: 28px; line-height: 32px; font-weight: 700; letter-spacing: -0.6px; min-width: 28px; }
-.hc-l { flex: 1; min-width: 0; font-size: 16px; font-weight: 600; color: var(--color-text); }
-.hc-go { color: var(--color-text-secondary); display: inline-flex; }
-.hcard.danger { background: var(--color-danger-bg); }
-.hcard.danger .hc-n, .hcard.danger .hc-l { color: var(--color-danger); }
-.hcard.warn { background: var(--color-warning-bg); }
-.hcard.warn .hc-n, .hcard.warn .hc-l { color: var(--color-warning-strong); }
-.itiles { margin-top: 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.itile { border: 0; background: var(--color-surface); border-radius: var(--radius-m); padding: 14px 16px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; font: inherit; color: inherit; }
-.itile b { font-size: 30px; line-height: 34px; font-weight: 700; letter-spacing: -0.8px; }
-.itile span { font-size: 14px; line-height: 19px; color: var(--color-text-secondary); font-weight: 500; }
-.itile.danger { background: var(--color-danger-bg); }
-.itile.danger b, .itile.danger span { color: var(--color-danger); }
-.itile.warn { background: var(--color-warning-bg); }
-.itile.warn b, .itile.warn span { color: var(--color-warning-strong); }
+
 .stats.one { grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .stats.one .stat { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "ic n" "l n"; align-items: center; column-gap: 12px; row-gap: 6px; padding: 14px 16px; }
 .stats.one .stat > div { display: contents; }
 .stats.one .stat .ic { grid-area: ic; }
 .stats.one .stat .n { grid-area: n; justify-self: end; align-self: center; width: 56px; text-align: center; font-size: 34px; line-height: 40px; font-variant-numeric: tabular-nums; }
-.stats.one .stat .go { grid-area: go; color: var(--color-text-secondary); display: inline-flex; }
+
 .stats.one .stat .l { grid-area: l; font-size: 15px; font-weight: 600; color: var(--color-text); }
-.stats.one .stat.danger .l, .stats.one .stat.danger .go { color: var(--color-danger); }
+.stats.one .stat.danger .l { color: var(--color-danger); }
 .stats.one .stat.warn .l { color: var(--color-warning-strong); }
 .stats.one .stat.zero .n { color: var(--color-text-secondary); opacity: .55; }
 .stats.one .stat.zero .l { color: var(--color-text-secondary); font-weight: 500; }
-.citas-bar { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.attn { width: 100%; margin-top: 16px; border: 0; background: var(--color-danger-bg); color: var(--color-danger); border-radius: var(--radius-m); padding: 12px 14px; display: flex; align-items: center; gap: 12px; text-align: left; font: inherit; }
-.attn .ic { flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
-.attn-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.attn-t b { font-size: 16px; line-height: 21px; }
-.attn-t span { font-size: 14px; line-height: 19px; opacity: .85; }
-.mini-select { height: 40px; border: 0; border-radius: var(--radius-pill); background: var(--color-surface); padding: 0 14px; font: inherit; font-size: 14px; font-weight: 600; max-width: 62%; }
-.cal-cell.selday { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+
 .modal .hero.light { border: 0; padding: 0; background: transparent; min-height: 0; border-radius: 0; gap: 16px; }
 .remote .demo-bar { display: none; }
 .legal-layer { position: fixed; inset: 0; z-index: 90; background: var(--color-bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
@@ -402,29 +262,23 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .dr-range { display: flex; align-items: center; gap: 8px; }
 .dr-range input { flex: 1; min-width: 0; background: #fff; border: 1px solid var(--color-border); }
 .icon-x { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--color-text-secondary); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; }
-.drawer-danger { border-top: 1px solid var(--color-border, #e5e5e8); padding-top: 16px; }
+
 .sa-groups { width: 100%; display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
 .sa-group { display: flex; flex-direction: column; gap: 8px; }
 .sa-group .row { gap: 8px; }
 .sa-danger { border-top: 1px solid var(--color-border, #e5e5e8); padding-top: 14px; }
 .appt-x { position: absolute; top: 18px; right: 18px; width: 40px; height: 40px; }
 .modal .hero.light .chip-row { min-height: 40px; display: flex; align-items: center; padding-right: 48px; }
-.view-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--color-surface); border-radius: var(--radius-pill); margin-top: 16px; }
-.view-switch button { border: 0; border-radius: var(--radius-pill); background: transparent; min-height: 44px; font: inherit; font-weight: 700; font-size: 15px; color: var(--color-text-secondary); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-.view-switch button[aria-pressed="true"] { background: #fff; color: var(--color-text); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+
 .pill-opt.prob { display: inline-flex; align-items: center; gap: 7px; }
 .pill-opt.prob .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
 .pill-opt.prob.on { background: var(--color-danger); color: #fff; }
 .pill-opt.prob.on .dot { background: #fff !important; }
 .hero.light.problem { border-color: var(--color-danger); background: #FFF6F5; }
 .hero.light.waiting { border-style: dashed; }
-.arow.problem { border-color: var(--color-danger); background: #FFF6F5; }
-.cal-warn { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--color-danger); }
-.cal-cell .cal-warn { position: absolute; top: 6px; right: 6px; }
-.cal-cell.bad { box-shadow: inset 0 0 0 2px var(--color-danger); }
-.legend { margin: 10px 4px 0; display: flex; align-items: center; gap: 6px; }
+
 .modal .hero.light.problem, .modal .hero.light.waiting { border: 0; background: transparent; }
-.cal-muted { opacity: .5; }
+
 .log-row { border: 1px solid var(--color-border); border-radius: var(--radius-m); background: var(--color-bg); overflow: hidden; }
 .log-main { width: 100%; border: 0; background: transparent; padding: 12px 14px; display: flex; gap: 12px; text-align: left; font: inherit; color: inherit; align-items: flex-start; }
 .log-time { font-size: 14px; font-weight: 700; color: var(--color-text-secondary); min-width: 44px; padding-top: 2px; }
@@ -441,7 +295,7 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .card .tag-staff { background: #fff; }
 .tag-staff .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 .pill-opt svg { vertical-align: -3px; }
-.form-open .field input:not([type=checkbox]):not([type=file]):not([type=color]), .form-open .field select, .pay-block .field input:not([type=checkbox]):not([type=file]):not([type=color]), .pay-block .field select { background-color: var(--color-surface); border: 1.5px solid #DADADF; }
+.pay-block .field input:not([type=checkbox]):not([type=file]):not([type=color]), .pay-block .field select { background-color: var(--color-surface); border: 1.5px solid #DADADF; }
 .notice.ok-box { background: var(--color-success-bg); color: var(--color-success); }
 .field input:disabled { opacity: 1; -webkit-text-fill-color: var(--color-text-secondary); color: var(--color-text-secondary); background: #EDEDF0 !important; }
 .news-row.alertrow { background: var(--color-danger-bg); border-radius: var(--radius-m); padding: 12px; }
@@ -493,14 +347,7 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .alert-card { margin-top: 16px; background: var(--color-danger-bg); border-radius: var(--radius-l); padding: 18px; display: flex; gap: 14px; align-items: flex-start; }
 .alert-card .ic { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: var(--color-danger); display: inline-flex; align-items: center; justify-content: center; }
 @media (max-width: 440px) { .seg button { padding: 0 11px; font-size: 13.5px; } }
-.seg-scroll { max-width: 100%; overflow-x: auto; }
-.seg .badge.neutral { background: var(--color-text-secondary); }
-.seg .badge { margin-left: 6px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--color-danger); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
-.link-card { margin-top: 16px; background: var(--color-surface); border-radius: var(--radius-l); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-.link-card .ic { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
-.link-url { background: #fff; border-radius: var(--radius-s); min-height: 52px; padding: 14px 16px; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; display: flex; align-items: center; }
-.link-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.link-actions .btn { flex: 1 1 180px; }
+
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100px, 100%), 1fr)); gap: 10px; margin-top: 16px; }
 .stat { background: var(--color-surface); border-radius: var(--radius-m); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
 .stat .ic { width: 40px; height: 40px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; }
@@ -527,8 +374,7 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .hero-note.alert { background: rgba(255,208,138,0.22); color: #FFD9A0; font-weight: 600; }
 .hero.light .hero-note { background: var(--color-surface); color: var(--color-text-secondary); }
 .hero.light .hero-note.alert { background: var(--color-warning-bg); color: var(--color-warning-strong); }
-.hero-actions button.emph { background: var(--color-on-primary); color: var(--color-primary); }
-.hero.light .hero-actions button.emph { background: var(--color-primary); color: var(--color-on-primary); }
+
 .hero-actions button:disabled { opacity: .45; }
 .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .hero-actions.c2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -550,13 +396,6 @@ button.stat { border: 0; text-align: left; width: 100%; color: inherit; }
 .switch[aria-checked="true"] { background: var(--color-primary); }
 .switch[aria-checked="true"]::after { transform: translateX(20px); }
 
-.day-picks { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
-.day-pick { width: 100%; max-width: 48px; justify-self: center; height: 44px; border: 0; border-radius: 22px; background: var(--color-surface); font-size: 15px; font-weight: 600; }
-.card .day-pick:not([aria-pressed="true"]) { background: #fff; }
-.day-pick[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); font-weight: 700; }
-.rule-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: end; }
-.rule-form .field.day, .rule-form > .btn { grid-column: 1 / -1; }
-.rule-form > .btn { width: 100%; }
 input[type=time], input[type=date] { min-width: 0; max-width: 100%; width: 100%; display: flex; align-items: center; -webkit-appearance: none; appearance: none; text-align: left; line-height: normal; }
 input[type=time]::-webkit-date-and-time-value, input[type=date]::-webkit-date-and-time-value { text-align: left; margin: 0; min-height: 1.4em; display: flex; align-items: center; }
 input[type=time]::-webkit-datetime-edit, input[type=date]::-webkit-datetime-edit { padding: 0; display: flex; align-items: center; }
@@ -564,14 +403,7 @@ input[type=time]::-webkit-datetime-edit-fields-wrapper, input[type=date]::-webki
 @supports (-webkit-touch-callout: none) {
   input[type=date][value=""]::before { content: attr(placeholder); color: var(--color-text-disabled); }
 }
-@media (min-width: 640px) {
-  .rule-form { grid-template-columns: 1.5fr 1fr 1fr auto; }
-  .rule-form .field.day { grid-column: auto; }
-  .rule-form > .btn { grid-column: auto; width: auto; }
-}
-.rule-chip { display: inline-flex; align-items: center; gap: 4px; height: 44px; padding: 0 6px 0 16px; border-radius: var(--radius-pill); background: #fff; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.rule-chip.warn { background: var(--color-warning-bg); color: var(--color-warning); }
-.rule-chip button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--color-text-secondary); display: inline-flex; align-items: center; justify-content: center; }
+
 .checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
 .checks li { display: flex; align-items: flex-start; gap: 12px; line-height: 22px; }
 .checks li > span:last-child, .checks li > .chip { flex: 0 1 auto; }
@@ -606,7 +438,7 @@ input[type=time]::-webkit-datetime-edit-fields-wrapper, input[type=date]::-webki
 footer.foot { text-align: center; color: var(--color-text-secondary); font-size: 13px; padding: 8px 20px max(10px, env(safe-area-inset-bottom)); margin-top: auto; }
 .has-tabbar footer.foot { display: none; }
 .has-tabbar main#view { padding-bottom: 104px; }
-@media (max-width: 520px) { .hdr { padding: 0 -4px; } .media .day { font-size: 80px; } }
+@media (max-width: 520px) { .hdr { padding: 0 -4px; }  }
 
 /* Escritorio: panel del administrador */
 .side-brand, .side-new { display: none; }
@@ -620,7 +452,7 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
   body.admin-on .tab .tab-dot { top: 14px; right: 14px; left: auto; }
   body.admin-on .admin-brand { display: none; }
   body.admin-on .side-brand { display: flex; flex-direction: column; gap: 2px; padding: 4px 14px 22px; }
-  body.admin-on .sb-name { font-size: 18px; font-weight: 700; line-height: 24px; overflow-wrap: anywhere; }
+  
   body.admin-on .sb-sub { font-size: 13px; color: var(--color-text-secondary); }
   body.admin-on .side-new { display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: auto; height: 48px; border: 0; border-radius: var(--radius-pill); background: #0B0B0C; color: #fff; font: inherit; font-size: 15px; font-weight: 600; }
   body.admin-on .toast { bottom: 32px; }
@@ -635,10 +467,10 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
   .dc-side .alert-card { margin-top: 24px; }
 
   .top-actions { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-  .agenda-split { display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 36px; align-items: start; }
-  .as-cal { position: sticky; top: 16px; }
-  .as-day > .row:first-child { margin-top: 14px !important; }
-  .as-day .rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; }
+  
+  
+  
+  
   .cl-rows, .staff-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 12px; }
 }
 
@@ -658,23 +490,23 @@ footer.foot { text-align: center; color: var(--color-text-secondary); font-size:
   .ctable .ct-actions button { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; margin-left: 6px; border: 0; border-radius: var(--radius-pill); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 13.5px; font-weight: 600; }
   .ctable .ct-actions button svg { width: 16px; height: 16px; }
   .ctable .ct-actions button.danger { background: var(--color-danger-bg); color: var(--color-danger); }
-  .ctable .ct-actions button.emph { background: #0B0B0C; color: #fff; }
+  
   .ctable tr:hover td { background: #fafafa; }
   .ctable .chip-hero { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: var(--radius-pill); font-size: 13px; font-weight: 700; white-space: nowrap; background: var(--color-chip-neutral); color: var(--color-chip-neutral-text); }
   .ctable .chip-hero.warn { background: var(--color-warning-bg); color: var(--color-warning); }
   .ctable .chip-hero.ok { background: var(--color-success-bg); color: var(--color-success); }
   .ctable .chip-hero.cancel { background: var(--color-danger-bg); color: var(--color-danger); }
   .ctable td:nth-child(2) { min-width: 150px; }
-  .as-day .ctable .ct-actions button { width: 36px; padding: 0; justify-content: center; }
-  .as-day .ctable .ct-actions button span { display: none; }
-  .agenda-split { grid-template-columns: 380px minmax(0, 1fr); }
-  .as-day .ctable th, .as-day .ctable td { padding: 12px 8px; }
-  .as-day .ctable th:first-child, .as-day .ctable td:first-child { padding-left: 14px; }
-  .as-day .ctable th { white-space: nowrap; }
-  .as-day .ctable .ct-actions { padding-right: 12px; }
-  .as-day .ctable .ct-actions button { width: 34px; height: 34px; margin-left: 4px; }
-  .as-day .ctable td:nth-child(2) { min-width: 0; }
-  .as-day .table-only { margin-top: 0; }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   .dash-cols { grid-template-columns: minmax(0, 1fr) 340px; }
 }
 .fbar { display: flex; flex-wrap: nowrap; gap: 8px; margin: 12px -20px 0; padding: 0 20px; overflow-x: auto; scrollbar-width: none; }
@@ -808,7 +640,6 @@ function buildDefaultState(){
   return {
     view: 'admin',
     adminTab: 'inicio',
-    includePast: false,
     citasFilter: 'todas',
     brand: { name: 'Caly', color: '#0B0B0C', logo: null },
     account: { name: 'Valentina Rossi', email: 'valentina', phone: '11-5555-0100' },
@@ -1164,7 +995,7 @@ function diffRows(base, cur){
   Object.keys(base.clients).forEach(id => { if (!cur.clients[id]) ops.push({ t: 'delete', table: 'clients', id, order: 5 }); });
   return ops.sort((a, b) => (a.order || 0) - (b.order || 0));
 }
-let syncChain = Promise.resolve(), syncTimer = null, syncErrorHandler = null;
+let syncChain = Promise.resolve(), syncTimer = null;
 function queueSync(){
   if (REMOTE && ROUTE.kind === 'super' && superBase && state.session.super) { clearTimeout(syncTimer); syncTimer = setTimeout(() => { syncChain = syncChain.then(runSuperSync).catch(() => {}); }, 30); return; }
   if (!REMOTE || ROUTE.kind !== 'admin' || !remoteBase || !state.session.admin) return;
@@ -1923,26 +1754,6 @@ function auditPass(){
 }
 try { auditPrev = auditSnap(); } catch (e) {}
 
-function hexToRgb(hex){
-  let clean = hex.replace('#', '');
-  if (clean.length === 3) clean = clean.split('').map(c => c + c).join('');
-  const num = parseInt(clean, 16);
-  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
-}
-function rgbToHex(r, g, b){
-  return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
-}
-function mixColor(hex, target, weight){
-  const c1 = hexToRgb(hex), c2 = hexToRgb(target);
-  return rgbToHex(
-    c1.r + (c2.r - c1.r) * weight,
-    c1.g + (c2.g - c1.g) * weight,
-    c1.b + (c2.b - c1.b) * weight
-  );
-}
-function lightenColor(hex, weight){ return mixColor(hex, '#ffffff', weight); }
-function darkenColor(hex, weight){ return mixColor(hex, '#000000', weight); }
-
 function hslToRgba(hh, ss, ll, al){
   hh = ((hh % 360) + 360) % 360;
   const k = n => (n + hh / 30) % 12, aa = ss * Math.min(ll, 1 - ll), f = n => ll - aa * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
@@ -2015,12 +1826,6 @@ function refreshBrandUI(){
 function doubleWith(a){
   if (a.status !== 'CONFIRMED' || !a.staffId) return null;
   return state.appointments.find(b => b.id !== a.id && b.status === 'CONFIRMED' && b.date === a.date && b.staffId === a.staffId && overlaps(a.start, a.end, b.start, b.end)) || null;
-}
-function tsShort(ts){ const d = new Date(ts); return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; }
-function regLabel(a){
-  const t = apptCreatedAt(a);
-  const by = a.createdBy === 'client' ? 'lo reservó el cliente' : a.createdBy === 'admin' ? 'la creó el administrador' : '';
-  return t ? `${tsShort(t)}${by ? ' (' + by + ')' : ''}` : 'sin registro de hora';
 }
 function sameInstant(a, b){ const x = apptCreatedAt(a), y = apptCreatedAt(b); return !!x && !!y && Math.abs(x - y) <= 10000; }
 function doubleBookings(){
@@ -2256,8 +2061,6 @@ function toggleForgot(){ state.showForgot = !state.showForgot; render(); }
 function setLogin(field, value){ state.booking.login[field] = value; }
 function setReg(field, value){ state.booking.reg[field] = value; }
 function goToRegistro(){ state.booking.error = null; state.booking.step = 'registro'; state.showForgot = false; render(); window.scrollTo(0, 0); }
-function goToLogin(){ state.booking.error = null; state.booking.authStage = 'doc'; state.booking.step = 'login'; render(); window.scrollTo(0, 0); }
-
 let loaderTimer = null;
 function showLoader(msg){
   hideLoader();
@@ -2534,10 +2337,6 @@ function clientLogout(){
   render();
   window.scrollTo(0, 0);
 }
-function toggleHistory(){
-  state.booking.historyOpen = !state.booking.historyOpen;
-  render();
-}
 function goToPanel(){
   const p = state.patients[state.booking.dni];
   if (p && p.mustChange) { showToast('Primero crea una contraseña nueva'); return; }
@@ -2578,19 +2377,6 @@ function resendReschedule(id){
   render();
   showToast('Recordatorio enviado por WhatsApp');
 }
-function startReschedule(id){
-  const appt = state.appointments.find(a => a.id === id);
-  if (!appt || appt.status !== 'CONFIRMED') return;
-  if (state.view === 'paciente' && !clientCanChange(appt)) { showToast(`Ya no puedes cambiarla en línea. Contacta al negocio.`); return; }
-  state.booking.rescheduleId = id;
-  state.booking.serviceId = appt.serviceId && findService(appt.serviceId) ? appt.serviceId : state.booking.serviceId;
-  state.booking.step = 'reservar';
-  state.booking.selectedSlot = null;
-  state.booking.selectedDate = appt.date >= todayISO() ? appt.date : todayISO();
-  state.booking.calendarMonth = ymFromISO(state.booking.selectedDate);
-  render();
-}
-
 function payOn(){ return state.trackPayments !== false; }
 function toggleTrackPayments(){
   state.trackPayments = !payOn();
@@ -2665,38 +2451,6 @@ function manualPick(date, start, end, svcId, pickId){
     return { staff: m, why: null };
   }
   return { staff: null, why };
-}
-function toggleManual(){ const b = ab(); b.manualOpen = !b.manualOpen; b.manualError = null; render(); }
-function setManualTime(){
-  const b = ab();
-  const v = $('manual-time').value;
-  if (!v) { b.manualError = 'Elige una hora.'; render(); return; }
-  const appt = b.move ? state.appointments.find(a => a.id === b.moveId) : null;
-  const dur = appt ? durationMin(appt) : serviceMinutes(bookingServiceId(b));
-  const end = timeToMinutes(v) + dur;
-  if (end >= 24 * 60) { b.manualError = 'La cita no puede terminar después de medianoche.'; render(); return; }
-  b.manualTime = v;
-  const chk = manualPick(b.selectedDate, v, minutesToTime(end), bookingServiceId(b), pickIdFor(b));
-  if (!chk.staff) { b.manualError = `${chk.why}. Elige una hora que cumpla las reglas.`; b.selectedSlot = null; render(); return; }
-  b.manualError = null;
-  b.selectedSlot = { start: v, end: minutesToTime(end), manual: true };
-  render();
-}
-function openMove(id){
-  state.apptView = null;
-  const a = state.appointments.find(x => x.id === id);
-  if (!a) return;
-  const p = state.patients[a.dni] || {};
-  const today = todayISO();
-  const d = a.date >= today ? a.date : today;
-  state.adminTab = 'citas';
-  state.newAppt = {
-    admin: true, move: true, moveId: id, rescheduleId: id, step: 'reservar', docType: p.docType || 'DNI', dni: a.dni,
-    nombres: p.nombres || firstWord(a.name), apellidos: p.apellidos || '', name: a.name, phone: a.phone || '', known: true, error: null, formError: null,
-    selectedDate: d, calendarMonth: ymFromISO(d), selectedSlot: null, serviceId: a.serviceId || null, staffId: a.staffId || null, manualOpen: false, manualTime: '',
-  };
-  render();
-  window.scrollTo(0, 0);
 }
 function confirmMove(){
   const n = state.newAppt;
@@ -2821,16 +2575,6 @@ function copyBookingLink(){
   } catch (e) {}
   showToast(url);
 }
-function askReschedule(id){
-  const a = state.appointments.find(x => x.id === id);
-  if (!a) return;
-  if (!cleanPhoneForWhatsapp(a.phone)) {
-    showToast('Este cliente no tiene teléfono registrado');
-    return;
-  }
-  state.confirmRescheduleId = id;
-  render();
-}
 function closeRescheduleModal(){ state.confirmRescheduleId = null; render(); }
 function requestReschedule(id){
   state.apptView = null;
@@ -2917,14 +2661,6 @@ function simulateDoubleBookingAlert(){
   saveState();
   render();
   showToast('Doble reserva de prueba creada en el negocio de demo');
-}
-function resolveAlert(id){
-  const alert = state.superAlerts.find(a => a.id === id);
-  if (!alert) return;
-  alert.status = 'resolved';
-  saveState();
-  render();
-  showToast('Alerta marcada como resuelta');
 }
 function toggleBusinessEnabled(id){
   const biz = state.businesses.find(b => b.id === id);
@@ -3183,7 +2919,6 @@ function saveConfig(){
   showToast('Configuración guardada');
 }
 
-function updateNewRule(field, value){ state.newRule[field] = value; }
 const DAY_ORDER = ['1', '2', '3', '4', '5', '6', '0'];
 function groupSchedule(sched){
   const groups = [];
@@ -3203,123 +2938,8 @@ function dayGroupLabel(days){
   const names = days.map(d => WEEKDAYS_LONG[d]);
   return names.length > 1 ? names.slice(0, -1).join(', ') + ' y ' + names[names.length - 1].toLowerCase() : names[0];
 }
-function toggleForm(key){ state.openForm = state.openForm === key ? null : key; render(); }
-function formGate(key, label, html){
-  if (state.openForm === key) return `<div class="form-open">${html}<button class="btn-text" type="button" style="align-self:center;" onclick="toggleForm('${key}')">Cancelar</button></div>`;
-  return `<button class="btn btn-primary btn-sm add-btn" type="button" style="align-self:flex-start;" onclick="toggleForm('${key}')">${icon('plus', 18, 2.6)} ${label}</button>`;
-}
-function groupHeader(scope, g){
-  const csv = g.days.join(',');
-  const de = state.dayEdit;
-  if (de && de.scope === scope && de.daysCsv === csv) {
-    return `<div class="stack" style="gap:10px;margin-bottom:6px;">
-      <p class="label">Elige los días con este horario</p>
-      ${dayPicks(de.days, d => `toggleDayEdit('${d}')`)}
-      <div class="row"><button class="btn btn-primary btn-sm" type="button" onclick="saveDayEdit()">Guardar días</button><button class="btn btn-soft btn-sm" type="button" style="background:#fff;" onclick="cancelDayEdit()">Cancelar</button></div>
-    </div>`;
-  }
-  return `<div class="row between" style="flex-wrap:nowrap;margin-bottom:6px;"><p class="label">${dayGroupLabel(g.days)}</p><button class="btn-text" type="button" style="min-height:32px;padding:0 4px;white-space:nowrap;flex-shrink:0;" onclick="startDayEdit('${scope}', '${csv}')">Cambiar días</button></div>`;
-}
-function startDayEdit(scope, csv){ state.dayEdit = { scope, daysCsv: csv, days: csv.split(',') }; render(); }
-function toggleDayEdit(d){ const de = state.dayEdit; if (!de) return; de.days = de.days.includes(d) ? de.days.filter(x => x !== d) : de.days.concat(d); render(); }
-function cancelDayEdit(){ state.dayEdit = null; render(); }
-function saveDayEdit(){
-  const de = state.dayEdit;
-  if (!de) return;
-  if (!de.days.length) return showToast('Marca al menos un día, o elimina el horario con la X');
-  const before = pendingAppts().length;
-  const member = de.scope === 'biz' ? null : state.staff.find(m => m.id === de.scope);
-  const sched = de.scope === 'biz' ? state.businessHours : (member && member.schedule);
-  if (!sched) { state.dayEdit = null; return render(); }
-  const oldDays = de.daysCsv.split(',');
-  const ranges = JSON.parse(JSON.stringify(sched[oldDays[0]] || []));
-  const skipped = [];
-  oldDays.filter(d => !de.days.includes(d)).forEach(d => { delete sched[d]; });
-  de.days.filter(d => !oldDays.includes(d)).forEach(d => {
-    const ok = ranges.filter(r => de.scope === 'biz' || insideRanges(state.businessHours[d] || [], r.start, r.end));
-    if (!ok.length) { skipped.push(WEEKDAYS_LONG[d]); return; }
-    const cur = sched[d] || [];
-    ok.forEach(r => { if (!cur.some(x => x.start === r.start && x.end === r.end)) cur.push({ start: r.start, end: r.end }); });
-    cur.sort((a, b) => a.start.localeCompare(b.start));
-    sched[d] = cur;
-  });
-  state.dayEdit = null;
-  saveState();
-  render();
-  showToast(skipped.length ? `Días actualizados. No se agregó en: ${skipped.join(', ')} (fuera del horario del negocio)` : 'Días actualizados');
-  setTimeout(() => warnNewPending(before), skipped.length ? 3200 : 1800);
-}
-function deleteBizRuleGroup(daysCsv, idx){
-  const before = pendingAppts().length;
-  daysCsv.split(',').forEach(d => {
-    state.businessHours[d].splice(idx, 1);
-    if (!state.businessHours[d].length) delete state.businessHours[d];
-  });
-  saveState();
-  render();
-  warnNewPending(before);
-}
-function deleteRuleGroup(staffId, daysCsv, idx){
-  const before = pendingAppts().length;
-  const member = state.staff.find(m => m.id === staffId);
-  if (!member) return;
-  daysCsv.split(',').forEach(d => {
-    member.schedule[d].splice(idx, 1);
-    if (!member.schedule[d].length) delete member.schedule[d];
-  });
-  saveState();
-  render();
-  warnNewPending(before);
-}
-function updateNewBizRule(field, value){ state.newBizRule[field] = value; }
-function toggleBizDay(d){
-  const ids = state.newBizRule.days;
-  state.newBizRule.days = ids.includes(d) ? ids.filter(x => x !== d) : ids.concat(d);
-  render();
-}
-function toggleRuleDay(staffId, d){
-  state.newRule.staffId = staffId;
-  const ids = state.newRule.days;
-  state.newRule.days = ids.includes(d) ? ids.filter(x => x !== d) : ids.concat(d);
-  render();
-}
-function addBizRule(){
-  const { days, start, end } = state.newBizRule;
-  if (!days.length) return showToast('Marca al menos un día');
-  if (start >= end) return showToast('La hora de inicio debe ser antes que la de fin');
-  let changed = 0;
-  days.forEach(day => {
-    state.businessHours[day] = state.businessHours[day] || [];
-    if (!state.businessHours[day].some(r => r.start === start && r.end === end)) { state.businessHours[day].push({ start, end }); changed++; }
-    state.businessHours[day].sort((a, b) => a.start.localeCompare(b.start));
-  });
-  if (!changed) return showToast('Ese horario ya estaba en esos días. Para cambiar los días de un horario, usa "Cambiar días".');
-  state.openForm = null;
-  saveState();
-  render();
-  showToast(days.length === 1 ? 'Horario agregado' : `Horario agregado a ${days.length} días`);
-}
-function deleteBizRule(day, idx){
-  state.businessHours[day].splice(idx, 1);
-  if (!state.businessHours[day].length) delete state.businessHours[day];
-  saveState();
-  render();
-}
-function updateNewOff(field, value){ state.newOff[field] = value; }
 function offAffected(staffId, entry){
   return state.appointments.filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && a.staffId === staffId && a.date >= todayISO() && a.date >= entry.from && a.date <= entry.to).length;
-}
-function addTimeOff(staffId){
-  const n = state.newOff;
-  const mine = n.staffId === staffId ? n : { from: '', to: '', note: '' };
-  if (!mine.from) return showToast('Elige desde qué fecha no atiende');
-  const to = mine.to || mine.from;
-  if (to < mine.from) return showToast('La fecha final no puede ser antes que la inicial');
-  if (to < todayISO()) return showToast('Elige fechas de hoy en adelante');
-  const entry = { id: newId('of'), from: mine.from, to, note: (mine.note || '').trim() };
-  const aff = offAffected(staffId, entry);
-  if (aff) { state.pendingClosure = { kind: 'off', staffId, entry, aff }; render(); return; }
-  commitTimeOff(staffId, entry);
 }
 function commitTimeOff(staffId, entry){
   const m = state.staff.find(x => x.id === staffId);
@@ -3332,14 +2952,6 @@ function commitTimeOff(staffId, entry){
   render();
   const aff = offAffected(staffId, entry);
   showToast(aff ? `Ausencia guardada. ${aff} cita${aff === 1 ? '' : 's'} con problemas` : 'Ausencia guardada');
-}
-function deleteTimeOff(staffId, id){
-  const m = state.staff.find(x => x.id === staffId);
-  if (!m) return;
-  m.timeOff = (m.timeOff || []).filter(o => o.id !== id);
-  saveState();
-  render();
-  showToast('Ausencia eliminada');
 }
 function updateNewClosed(field, value){ state.newClosed[field] = value; }
 function closedAffected(c){
@@ -3392,49 +3004,6 @@ function deleteClosedDay(id){
   saveState();
   render();
   showToast('Días reabiertos');
-}
-function addRule(){
-  const { staffId, days, start, end } = state.newRule;
-  const member = state.staff.find(s => s.id === staffId);
-  if (!member) return;
-  if (!days.length) return showToast('Marca al menos un día');
-  if (start >= end) return showToast('La hora de inicio debe ser antes que la de fin');
-  const skipped = [];
-  let added = 0, changed = 0;
-  days.forEach(day => {
-    if (!insideRanges(state.businessHours[day] || [], start, end)) { skipped.push(WEEKDAYS_LONG[day]); return; }
-    member.schedule[day] = member.schedule[day] || [];
-    if (!member.schedule[day].some(r => r.start === start && r.end === end)) { member.schedule[day].push({ start, end }); changed++; }
-    member.schedule[day].sort((a, b) => a.start.localeCompare(b.start));
-    added++;
-  });
-  if (added && !changed) return showToast('Ese horario ya estaba en esos días. Para cambiar los días de un horario, usa "Cambiar días".');
-  if (!added) return showToast(`Fuera del horario del negocio: ${skipped.join(', ')}. Ajusta el horario del negocio primero`);
-  state.openForm = null;
-  saveState();
-  render();
-  showToast(skipped.length ? `Agregado a ${added} día${added === 1 ? '' : 's'}. No se agregó en: ${skipped.join(', ')} (fuera del horario del negocio)` : (added === 1 ? 'Horario agregado' : `Horario agregado a ${added} días`));
-}
-function deleteRule(staffId, day, idx){
-  const member = state.staff.find(s => s.id === staffId);
-  if (!member) return;
-  member.schedule[day].splice(idx, 1);
-  saveState();
-  render();
-}
-function updateNewStaffName(value){ state.newStaffName = value; }
-function addStaffMember(){
-  const name = (state.newStaffName || '').trim();
-  if (name.length < 2) {
-    showToast('Ingresa el nombre del trabajador');
-    return;
-  }
-  state.staff.push({ id: newId('staff'), name, schedule: {} });
-  state.newStaffName = '';
-  state.openForm = null;
-  saveState();
-  render();
-  showToast('Trabajador agregado');
 }
 function startEditStaff(id){
   const m = id === 'new' ? { name: '', schedule: {}, timeOff: [] } : state.staff.find(x => x.id === id);
@@ -3508,17 +3077,6 @@ function saveStaffDraft(){
   showToast(isNew ? 'Trabajador agregado' : 'Cambios guardados');
   setTimeout(() => warnNewPending(before), 1800);
 }
-function saveStaffName(id){
-  const name = ($('es-name').value || '').trim();
-  if (name.length < 2) return showToast('Ingresa el nombre del trabajador');
-  const m = state.staff.find(x => x.id === id);
-  if (!m) return;
-  m.name = name;
-  state.appointments.forEach(a => { if (a.staffId === id) a.staffName = name; });
-  saveState();
-  render();
-  showToast('Nombre actualizado');
-}
 function staffFutureAppts(id){ return state.appointments.filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && a.staffId === id && a.date >= todayISO()); }
 function askRemoveStaff(id){
   if (state.staff.length <= 1) return showToast('Debe quedar al menos un trabajador configurado');
@@ -3559,62 +3117,12 @@ function removeStaffMember(id){
   showToast('Trabajador eliminado');
   setTimeout(() => warnNewPending(before), 2400);
 }
-function pendingServiceAppts(){
-  const today = todayISO();
-  return state.appointments
-    .filter(a => a.status === 'CONFIRMED' && !a.rescheduleRequested && a.date >= today && !(a.serviceId && findService(a.serviceId)))
-    .sort((a, c) => (a.date + a.start).localeCompare(c.date + c.start));
-}
-function updateNewService(field, value){ state.newService[field] = value; }
-function toggleNewServiceStaff(id){
-  const ids = state.newService.staffIds;
-  state.newService.staffIds = ids.includes(id) ? ids.filter(x => x !== id) : ids.concat(id);
-  render();
-}
-function addService(){
-  const n = state.newService;
-  const name = (n.name || '').trim();
-  const minutes = Number(n.minutes);
-  if (name.length < 2) return showToast('Ingresa el nombre del servicio');
-  if (!(minutes >= 5 && minutes <= 480)) return showToast('La duración debe estar entre 5 y 480 min');
-  if (!n.staffIds.length) return showToast('Asocia al menos un trabajador al servicio');
-  state.services.push({ id: newId('svc'), name, minutes: Math.round(minutes), staffIds: n.staffIds.slice() });
-  state.newService = { name: '', minutes: 45, staffIds: [] };
-  state.openForm = null;
-  saveState();
-  render();
-  showToast('Servicio creado');
-}
-function toggleServiceStaff(svcId, staffId){
-  const v = findService(svcId);
-  if (!v) return;
-  v.staffIds = v.staffIds.includes(staffId) ? v.staffIds.filter(x => x !== staffId) : v.staffIds.concat(staffId);
-  saveState();
-  render();
-}
 function deleteService(id){
   if (serviceFutureAppts(id)) return showToast('Tiene citas por venir. Pausa el servicio para que no se agenden nuevas');
   state.services = state.services.filter(v => v.id !== id);
   saveState();
   render();
   showToast('Servicio eliminado');
-}
-function setServiceAssign(apptId, svcId){
-  if (svcId) state.serviceAssign[apptId] = svcId; else delete state.serviceAssign[apptId];
-  render();
-}
-function saveServiceAssign(){
-  const pend = pendingServiceAppts();
-  if (!pend.length || !pend.every(a => state.serviceAssign[a.id])) return showToast('Asigna un servicio a cada cita');
-  pend.forEach(a => {
-    const v = findService(state.serviceAssign[a.id]);
-    a.serviceId = v.id;
-    a.serviceName = v.name;
-  });
-  state.serviceAssign = {};
-  saveState();
-  render();
-  showToast('Servicios asignados');
 }
 function currentBusiness(){ return state.businesses.find(b => b.id === (state.currentBizId || 'biz-1')); }
 function basicSchedule(){ return JSON.parse(JSON.stringify(state.businessHours || {})); }
@@ -3691,7 +3199,6 @@ function toggleAllowClientStaffPick(){
   render();
 }
 
-
 /* ===================== UI (sistema visual Caly · Glass) ===================== */
 function svg(size, body, sw){
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" aria-hidden="true" stroke="currentColor" stroke-width="${sw || 2}" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
@@ -3701,7 +3208,6 @@ const ICONS = {
   calendar: `<rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>`,
   sparkles: `<path d="M11 3.5l1.9 5 5 1.9-5 1.9-1.9 5-1.9-5-5-1.9 5-1.9 1.9-5z"/><path d="M19 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z"/>`,
   clock: `<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>`,
-  palette: `<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1 0 1.6-.7 1.6-1.5 0-.4-.2-.8-.4-1.1-.2-.3-.4-.6-.4-1 0-.8.7-1.4 1.5-1.4H16a4 4 0 0 0 4-4c0-4.2-3.6-7.5-8-7.5Z"/><circle cx="7.6" cy="11.5" r="1.1" fill="currentColor"/><circle cx="10" cy="8" r="1.1" fill="currentColor"/><circle cx="14.5" cy="8" r="1.1" fill="currentColor"/>`,
   user: `<circle cx="12" cy="8.5" r="3.5"/><path d="M4.5 20c1-3.5 4-5.5 7.5-5.5s6.5 2 7.5 5.5"/>`,
   check: `<path d="M5 12.5l4.5 4.5L19 7.5"/>`,
   plus: `<path d="M12 5v14M5 12h14"/>`,
@@ -3710,10 +3216,8 @@ const ICONS = {
   right: `<path d="M9 5l7 7-7 7"/>`,
   close: `<path d="M6 6l12 12M18 6L6 18"/>`,
   chat: `<path d="M4 5.5h16a1 1 0 0 1 1 1V15a1 1 0 0 1-1 1H9l-4.5 4V16H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z"/>`,
-  refresh: `<path d="M4 12a8 8 0 0 1 13.66-5.66M20 12a8 8 0 0 1-13.66 5.66"/><path d="M17 3v4h-4M7 21v-4h4"/>`,
   alert: `<path d="M12 3.5 2.5 20h19L12 3.5Z"/><path d="M12 10v4"/><circle cx="12" cy="17" r="1" fill="currentColor"/>`,
   eye: `<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.6"/>`,
-  list: `<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>`,
   users: `<circle cx="9" cy="8.5" r="3"/><path d="M3.5 19c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5"/><circle cx="17" cy="9.5" r="2.4"/><path d="M16.2 14.7c2.2.2 3.8 1.5 4.3 4.3"/>`,
   search: `<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>`,
   info: `<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.5M12 16.2v.3" stroke-width="2.2"/>`,
@@ -3883,42 +3387,6 @@ function renderAuth(role){
       ${REMOTE ? '' : `<div class="notice demo" style="margin-top:18px;">${copy.demo}</div>`}
     </div>`;
 }
-function renderRegistro(){
-  const b = state.booking;
-  const r = b.reg;
-  const err = b.error;
-  return `
-    <div class="page w456">
-      <div style="display:flex;align-items:center;min-height:48px;">
-        <button class="icon-btn" type="button" onclick="goToLogin()" aria-label="Volver a ingresar">${icon('left', 22, 2.4)}</button>
-      </div>
-      <h1 class="title-1" style="margin:20px 0 4px;">Crea tu cuenta</h1>
-      <p class="secondary">Completa tus datos una sola vez. Después reservas con tu documento y contraseña.</p>
-      <form class="stack" style="margin-top:24px;gap:16px;" onsubmit="event.preventDefault(); clientRegister()">
-        <div class="field"><label for="reg-nombres">Nombres</label><input id="reg-nombres" autocomplete="given-name" value="${escapeHtml(r.nombres)}" oninput="setReg('nombres', this.value)"></div>
-        <div class="field"><label for="reg-apellidos">Apellidos</label><input id="reg-apellidos" autocomplete="family-name" value="${escapeHtml(r.apellidos)}" oninput="setReg('apellidos', this.value)"></div>
-        <div class="field">
-          <label for="reg-type">Tipo de documento</label>
-          <select id="reg-type" onchange="setReg('type', this.value); render()">${docOptions(r.type)}</select>
-        </div>
-        <div class="field">
-          <label for="reg-doc">Número de documento</label>
-          <input id="reg-doc" inputmode="${r.type === 'DNI' ? 'numeric' : 'text'}" value="${escapeHtml(r.doc)}" oninput="setReg('doc', this.value)">
-          <span class="hint">${DOC_TYPES[r.type].hint}</span>
-        </div>
-        <div class="field"><label for="reg-phone">Teléfono</label><input id="reg-phone" type="tel" inputmode="tel" autocomplete="tel" value="${escapeHtml(r.phone)}" oninput="setReg('phone', this.value)"></div>
-        ${pwInput('reg-pw', 'Contraseña', 'new-password')}
-        ${pwInput('reg-pw2', 'Confirmar contraseña', 'new-password')}
-        <span class="hint" style="margin-top:-8px;">Mínimo 6 caracteres.</span>
-        <label class="consent" for="reg-consent">
-          <input id="reg-consent" type="checkbox" ${r.consent ? 'checked' : ''} onchange="state.booking.reg.consent = this.checked">
-          <span>Acepto que <b>${escapeHtml((currentBusiness() && currentBusiness().name) || 'el negocio')}</b> y Caly guarden mis datos para agendar mis citas y contactarme sobre ellas. Entiendo que Caly está en etapa de prueba. Leí la <button type="button" class="btn-text" style="min-height:0;padding:0;display:inline;font-size:inherit;" onclick="openLegal('privacidad')">política de privacidad</button>.</span>
-        </label>
-        ${err ? `<p class="error-text" role="alert">${escapeHtml(err)}</p>` : ''}
-        <button class="btn btn-primary btn-block" type="submit">Crear cuenta</button>
-      </form>
-    </div>`;
-}
 function renderPasswordCard(role){
   const t = pwTarget(role);
   const err = state.pwError && state.pwError.role === role ? state.pwError.msg : null;
@@ -3995,22 +3463,6 @@ function renderUnavailable(title, text){
 }
 function patientHeader(name){
   return `<div class="hdr">${brandBlock()}</div>`;
-}
-
-function renderPatientRow(a, isPast){
-  const cancelled = a.status === 'CANCELLED';
-  const label = cancelled ? 'Cancelada' : (isPast ? 'Realizada' : '');
-  const kind = cancelled ? 'danger' : 'neutral';
-  const canReschedule = !cancelled && !isPast;
-  return `
-    <div class="appt-card">
-      <div class="date-tile"><b>${dayNum(a.date)}</b><i>${monthAbbr(a.date)}</i></div>
-      <div class="row-main">
-        <div class="row-title">${longDate(a.date)}</div>
-        <div class="secondary"><span class="tnum">${a.start}</span>${staffLine(a)}</div>
-      </div>
-      ${label ? `<div class="appt-chips">${chip(kind, label, false, 'state')}</div>` : ''}
-    </div>`;
 }
 
 function patientCard(a, light){
@@ -4291,45 +3743,12 @@ function renderPaciente(){
 }
 
 /* ---------- Admin ---------- */
-function statusChip(a){
-  return a.status === 'CANCELLED' ? chip('danger', 'Cancelada', false, 'pay') : '';
-}
-function paidChip(a){
-  if (a.status === 'CANCELLED' || !payOn()) return '';
-  return `<button class="chip pay ${a.paid ? 'chip-success' : 'chip-warning'}" type="button" onclick="togglePaid('${a.id}')" aria-label="${a.paid ? 'Pagado' : 'Pago pendiente'}: tocar para cambiar">${a.paid ? 'Pagado' : 'Pago pendiente'}</button>`;
-}
-function payAction(a){
-  if (!payOn()) return '';
-  return a.paid
-    ? `<button class="btn btn-sm btn-soft pay-btn" type="button" onclick="togglePaid('${a.id}')">${icon('check', 18, 2.6)} Pagado · Deshacer</button>`
-    : `<button class="btn btn-sm btn-primary pay-btn" type="button" onclick="togglePaid('${a.id}')">${icon('check', 18, 2.6)} Marcar como pagado</button>`;
-}
 function adminHeader(title, eyebrow){
   return `
     <div class="hdr" style="margin-top:16px;align-items:flex-start;">
       <div>
         ${eyebrow ? `<p class="eyebrow" style="font-size:14px;line-height:20px;">${eyebrow}</p>` : ''}
         <h1 class="title-1" style="margin-top:2px;">${title}</h1>
-      </div>
-    </div>`;
-}
-
-function upcomingCard(a, light, todayIso){
-  const when = a.date === todayIso ? 'Hoy' : cap(displayDateShort(a.date));
-  const meta = [a.serviceName, staffShown(a)].filter(Boolean).map(escapeHtml).join(' · ');
-  const payLabel = a.paid ? 'Pagado' : 'Pago pendiente';
-  return `
-    <div class="hero${light ? ' light' : ''}">
-      <span class="chip-hero ${light ? (a.paid ? 'ok' : 'warn') : ''}">${payLabel}</span>
-      <div>
-        <div class="h-title">${when} · ${a.start}</div>
-        <div class="h-sub">${escapeHtml(a.name)}</div>
-        ${meta ? `<div class="h-meta">${meta}</div>` : ''}
-      </div>
-      <div class="hero-actions c4">
-        <button type="button" onclick="togglePaid('${a.id}')">${icon('check', 20, 2.4)}<span>${a.paid ? 'Deshacer pago' : 'Marcar pagado'}</span></button>
-        <button type="button" onclick="sendReminder('${a.id}')" aria-label="Enviar recordatorio por WhatsApp a ${escapeHtml(a.name)}">${icon('chat', 20)}<span>Recordar</span></button>
-        <button type="button" onclick="askReschedule('${a.id}')" aria-label="Solicitar reagendado por WhatsApp a ${escapeHtml(a.name)}">${icon('refresh', 20)}<span>Reagendar</span></button>
       </div>
     </div>`;
 }
@@ -4342,49 +3761,10 @@ function staffColor(staffId){
   const i = state.staff.findIndex(m => m.id === staffId);
   return STAFF_COLORS[i >= 0 ? i % STAFF_COLORS.length : STAFF_COLORS.length - 1];
 }
-function calSelectedDate(){ return state.calDate || todayISO(); }
-function goCalendar(view){
-  state.calView = view; state.calDate = todayISO(); state.calStaff = null; state.calSel = null;
-  render();
-  const el = document.getElementById('cal-anchor');
-  if (el) el.scrollIntoView({ behavior: 'smooth' });
-}
-function setCalView(v){ state.calView = v; state.calSel = null; render(); }
 function setCalStaff(id){ state.calStaff = id; state.calSel = null; render(); }
-function calToday(){ state.calDate = todayISO(); state.calSel = null; render(); }
-function openCalDay(iso){ state.calDate = iso; state.calView = 'dia'; state.calSel = null; render(); }
-function selectCalAppt(id){ state.calSel = state.calSel === id ? null : id; render(); }
-function shiftCal(n){
-  const d = calSelectedDate();
-  if (state.calView === 'mes') {
-    const { y, m } = ymFromISO(d);
-    const t = new Date(y, m + n, 1);
-    state.calDate = isoFromYMD(t.getFullYear(), t.getMonth(), 1);
-  } else state.calDate = addDaysISO(d, state.calView === 'semana' ? 7 * n : n);
-  state.calSel = null;
-  render();
-}
 function isProblem(a){ return a.status === 'CONFIRMED' && a.date >= todayISO() && (!!apptPendingReason(a) || !!a.rescheduleRequested); }
-function agendaAppts(iso){
-  return state.appointments
-    .filter(a => a.date === iso && (!state.calStaff || a.staffId === state.calStaff) && (!state.citasProblems || isProblem(a)))
-    .sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
-}
-function setAgendaView(v){ state.agendaView = v; state.citasLimit = 15; render(); }
 function toggleProblems(){ state.citasProblems = !state.citasProblems; state.citasLimit = 15; render(); }
-function dayAppts(iso, staffId){
-  return state.appointments
-    .filter(a => a.date === iso && a.status === 'CONFIRMED' && (!staffId || a.staffId === staffId))
-    .sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
-}
-function calAppts(iso){ return dayAppts(iso, state.calStaff); }
-function goHoy(){ const el = document.getElementById('hoy-anchor'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }
 function goAgenda(){ state.adminTab = 'citas'; state.citasTab = 'proximas'; state.citasLimit = 15; state.agendaView = 'calendario'; state.citasProblems = false; state.agendaDate = todayISO(); state.openAppt = null; render(); window.scrollTo(0, 0); }
-function setCitasMode(m){ render(); }
-function pickAgendaDay(iso){ state.agendaDate = iso; state.openAppt = null; state.agendaMonth = false; render(); }
-function shiftAgendaWeek(n){ state.agendaDate = addDaysISO(state.agendaDate || todayISO(), 7 * n); state.openAppt = null; render(); }
-let apptBackScroll = 0;
-function openApptDetail(id){ state.apptView = id; render(); }
 function closeApptDetail(){ state.apptView = null; render(); }
 function renderApptDetail(){
   const a = state.appointments.find(x => x.id === state.apptView);
@@ -4397,54 +3777,6 @@ function renderApptDetail(){
         ${citaCard(a, todayISO(), reason ? 'pend' : (a.rescheduleRequested ? 'wait' : false))}
       </div>
     </div>`;
-}
-function apptRow(a, now, showDate){
-  const c = staffColor(a.staffId);
-  const reason = apptPendingReason(a);
-  const meta = [showDate ? cap(displayDateShort(a.date)) : '', a.serviceName, staffShown(a)].filter(Boolean).map(escapeHtml).join(' · ');
-  const chipHtml = a.status === 'CANCELLED' ? chip('danger', 'Cancelada') : reason ? chip('danger', reason === 'Doble reserva' ? 'Doble reserva' : 'Por resolver') : a.rescheduleRequested ? chip('neutral', 'Esperando') : (!payOn() ? '' : a.paid ? chip('success', 'Pagado') : chip('warning', 'Por cobrar'));
-  return `
-    <div class="arow-wrap">
-      <button type="button" class="arow${isProblem(a) ? ' problem' : ''}" onclick="openApptDetail('${a.id}')">
-        <span class="ar-bar" style="background:${c.bd}"></span>
-        <span class="ar-time tnum"><b>${a.start}</b><span>${a.end}</span></span>
-        <span class="ar-main"><b>${escapeHtml(a.name)}</b>${meta ? `<span>${meta}</span>` : ''}</span>
-        <span class="ar-side">${chipHtml}</span>
-      </button>
-    </div>`;
-}
-function renderMonthPicker(sel, now){
-  const { y, m } = ymFromISO(sel);
-  const first = isoFromYMD(y, m, 1);
-  const gridStart = weekStart(first);
-  const cells = [];
-  for (let i = 0; i < 42; i++) cells.push(addDaysISO(gridStart, i));
-  while (cells.length > 35 && ymFromISO(cells[35]).m !== m) cells.length = 35;
-  return `
-    <div class="agenda-head">
-      <button class="icon-btn" type="button" onclick="shiftAgendaMonth(-1)" aria-label="Mes anterior">${icon('left', 20, 2.4)}</button>
-      <span class="agenda-range">${cap(MONTHS[m])} ${y}</span>
-      <button class="icon-btn" type="button" onclick="shiftAgendaMonth(1)" aria-label="Mes siguiente">${icon('right', 20, 2.4)}</button>
-    </div>
-    <div class="acal-month">
-      ${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(l => `<span class="cal-mh">${l}</span>`).join('')}
-      ${cells.map(iso => {
-        const list = agendaAppts(iso);
-        const active = list.filter(a => a.status !== 'CANCELLED');
-        const bad = list.filter(isProblem).length;
-        const inMonth = ymFromISO(iso).m === m;
-        return `<button type="button" class="cal-cell${inMonth ? '' : ' out'}${iso === now ? ' today' : ''}${iso === sel ? ' selday' : ''}${isClosedDay(iso) ? ' closed' : ''}${bad ? ' bad' : ''}" onclick="pickAgendaDay('${iso}')" aria-label="${longDate(iso)}${list.length ? ', ' + list.length + ' cita' + (list.length === 1 ? '' : 's') : ''}${bad ? ', ' + bad + ' con problemas' : ''}"><b>${dayNum(iso)}</b>${active.length ? `<span class="cal-count">${active.length}</span>` : (list.length ? '<span class="cal-count cal-muted">·</span>' : '')}${bad ? '<i class="cal-warn" aria-hidden="true"></i>' : ''}</button>`;
-      }).join('')}
-    </div>`;
-}
-function shiftAgendaMonth(n){
-  const { y, m } = ymFromISO(state.agendaDate || todayISO());
-  const t = new Date(y, m + n, 1);
-  const now = todayISO();
-  const ym = ymFromISO(now);
-  state.agendaDate = (t.getFullYear() === ym.y && t.getMonth() === ym.m) ? now : isoFromYMD(t.getFullYear(), t.getMonth(), 1);
-  state.openAppt = null;
-  render();
 }
 function citaMode(a){ return apptPendingReason(a) ? 'pend' : (a.rescheduleRequested ? 'wait' : false); }
 function setCitasTab(t){ state.citasTab = t; state.citasLimit = 15; render(); }
@@ -4482,157 +3814,6 @@ function renderAgendaView(){
     </div>
     ${shown.length ? `<div style="margin-top:14px;">${citaList(shown, now, citaMode)}</div>
     ${sorted.length > shown.length ? `<button class="btn btn-soft btn-block" type="button" style="margin-top:14px;" onclick="state.citasLimit += 15; render()">Ver más (${sorted.length - shown.length})</button>` : ''}` : `<p class="secondary" style="margin-top:24px;">${empty}</p>`}`;
-}
-function calLayout(list){
-  const out = []; let cluster = []; let clusterEnd = -1;
-  const flush = () => {
-    if (!cluster.length) return;
-    const lanes = [];
-    cluster.forEach(a => {
-      let lane = lanes.findIndex(end => end <= timeToMinutes(a.start));
-      if (lane < 0) { lane = lanes.length; lanes.push(0); }
-      lanes[lane] = timeToMinutes(a.end);
-      a._lane = lane;
-    });
-    cluster.forEach(a => out.push({ a, lane: a._lane, lanes: lanes.length }));
-    cluster = [];
-  };
-  list.forEach(a => {
-    if (cluster.length && timeToMinutes(a.start) >= clusterEnd) { flush(); clusterEnd = -1; }
-    cluster.push(a);
-    clusterEnd = Math.max(clusterEnd, timeToMinutes(a.end));
-  });
-  flush();
-  return out;
-}
-function calRange(days){
-  let lo = 24 * 60, hi = 0;
-  days.forEach(iso => {
-    (state.businessHours[String(dayOfWeek(iso))] || []).forEach(r => { lo = Math.min(lo, timeToMinutes(r.start)); hi = Math.max(hi, timeToMinutes(r.end)); });
-    calAppts(iso).forEach(a => { lo = Math.min(lo, timeToMinutes(a.start)); hi = Math.max(hi, timeToMinutes(a.end)); });
-  });
-  if (hi <= lo) { lo = 8 * 60; hi = 18 * 60; }
-  return { startH: Math.floor(lo / 60), endH: Math.ceil(hi / 60) };
-}
-function calEventState(a){
-  if (apptPendingReason(a)) return ' pend';
-  if (a.rescheduleRequested) return ' wait';
-  return '';
-}
-function calColumn(iso, startH, endH, hpx, compact){
-  const dow = String(dayOfWeek(iso));
-  const total = (endH - startH) * 60;
-  const px = m => ((m - startH * 60) / 60) * hpx;
-  const biz = state.businessHours[dow] || [];
-  let off = '';
-  let cur = startH * 60;
-  biz.forEach(r => {
-    const a = timeToMinutes(r.start), b = timeToMinutes(r.end);
-    if (a > cur) off += `<div class="cal-off" style="top:${px(cur)}px;height:${px(a) - px(cur)}px"></div>`;
-    cur = Math.max(cur, b);
-  });
-  if (cur < endH * 60) off += `<div class="cal-off" style="top:${px(cur)}px;height:${px(endH * 60) - px(cur)}px"></div>`;
-  const closed = state.closedDays.filter(c => closureAppliesOn(c, iso)).map(c => {
-    const a = c.startTime ? timeToMinutes(c.startTime) : startH * 60, b = c.startTime ? timeToMinutes(c.endTime) : endH * 60;
-    return `<div class="cal-closed" style="top:${px(Math.max(a, startH * 60))}px;height:${px(Math.min(b, endH * 60)) - px(Math.max(a, startH * 60))}px"></div>`;
-  }).join('');
-  const evs = calLayout(calAppts(iso)).map(({ a, lane, lanes }) => {
-    const c = staffColor(a.staffId);
-    const top = px(timeToMinutes(a.start)), h = Math.max(22, px(timeToMinutes(a.end)) - top - 2);
-    const first = firstWord(a.name);
-    const label = compact ? `<b>${a.start.replace(/^0/, '')}</b><span>${escapeHtml(first)}</span>` : `<b>${a.start} · ${escapeHtml(a.name)}</b>${h > 40 && a.serviceName ? `<span>${escapeHtml(a.serviceName)}</span>` : ''}`;
-    return `<button type="button" class="cal-ev${calEventState(a)}${state.calSel === a.id ? ' sel' : ''}" style="top:${top}px;height:${h}px;left:calc(${(lane / lanes) * 100}% + 1px);width:calc(${100 / lanes}% - 3px);background:${c.bg};border-left-color:${c.bd};color:#1c1c1e;" onclick="selectCalAppt('${a.id}')" aria-label="${a.start}, ${escapeHtml(a.name)}${a.serviceName ? ', ' + escapeHtml(a.serviceName) : ''}${a.staffName ? ', ' + escapeHtml(a.staffName) : ''}">${label}</button>`;
-  }).join('');
-  const now = new Date();
-  const nowLine = iso === todayISO() && now.getHours() * 60 + now.getMinutes() > startH * 60 && now.getHours() * 60 + now.getMinutes() < endH * 60
-    ? `<div class="cal-now" style="top:${px(now.getHours() * 60 + now.getMinutes())}px"></div>` : '';
-  return `<div class="cal-col" style="height:${(total / 60) * hpx}px">${off}${closed}${evs}${nowLine}</div>`;
-}
-function calHourLabels(startH, endH, hpx){
-  let h = '';
-  for (let i = startH; i < endH; i++) h += `<div class="cal-hour" style="top:${(i - startH) * hpx}px">${pad2(i)}:00</div>`;
-  return `<div class="cal-hours" style="height:${(endH - startH) * hpx}px">${h}</div>`;
-}
-function calGridLines(startH, endH, hpx){
-  let h = '';
-  for (let i = startH; i < endH; i++) h += `<div class="cal-line" style="top:${(i - startH) * hpx}px"></div>`;
-  return h;
-}
-function renderCalendar(){
-  const todayIso = todayISO();
-  const sel = calSelectedDate();
-  const view = state.calView;
-  let title = '', body = '';
-  if (view === 'dia') {
-    title = longDate(sel);
-    const { startH, endH } = calRange([sel]);
-    const hpx = 60;
-    const n = calAppts(sel).length;
-    body = `
-      <div class="cal-wrap"><div class="cal-body">
-        ${calHourLabels(startH, endH, hpx)}
-        <div class="cal-days" style="height:${(endH - startH) * hpx}px">${calGridLines(startH, endH, hpx)}${calColumn(sel, startH, endH, hpx, false)}</div>
-      </div></div>
-      ${n ? '' : `<p class="secondary" style="margin-top:12px;">No hay citas este día.</p>`}
-      <button class="btn btn-soft btn-sm" type="button" style="margin-top:12px;" onclick="openNewAppt('${sel}')" ${sel < todayIso ? 'disabled' : ''}>${icon('plus', 18, 2.6)} Agendar en este día</button>`;
-  } else if (view === 'semana') {
-    const ws = weekStart(sel);
-    const days = [0, 1, 2, 3, 4, 5, 6].map(i => addDaysISO(ws, i));
-    title = `${dayNum(days[0])} ${monthAbbr(days[0]).toLowerCase()} – ${dayNum(days[6])} ${monthAbbr(days[6]).toLowerCase()}`;
-    const { startH, endH } = calRange(days);
-    const hpx = 48;
-    const letters = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-    body = `
-      <div class="cal-wrap">
-        <div class="cal-weekhead"><span class="cal-gutter"></span>${days.map((iso, i) => `<button type="button" class="${iso === todayIso ? 'today' : ''}" onclick="openCalDay('${iso}')" aria-label="Ver ${longDate(iso)}"><span>${letters[i]}</span><b>${dayNum(iso)}</b></button>`).join('')}</div>
-        <div class="cal-body">
-          ${calHourLabels(startH, endH, hpx)}
-          <div class="cal-days week" style="height:${(endH - startH) * hpx}px">${calGridLines(startH, endH, hpx)}${days.map(iso => calColumn(iso, startH, endH, hpx, true)).join('')}</div>
-        </div>
-      </div>`;
-  } else {
-    const { y, m } = ymFromISO(sel);
-    title = `${cap(MONTHS[m])} ${y}`;
-    const first = isoFromYMD(y, m, 1);
-    const gridStart = weekStart(first);
-    const cells = [];
-    for (let i = 0; i < 42; i++) cells.push(addDaysISO(gridStart, i));
-    while (cells.length > 35 && ymFromISO(cells[35]).m !== m) cells.length = 35;
-    body = `
-      <div class="acal-month">
-        ${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(l => `<span class="cal-mh">${l}</span>`).join('')}
-        ${cells.map(iso => {
-          const list = calAppts(iso);
-          const inMonth = ymFromISO(iso).m === m;
-          const dots = [...new Set(list.map(a => a.staffId))].slice(0, 4).map(id => `<i style="background:${staffColor(id).bd}"></i>`).join('');
-          const closed = isClosedDay(iso);
-          return `<button type="button" class="cal-cell${inMonth ? '' : ' out'}${iso === todayIso ? ' today' : ''}${closed ? ' closed' : ''}" onclick="openCalDay('${iso}')" aria-label="${longDate(iso)}${list.length ? ', ' + list.length + ' cita' + (list.length === 1 ? '' : 's') : ''}"><b>${dayNum(iso)}</b>${list.length ? `<span class="cal-count">${list.length}</span><span class="cal-dots">${dots}</span>` : ''}</button>`;
-        }).join('')}
-      </div>`;
-  }
-  const selAppt = state.calSel ? state.appointments.find(a => a.id === state.calSel) : null;
-  const staffPills = state.staff.length > 1 ? `
-    <div class="pills cal-staff" role="group" aria-label="Filtrar por trabajador">
-      <button type="button" class="pill-opt" aria-pressed="${!state.calStaff}" onclick="setCalStaff(null)">Todos</button>
-      ${state.staff.map(m => `<button type="button" class="pill-opt" aria-pressed="${state.calStaff === m.id}" onclick="setCalStaff('${m.id}')"><i class="dot" style="background:${staffColor(m.id).bd}"></i>${escapeHtml(firstWord(m.name))}</button>`).join('')}
-    </div>` : '';
-  return `
-    <div class="cal-top">
-      <div class="seg" role="group" aria-label="Vista del calendario">
-        <button type="button" aria-pressed="${view === 'dia'}" onclick="setCalView('dia')">Día</button>
-        <button type="button" aria-pressed="${view === 'semana'}" onclick="setCalView('semana')">Semana</button>
-        <button type="button" aria-pressed="${view === 'mes'}" onclick="setCalView('mes')">Mes</button>
-      </div>
-      <button class="btn btn-soft btn-sm" type="button" onclick="calToday()" ${sel === todayIso && view === 'dia' ? 'disabled' : ''}>Hoy</button>
-    </div>
-    <div class="acal-nav">
-      <button class="icon-btn" type="button" onclick="shiftCal(-1)" aria-label="Anterior">${icon('left', 20, 2.4)}</button>
-      <span class="cal-title" aria-live="polite">${escapeHtml(title)}</span>
-      <button class="icon-btn" type="button" onclick="shiftCal(1)" aria-label="Siguiente">${icon('right', 20, 2.4)}</button>
-    </div>
-    ${staffPills}
-    ${body}
-    ${selAppt ? `<div style="margin-top:16px;">${citaCard(selAppt, todayIso, apptPendingReason(selAppt) ? 'pend' : (selAppt.rescheduleRequested ? 'wait' : false))}<button class="btn-text" type="button" style="margin-top:8px;" onclick="state.calSel=null; render()">Cerrar detalle</button></div>` : ''}`;
 }
 function renderAdminInicio(){
   const todayIso = todayISO();
@@ -4709,7 +3890,6 @@ function renderAdminInicio(){
         <button class="btn btn-sm btn-danger-solid" type="button" style="margin-top:12px;" onclick="state.adminTab='cuenta'; render(); window.scrollTo(0, 0)">Ver mi plan</button>
       </div>
     </div>` : ''; })()}
-
 
     ${(state.activity.length || doubleBookings().length) ? `
     <div class="news">
@@ -4855,16 +4035,6 @@ function confirmMerge(){
   render();
   showToast('Clientes unidos');
 }
-function viewClientAppts(doc){
-  const p = state.patients[doc];
-  state.adminTab = 'citas';
-  state.citasQuery = p ? p.name : '';
-  state.citasProblems = false;
-  state.citasTab = state.appointments.some(a => a.dni === doc && a.status === 'CONFIRMED' && !isPastAppt(a)) ? 'proximas' : 'historial';
-  state.citasLimit = 15;
-  render();
-  window.scrollTo(0, 0);
-}
 function renderMergeModal(){
   const m = state.mergeConfirm;
   if (!m) return '';
@@ -4974,8 +4144,6 @@ function citaMatches(a, q){
   return a.name.toLowerCase().includes(t) || String(a.dni).toLowerCase().includes(t) || (a.serviceName || '').toLowerCase().includes(t) || (a.staffName || '').toLowerCase().includes(t) || (d && digitsOnly(a.phone).includes(d));
 }
 function setCitasQuery(v){ state.citasQuery = v; state.citasLimit = 15; render(); }
-function setCitasFilter(f){ state.citasFilter = f; state.citasLimit = 15; render(); }
-function weekStart(iso){ const dow = dateFromISO(iso).getDay(); return addDaysISO(iso, dow === 0 ? -6 : 1 - dow); }
 function citasTop(){
   return `
     <div class="top-actions">
@@ -5110,46 +4278,7 @@ function renderServicesSection(){
     ${renderServicesEditor()}`;
 }
 
-function renderServiceMigration(pend){
-  const allChosen = pend.every(a => state.serviceAssign[a.id]);
-  return `
-    <div class="page w880">
-      <div style="margin-top:16px;">
-        <span class="chip chip-danger">${icon('alert', 16, 2.4)} Proceso urgente</span>
-        <h1 class="title-1" style="margin-top:12px;">Asigna un servicio a tus citas pendientes</h1>
-        <p class="secondary" style="margin-top:8px;">Pasaste al plan Pro y ${pend.length === 1 ? 'tienes 1 cita próxima que aún no tiene' : `tienes ${pend.length} citas próximas que aún no tienen`} servicio. Es obligatorio asignarlo para seguir usando el panel.</p>
-      </div>
-
-      <div class="rows" style="margin-top:24px;">
-        ${pend.map(a => {
-          const opts = state.services.filter(v => v.staffIds.includes(a.staffId));
-          return `
-          <div class="appt-card" style="grid-template-columns:60px minmax(0,1fr);">
-            <div class="date-tile"><b class="time tnum">${a.start}</b><i>${escapeHtml(displayDateShort(a.date))}</i></div>
-            <div class="row-main"><div class="row-title">${escapeHtml(a.name)}</div><div class="secondary">${a.staffName ? escapeHtml(a.staffName) : 'Sin profesional'}</div></div>
-            <div class="field" style="grid-column:1 / -1;">
-              <label for="sa-${a.id}">Servicio</label>
-              <select id="sa-${a.id}" onchange="setServiceAssign('${a.id}', this.value)">
-                <option value="">Elige un servicio</option>
-                ${opts.map(v => `<option value="${v.id}" ${state.serviceAssign[a.id] === v.id ? 'selected' : ''}>${escapeHtml(v.name)} · ${v.minutes} min</option>`).join('')}
-              </select>
-              ${opts.length === 0 ? `<span class="error-text">Ningún servicio incluye a ${escapeHtml(a.staffName || 'este trabajador')}. Asócialo a uno aquí abajo.</span>` : ''}
-            </div>
-          </div>`;}).join('')}
-      </div>
-      <button class="btn btn-primary btn-block" type="button" style="margin-top:20px;${allChosen ? '' : 'background:var(--color-disabled-btn);color:var(--color-disabled-text);'}" onclick="saveServiceAssign()">Guardar asignación</button>
-
-      <h2 class="title-2">Servicios</h2>
-      <p class="secondary" style="margin-bottom:14px;">¿Falta un servicio? Créalo o asocia trabajadores aquí mismo.</p>
-      ${renderServicesEditor()}
-    </div>`;
-}
-
 function fmtDay(iso){ const d = dateFromISO(iso); return `${cap(WEEKDAYS_SHORT[d.getDay()])} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`; }
-function dayPicks(selected, onclickFn){
-  const letters = { '1': 'L', '2': 'M', '3': 'M', '4': 'J', '5': 'V', '6': 'S', '0': 'D' };
-  return `<div class="day-picks" role="group" aria-label="Días">${DAY_ORDER.map(d => `<button type="button" class="day-pick" aria-pressed="${selected.includes(d)}" aria-label="${WEEKDAYS_LONG[d]}" onclick="${onclickFn(d)}">${letters[d]}</button>`).join('')}</div>`;
-}
 function startEditBiz(){
   if (state.editingBiz) { state.editingBiz = false; state.bizDraft = null; render(); return; }
   state.editingBiz = true;
@@ -5782,7 +4911,6 @@ function exportRows(from, to){
   });
   return { rows, count: list.length };
 }
-function exportCount(){ return exportRows(state.exportFrom, state.exportTo).count; }
 function setExport(k, v){ state[k] = v; render(); }
 function downloadAppts(all){
   const from = all ? '' : state.exportFrom, to = all ? '' : state.exportTo;
